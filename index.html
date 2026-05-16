@@ -1106,9 +1106,9 @@
           <div style="font-size:10px;color:var(--white-dim);" id="nav-dd-email">—</div>
           <span class="nav-user-badge" id="nav-dd-badge" style="display:inline-block;margin-top:6px;">—</span>
         </div>
-        <button class="nav-dd-item" onclick="handleDashboard()">📊 My Dashboard</button>
+        <button class="nav-dd-item" id="nav-dd-dashboard" onclick="handleDashboard()" style="display:none;">📊 My Dashboard</button>
         <button class="nav-dd-item" id="nav-dd-listings" onclick="showPage('marketplace',()=>setTimeout(()=>showMktView('add'),100))" style="display:none;">🏪 My Listings</button>
-        <button class="nav-dd-item" onclick="showPage('plans')">⭐ Upgrade Plan</button>
+        <button class="nav-dd-item" id="nav-dd-upgrade" onclick="showPage('plans')" style="display:none;">⭐ Upgrade Plan</button>
         <div class="nav-dd-divider"></div>
         <button class="nav-dd-item danger" onclick="handleLogout()">🚪 Sign Out</button>
       </div>
@@ -4991,7 +4991,7 @@ function handleBizSignup() {
 // ──────────────────────────────────────────────────
 // BUSINESS LOG IN
 // ──────────────────────────────────────────────────
-function handleBizLogin() {
+async function handleBizLogin() {
   const loginName = document.getElementById('biz-login-name').value.trim();
   const email     = document.getElementById('biz-login-email').value.trim();
   const pass      = document.getElementById('biz-login-password').value;
@@ -4999,25 +4999,17 @@ function handleBizLogin() {
   if(!loginName||!email||!pass) { showAuthError('biz-login-error','Please fill in all fields before continuing.'); return; }
   if(!validateEmail(email))     { showAuthError('biz-login-error','Please enter a valid email address.'); return; }
 
-  // Check 1: does this business name exist?
-  const bizByName = NM_USERS.businesses.find(b => b.name.toLowerCase() === loginName.toLowerCase());
-  if(!bizByName) {
-    showAuthError('biz-login-error','\u274C No business account found with that name. Please check the spelling or create a new account.');
-    return;
-  }
-  // Check 2: does the email match?
-  if(bizByName.email.toLowerCase() !== email.toLowerCase()) {
-    showAuthError('biz-login-error','\u274C That email does not match the account registered under "'+bizByName.name+'". Please check your email.');
-    return;
-  }
-  // Check 3: correct password?
-  if(bizByName.password !== pass) {
-    showAuthError('biz-login-error','\u274C Incorrect password. Please try again.');
-    return;
-  }
-  loginAs({ type:'business', name:bizByName.name, owner:bizByName.owner, email:bizByName.email, plan:'Business', id:bizByName.id });
-  showAuthSuccess('biz-login-success', '\u2713 Welcome back, '+bizByName.name+'!');
-  setTimeout(closeAuth, 900);
+  showAuthError('biz-login-error', 'Checking account...');
+  try {
+    const { data } = await _supa.from('users').select('*').eq('role','business').ilike('name', loginName).limit(1);
+    const bizByName = data && data[0];
+    if(!bizByName) { showAuthError('biz-login-error','\u274C No business account found with that name. Please check the spelling or create a new account.'); return; }
+    if(bizByName.email.toLowerCase() !== email.toLowerCase()) { showAuthError('biz-login-error','\u274C That email does not match. Please check your email.'); return; }
+    if(bizByName.password !== pass) { showAuthError('biz-login-error','\u274C Incorrect password. Please try again.'); return; }
+    loginAs({ type:'business', name:bizByName.name, owner:bizByName.name, email:bizByName.email, plan:'Business', id:bizByName.id });
+    showAuthSuccess('biz-login-success', '\u2713 Welcome back, '+bizByName.name+'!');
+    setTimeout(closeAuth, 900);
+  } catch(e) { showAuthError('biz-login-error','Connection error. Please try again.'); }
 }
 
 // ──────────────────────────────────────────────────
@@ -5049,7 +5041,7 @@ function handleSubSignup() {
 // ──────────────────────────────────────────────────
 // LEARNER LOG IN
 // ──────────────────────────────────────────────────
-function handleSubLogin() {
+async function handleSubLogin() {
   const loginName = document.getElementById('sub-login-name').value.trim();
   const email     = document.getElementById('sub-login-email').value.trim();
   const pass      = document.getElementById('sub-login-password').value;
@@ -5057,25 +5049,17 @@ function handleSubLogin() {
   if(!loginName||!email||!pass) { showAuthError('sub-login-error','Please fill in all fields before continuing.'); return; }
   if(!validateEmail(email))     { showAuthError('sub-login-error','Please enter a valid email address.'); return; }
 
-  // Check 1: does this learner name exist?
-  const subByName = NM_USERS.subscribers.find(s => s.name.toLowerCase() === loginName.toLowerCase());
-  if(!subByName) {
-    showAuthError('sub-login-error','\u274C No learner account found with that name. Please check your name or sign up for a new account.');
-    return;
-  }
-  // Check 2: does the email match?
-  if(subByName.email.toLowerCase() !== email.toLowerCase()) {
-    showAuthError('sub-login-error','\u274C That email does not match the account registered under "'+subByName.name+'". Please check your email.');
-    return;
-  }
-  // Check 3: correct password?
-  if(subByName.password !== pass) {
-    showAuthError('sub-login-error','\u274C Incorrect password. Please try again.');
-    return;
-  }
-  loginAs({ type:'subscriber', name:subByName.name, email:subByName.email, plan:subByName.plan||'Free', id:subByName.id });
-  showAuthSuccess('sub-login-success', '\u2713 Welcome back, '+subByName.name+'!');
-  setTimeout(closeAuth, 900);
+  showAuthError('sub-login-error', 'Checking account...');
+  try {
+    const { data } = await _supa.from('users').select('*').eq('role','subscriber').ilike('name', loginName).limit(1);
+    const subByName = data && data[0];
+    if(!subByName) { showAuthError('sub-login-error','\u274C No learner account found with that name. Please check your name or sign up.'); return; }
+    if(subByName.email.toLowerCase() !== email.toLowerCase()) { showAuthError('sub-login-error','\u274C That email does not match. Please check your email.'); return; }
+    if(subByName.password !== pass) { showAuthError('sub-login-error','\u274C Incorrect password. Please try again.'); return; }
+    loginAs({ type:'subscriber', name:subByName.name, email:subByName.email, plan:subByName.plan||'Free', id:subByName.id });
+    showAuthSuccess('sub-login-success', '\u2713 Welcome back, '+subByName.name+'!');
+    setTimeout(closeAuth, 900);
+  } catch(e) { showAuthError('sub-login-error','Connection error. Please try again.'); }
 }
 
 // ──────────────────────────────────────────────────
@@ -5096,7 +5080,7 @@ function handleGuestSignup() {
 
   const guest = { name, location, password:pass, id:generateId(), visitedAt: new Date().toISOString() };
   NM_USERS.guests.push(guest);
-  saveNMUsers();
+  saveUserToSupabase({ name, email: name+'_explorer@noamark.local', password:pass, role:'guest' });
   trackUser('guest', name, location);
   loginAs({ type:'guest', name:guest.name, location:guest.location, plan:'Explorer', id:guest.id });
   showAuthSuccess('guest-success', '✓ Welcome, '+name+'! Taking you to the marketplace…');
@@ -5106,32 +5090,23 @@ function handleGuestSignup() {
 // ──────────────────────────────────────────────────
 // GUEST / EXPLORER LOG IN
 // ──────────────────────────────────────────────────
-function handleGuestLogin() {
+async function handleGuestLogin() {
   const loginName  = document.getElementById('guest-login-name').value.trim();
   const loginLoc   = document.getElementById('guest-login-location').value.trim();
   const pass       = document.getElementById('guest-login-password').value;
 
   if(!loginName||!loginLoc||!pass) { showAuthError('guest-login-error','Please fill in all fields before continuing.'); return; }
 
-  // Check 1: does this explorer name exist?
-  const guestByName = NM_USERS.guests.find(g => g.name.toLowerCase() === loginName.toLowerCase());
-  if(!guestByName) {
-    showAuthError('guest-login-error','\u274C No Explorer account found with that name. Please check your name or register a new account.');
-    return;
-  }
-  // Check 2: does location match?
-  if(guestByName.location.toLowerCase() !== loginLoc.toLowerCase()) {
-    showAuthError('guest-login-error','\u274C That location does not match what was registered under "'+guestByName.name+'". Please check your location.');
-    return;
-  }
-  // Check 3: correct password?
-  if(guestByName.password !== pass) {
-    showAuthError('guest-login-error','\u274C Incorrect password. Please try again.');
-    return;
-  }
-  loginAs({ type:'guest', name:guestByName.name, location:guestByName.location, plan:'Explorer', id:guestByName.id });
-  showAuthSuccess('guest-login-success', '\u2713 Welcome back, '+guestByName.name+'!');
-  setTimeout(()=>{ closeAuth(); showPage('marketplace'); }, 900);
+  showAuthError('guest-login-error', 'Checking account...');
+  try {
+    const { data } = await _supa.from('users').select('*').eq('role','guest').ilike('name', loginName).limit(1);
+    const guestByName = data && data[0];
+    if(!guestByName) { showAuthError('guest-login-error','\u274C No Explorer account found with that name. Please check your name or register.'); return; }
+    if(guestByName.password !== pass) { showAuthError('guest-login-error','\u274C Incorrect password. Please try again.'); return; }
+    loginAs({ type:'guest', name:guestByName.name, location:guestByName.email||loginLoc, plan:'Explorer', id:guestByName.id });
+    showAuthSuccess('guest-login-success', '\u2713 Welcome back, '+guestByName.name+'!');
+    setTimeout(()=>{ closeAuth(); showPage('marketplace'); }, 900);
+  } catch(e) { showAuthError('guest-login-error','Connection error. Please try again.'); }
 }
 
 
@@ -5203,9 +5178,27 @@ function applyRoleNav(user) {
     const el = document.getElementById('nav-item-'+item);
     if(el) el.style.display = allowed.includes(item) ? '' : 'none';
   });
-  // Also update Sign Up CTA in nav — hide for business (they already have account)
-  const navCta = document.querySelector('.nav-cta');
-  if(navCta) navCta.style.display = (user && user.type==='business') ? 'none' : '';
+  // Dropdown menu items — show based on role
+  const ddDashboard = document.getElementById('nav-dd-dashboard');
+  const ddListings  = document.getElementById('nav-dd-listings');
+  const ddUpgrade   = document.getElementById('nav-dd-upgrade');
+  const navCta      = document.querySelector('.nav-cta');
+
+  if(ddDashboard) ddDashboard.style.display = 'none';
+  if(ddListings)  ddListings.style.display  = 'none';
+  if(ddUpgrade)   ddUpgrade.style.display   = 'none';
+  if(navCta)      navCta.style.display      = '';
+
+  if(user && user.type === 'business') {
+    // Business: My Listings only, no upgrade, no dashboard, no sign up CTA
+    if(ddListings)  ddListings.style.display  = 'block';
+    if(navCta)      navCta.style.display      = 'none';
+  } else if(user && user.type === 'subscriber') {
+    // Learner: Dashboard + Upgrade Plan
+    if(ddDashboard) ddDashboard.style.display = 'block';
+    if(ddUpgrade)   ddUpgrade.style.display   = 'block';
+  }
+  // Explorer (guest): Sign Out only — no dashboard, no upgrade, no listings
 }
 
 function applyRoleHomePage(user) {
