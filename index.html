@@ -4597,7 +4597,12 @@ function toggleChat(){
   chatOpen=!chatOpen;
   document.getElementById('chat-window').classList.toggle('open',chatOpen);
   document.getElementById('chat-fab').textContent=chatOpen?'✕':'💬';
-  if(chatOpen&&document.getElementById('c-msgs').children.length===0) noahStart();
+  if(chatOpen){
+    // Always reset and start fresh
+    document.getElementById('c-msgs').innerHTML='';
+    document.getElementById('c-quick').innerHTML='';
+    noahStart();
+  }
 }
 function cAddBot(txt){const m=document.createElement('div');m.className='chat-msg bot';m.textContent=txt;document.getElementById('c-msgs').appendChild(m);document.getElementById('c-msgs').scrollTop=9999;}
 function cAddUser(txt){const m=document.createElement('div');m.className='chat-msg user';m.textContent=txt;document.getElementById('c-msgs').appendChild(m);document.getElementById('c-msgs').scrollTop=9999;}
@@ -4611,68 +4616,106 @@ function cSetQuick(opts,cb){
   });
 }
 function askNoah(q){
+  const type = currentUser?.type || 'guest';
   cAddBot('...');
   setTimeout(()=>{
     document.getElementById('c-msgs').lastChild.remove();
     const q2=q.toLowerCase();
-    if(q2.includes('marketplace')||q2.includes('list')||q2.includes('find business')){
-      cAddBot('The NoaMark Marketplace lets you discover local businesses in townships and villages — food, beauty, services, transport, and more. You can also list your own business for free!');
-      cSetQuick(['Open Marketplace','List My Business','See Boost Plans'],r=>{
-        if(r.includes('Marketplace'))showPage('marketplace');
-        else if(r.includes('List'))showPage('marketplace');
-        else askNoah('boost plans');
-      });
-    } else if(q2.includes('boost')){
-      cAddBot('NoaMark Boost puts your listing at the top. Starter (R49.99/3 days), Growth (R99.99/7 days with gold highlight), or Dominance (R199.99/14 days — #1 ranking with glowing badge).');
-      cSetQuick(['See Boost Plans','List My Business','Back'],r=>{
-        if(r.includes('Plans'))showPage('marketplace');
-        else if(r.includes('List'))showPage('marketplace');
-        else noahStart();
-      });
-    } else if(q2.includes('free')||q2.includes('plan')||q2.includes('price')||q2.includes('vip')||q2.includes('premium')){
-      cAddBot('NoaMark has 4 tiers: Free (R0), VIP (R99.99/mo), Premium (R199.99/mo), and Pro — for business owners (R329.99/mo). VIP unlocks all breakdowns and videos. Premium adds advanced analysis and community. Pro gives business owners a permanent featured listing, verified badge, priority leads, and unlimited media uploads.');
-      cSetQuick(['See Plans','What does VIP include?','Marketplace'],r=>{
-        if(r.includes('Plans'))showPage('plans');
-        else if(r.includes('Marketplace'))showPage('marketplace');
-        else askNoah(r);
-      });
-    } else if(q2.includes('opportunity')||q2.includes('business idea')){
-      cAddBot('We cover food, transport, services, retail, and rural businesses in SA. VIP members get full breakdowns with startup costs, risk analysis, and step-by-step guides!');
-      cSetQuick(['Browse Opportunities','Upgrade to VIP','Marketplace'],r=>{
-        if(r.includes('Browse'))showPage('opportunities');
-        else if(r.includes('Upgrade'))showPage('plans');
-        else showPage('marketplace');
-      });
-    } else if(q2.includes('what is noamark')||q2.includes('about')){
-      cAddBot('NoaMark is a local business discovery platform + business education system for African entrepreneurs. Browse local businesses in the Marketplace, or access business opportunity breakdowns and market insights as a VIP/Premium member.');
-      cSetQuick(['Open Marketplace','See Plans','Join Free'],r=>{
-        if(r.includes('Marketplace'))showPage('marketplace');
-        else if(r.includes('Plans'))showPage('plans');
-        else showPage('subscribe');
-      });
+    if(type === 'guest') {
+      if(q2.includes('find')||q2.includes('business')||q2.includes('near')||q2.includes('marketplace')||q2.includes('category')){
+        cAddBot('The NoaMark Marketplace has local businesses in your area — food, beauty, services, transport and more. Browse and connect instantly!');
+        cSetQuick(['Open Marketplace'],r=>{ showPage('marketplace'); });
+      } else if(q2.includes('how')||q2.includes('noamark')||q2.includes('work')){
+        cAddBot('NoaMark helps you discover trusted local businesses in townships and villages across South Africa. Browse, compare, and connect — all in one place.');
+        cSetQuick(['Find businesses'],r=>{ showPage('marketplace'); });
+      } else {
+        cAddBot('As an Explorer, I can help you find great local businesses near you. What are you looking for?');
+        cSetQuick(['Find businesses','Search by category'],r=>{ showPage('marketplace'); });
+      }
+    } else if(type === 'subscriber') {
+      if(q2.includes('opportunit')||q2.includes('idea')||q2.includes('start')){
+        cAddBot('NoaMark covers food, transport, services, retail, and rural businesses in SA. Browse our opportunity library for startup costs, guides and insights!');
+        cSetQuick(['Browse Opportunities'],r=>{ showPage('opportunities'); });
+      } else if(q2.includes('learn')||q2.includes('course')||q2.includes('content')||q2.includes('video')){
+        cAddBot('The Learning Hub has guides and video content to help you start and grow a business. Check it out!');
+        cSetQuick(['Go to Learning Hub','Browse Opportunities'],r=>{
+          if(r.includes('Opportunit')) showPage('opportunities');
+          else showPage('learning');
+        });
+      } else {
+        cAddBot('As a Learner, I can help you explore business ideas and learning content. What would you like to know?');
+        cSetQuick(['Browse Opportunities','Learning Hub'],r=>{
+          if(r.includes('Opportunit')) showPage('opportunities');
+          else showPage('learning');
+        });
+      }
+    } else if(type === 'business') {
+      if(q2.includes('customer')||q2.includes('more people')||q2.includes('grow')){
+        cAddBot('To get more customers: respond to enquiries quickly, keep your listing description clear and detailed, and ask happy customers to leave reviews. Consistent communication builds trust!');
+        cSetQuick(['View my portal'],r=>{ showPage('portal'); });
+      } else if(q2.includes('review')||q2.includes('rating')){
+        cAddBot('Reviews build trust with new customers. Ask your regulars to leave a review on your NoaMark listing. Respond to every review — even negative ones — professionally.');
+        cSetQuick(['View my portal'],r=>{ showPage('portal'); });
+      } else if(q2.includes('market')||q2.includes('promote')||q2.includes('whatsapp')||q2.includes('advertise')){
+        cAddBot('Share your NoaMark listing link on your WhatsApp status and community groups. A short message like "Find us on NoaMark — [your business name]" works really well!');
+        cSetQuick(['View my portal'],r=>{ showPage('portal'); });
+      } else {
+        cAddBot('I can help with business tips, customer growth, reviews and marketing. What do you need help with?');
+        cSetQuick(['Get more customers','Marketing tips','View my portal'],r=>{
+          if(r.includes('portal')) showPage('portal');
+          else askNoah(r);
+        });
+      }
     } else {
-      cAddBot('I can help you discover local businesses, find opportunities, or understand NoaMark. What are you looking for?');
-      cSetQuick(['Open Marketplace','Browse Opportunities','See Plans'],r=>{
-        if(r.includes('Marketplace'))showPage('marketplace');
-        else if(r.includes('Opportunities'))showPage('opportunities');
-        else showPage('plans');
-      });
+      cAddBot('I can help you discover local businesses on NoaMark. What are you looking for?');
+      cSetQuick(['Find businesses'],r=>{ showPage('marketplace'); });
     }
   },800);
 }
+}
 function noahStart(){
+  const type = currentUser?.type || 'guest';
   setTimeout(()=>{
     cAddBot("Hi! I'm Noah, your NoaMark guide. 👋");
     setTimeout(()=>{
-      cAddBot("NoaMark is your local business discovery platform AND business intelligence system. What can I help with?");
-      setTimeout(()=>{
-        cSetQuick(["Find local businesses","List my business","Business opportunities","Membership plans"],r=>{
-          if(r.includes('local'))showPage('marketplace');
-          else if(r.includes('List'))showPage('marketplace');
-          else if(r.includes('opportunities'))showPage('opportunities');
-          else showPage('plans');
-        });
-      },600);
+      if(type === 'guest') {
+        // Explorer — only marketplace/business discovery
+        cAddBot("Welcome, Explorer! I can help you find great local businesses near you.");
+        setTimeout(()=>{
+          cSetQuick(["Find businesses near me","Search by category","How does NoaMark work?"],r=>{
+            if(r.includes('Find')||r.includes('Search')) showPage('marketplace');
+            else askNoah(r);
+          });
+        },600);
+      } else if(type === 'subscriber') {
+        // Learner — opportunities and learning only
+        cAddBot("Welcome back, "+currentUser.name.split(' ')[0]+"! Ready to learn and grow? I can help with business ideas and opportunities.");
+        setTimeout(()=>{
+          cSetQuick(["Browse opportunities","Latest business ideas","How do I access content?"],r=>{
+            if(r.includes('opportunit')) showPage('opportunities');
+            else if(r.includes('content')||r.includes('ideas')) showPage('learning');
+            else askNoah(r);
+          });
+        },600);
+      } else if(type === 'business') {
+        // Business Owner — portal and business help only
+        cAddBot("Welcome back, "+currentUser.name.split(' ')[0]+"! How can I help with your business today?");
+        setTimeout(()=>{
+          cSetQuick(["View my portal","Get business tips","How do I get more customers?"],r=>{
+            if(r.includes('portal')) showPage('portal');
+            else askNoah(r);
+          });
+        },600);
+      } else {
+        // Logged out
+        cAddBot("Welcome to NoaMark! Discover great local businesses near you.");
+        setTimeout(()=>{
+          cSetQuick(["Find local businesses","How does NoaMark work?"],r=>{
+            if(r.includes('local')) showPage('marketplace');
+            else askNoah(r);
+          });
+        },600);
+      }
     },500);
   },300);
 }
@@ -5148,8 +5191,8 @@ function loginAs(user) {
 //   guest       → Home, Marketplace  (explorer: just browse)
 const NAV_RULES = {
   'logged-out':  ['home','marketplace','opportunities','learning','videos','plans'],
-  'business':    ['home','marketplace','plans'],
-  'subscriber':  ['home','marketplace','opportunities','learning','videos','plans'],
+  'business':    ['home','marketplace'],
+  'subscriber':  ['home','marketplace','opportunities','learning','videos'],
   'guest':       ['home','marketplace'],
 };
 
@@ -5520,6 +5563,8 @@ document.querySelectorAll('.bp-nav-item[data-bppage]').forEach(item => {
 });
 
 function bpGoPage(p) {
+  // Reset AI chat whenever navigating away from or to the AI tools page
+  bpResetAIChat();
   document.querySelectorAll('.bp-nav-item').forEach(i => i.classList.remove('active'));
   document.querySelector(`.bp-nav-item[data-bppage="${p}"]`)?.classList.add('active');
   document.querySelectorAll('.bp-page').forEach(pg => pg.classList.remove('active'));
@@ -5958,6 +6003,32 @@ Plans: Starter (R49.99), Growth (R149.99), Dominance (R299.99). Be direct.`;
   } catch(e) { textEl.textContent='Error. Try again.'; }
 }
 
+// ── AI chat history (resets on close) ──
+let bpChatHistory = [];
+
+function bpResetAIChat() {
+  bpChatHistory = [];
+  const promptEl = document.getElementById('bp-ask-prompt');
+  const outEl = document.getElementById('bp-ask-out');
+  const textEl = document.getElementById('bp-ask-text');
+  if(promptEl) promptEl.value = '';
+  if(outEl) outEl.style.display = 'none';
+  if(textEl) textEl.innerHTML = '';
+}
+
+function getRoleSystemPrompt() {
+  const type = currentUser?.type || 'guest';
+  if(type === 'business') {
+    const myListing = typeof LISTINGS !== 'undefined' ? LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser?.owner||currentUser?.name||'').toLowerCase()) : null;
+    return `You are a helpful business advisor for NoaMark, a South African township business platform. You are speaking with a business owner named "${currentUser?.name||'the owner'}" who runs a ${myListing?.cat||'business'} in ${myListing?.area||'South Africa'}. ${myListing?.desc ? 'Their business: '+myListing.desc+'.' : ''} Help them with business advice, customer engagement, marketing, and improving their listing. Do NOT suggest they sign up, list a business, or upgrade plans — they are already a business owner. Keep responses under 120 words.`;
+  }
+  if(type === 'subscriber') {
+    return `You are a helpful learning advisor for NoaMark, a South African township business platform. You are speaking with a learner named "${currentUser?.name||'the user'}". Help them with business ideas, entrepreneurship tips, and learning resources available on NoaMark. Do NOT suggest they list a business or open the marketplace — focus only on learning and business opportunities. Keep responses under 120 words.`;
+  }
+  // guest
+  return `You are a helpful guide for NoaMark, a South African township business platform. You are speaking with a guest visitor named "${currentUser?.name||'the visitor'}". Help them find businesses and navigate the marketplace. Do NOT suggest plans, listings, or sign-up options. Keep responses under 120 words.`;
+}
+
 async function bpAskAI() {
   const q = document.getElementById('bp-ask-prompt').value.trim();
   if(!q) { bpToast('Enter a question first.'); return; }
@@ -5965,12 +6036,22 @@ async function bpAskAI() {
   const textEl = document.getElementById('bp-ask-text');
   outEl.style.display = 'block';
   textEl.innerHTML = `<div class="bp-thinking"><div class="bp-dots"><span></span><span></span><span></span></div> Thinking...</div>`;
-  const myListing = typeof LISTINGS !== 'undefined' ? LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser?.owner||currentUser?.name||'').toLowerCase()) : null;
-  const context = `Context: I run "${currentUser?.name||'a business'}", a ${myListing?.cat||'business'} in ${myListing?.area||'South Africa'}. ${myListing?.desc ? 'Description: '+myListing.desc : ''}`;
+
+  // Build message history for multi-turn chat
+  bpChatHistory.push({ role: 'user', content: q });
+
+  // System prompt as first user message (Gemini doesn't have system role)
+  const systemMsg = { role: 'user', content: getRoleSystemPrompt() };
+  const assistantAck = { role: 'assistant', content: 'Understood. I will follow those guidelines.' };
+  const messages = [systemMsg, assistantAck, ...bpChatHistory];
+
   try {
-    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:400, messages:[{role:'user',content:context+'\n\n'+q}] }) });
+    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:400, messages }) });
     const d = await r.json();
-    textEl.innerHTML = (d.content?.map(c=>c.text||'').join('')||'Could not load.').replace(/\n/g,'<br>');
+    const reply = d.content?.map(c=>c.text||'').join('') || 'Could not load.';
+    bpChatHistory.push({ role: 'assistant', content: reply });
+    document.getElementById('bp-ask-prompt').value = '';
+    textEl.innerHTML = reply.replace(/\n/g,'<br>');
   } catch(e) { textEl.textContent='Connection error. Try again.'; }
 }
 
