@@ -354,6 +354,15 @@
   .listing-card.boosted-growth{border-color:rgba(212,175,55,.25);}
   .listing-img{width:100%;height:180px;object-fit:cover;background:var(--black-3);display:flex;align-items:center;justify-content:center;font-size:48px;overflow:hidden;position:relative;}
   .listing-img-bg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:56px;background:linear-gradient(160deg,#1a1f2c,#0d0f15);}
+  /* Google Maps style photo gallery */
+  .biz-gallery{width:100%;margin-bottom:28px;}
+  .biz-gallery-main{width:100%;height:320px;object-fit:cover;display:block;background:var(--black-3);}
+  .biz-gallery-thumbs{display:flex;gap:6px;margin-top:6px;overflow-x:auto;padding-bottom:4px;}
+  .biz-gallery-thumb{width:80px;height:60px;object-fit:cover;cursor:pointer;opacity:0.65;transition:opacity .2s,outline .2s;flex-shrink:0;outline:2px solid transparent;}
+  .biz-gallery-thumb.active{opacity:1;outline:2px solid var(--gold);}
+  .biz-gallery-emoji{width:100%;height:320px;display:flex;align-items:center;justify-content:center;font-size:100px;background:linear-gradient(160deg,#1a1f2c,#0d0f15);}
+  /* Listing card photo */
+  .listing-img img{width:100%;height:100%;object-fit:cover;}
   .listing-boost-badge{position:absolute;top:12px;left:12px;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:5px 12px;z-index:2;}
   .boost-dominance-badge{background:var(--gold);color:#111827;box-shadow:0 0 16px rgba(212,175,55,.4);}
   .boost-growth-badge{background:rgba(212,175,55,.15);color:var(--gold);border:1px solid rgba(212,175,55,.4);}
@@ -3932,7 +3941,8 @@ async function loadListingsFromSupabase() {
           status: 'open',
           price: 'Contact for pricing',
           menu: [],
-          photo: l.photo_url || ''
+          photo: l.photo_url || '',
+          photos: l.photo_urls ? JSON.parse(l.photo_urls) : (l.photo_url ? [l.photo_url] : [])
         });
       });
       renderAllListings();
@@ -3971,7 +3981,7 @@ function renderCard(biz){
     ?'<div class="listing-status status-open">● Open</div>'
     :'<div class="listing-status status-closed">● Closed</div>';
   return `<div class="listing-card ${boostClass}" onclick="showBizProfile(${biz.id})">
-    <div class="listing-img"><div class="listing-img-bg">${biz.emoji}</div>${badge}${statusBadge}</div>
+    <div class="listing-img">${biz.photo ? `<img src="${biz.photo}" alt="${biz.name}" style="width:100%;height:100%;object-fit:cover;">` : `<div class="listing-img-bg">${biz.emoji}</div>`}${badge}${statusBadge}</div>
     <div class="listing-info">
       <div class="listing-cat">${getCatLabel(biz.cat)}</div>
       <h3 class="listing-name">${biz.name}</h3>
@@ -4090,6 +4100,26 @@ function showMktView(view){
 
 
 // ── BUSINESS PROFILE RENDERER ──
+function buildGalleryHTML(biz) {
+  const photos = biz.photos && biz.photos.length > 0 ? biz.photos : (biz.photo ? [biz.photo] : []);
+  if(photos.length === 0) {
+    return `<div class="biz-gallery"><div class="biz-gallery-emoji">${biz.emoji}</div></div>`;
+  }
+  const thumbs = photos.map((url, i) =>
+    `<img src="${url}" class="biz-gallery-thumb${i===0?' active':''}" onclick="switchGalleryPhoto(this,'${url}')" alt="photo ${i+1}">`
+  ).join('');
+  return `<div class="biz-gallery">
+    <img id="biz-gallery-main" src="${photos[0]}" class="biz-gallery-main" alt="${biz.name}">
+    ${photos.length > 1 ? `<div class="biz-gallery-thumbs">${thumbs}</div>` : ''}
+  </div>`;
+}
+
+function switchGalleryPhoto(thumb, url) {
+  document.getElementById('biz-gallery-main').src = url;
+  document.querySelectorAll('.biz-gallery-thumb').forEach(t => t.classList.remove('active'));
+  thumb.classList.add('active');
+}
+
 function showBizProfile(id){
   const biz=LISTINGS.find(b=>b.id===id);if(!biz)return;
   const fullAddress=encodeURIComponent([biz.address,biz.area,biz.city,biz.province].filter(Boolean).join(', ')||biz.area||biz.name);
@@ -4103,7 +4133,7 @@ function showBizProfile(id){
   const sc=biz.status==='open'?'var(--success)':'var(--danger)';
   const st=biz.status==='open'?'● Open Now':'● Currently Closed';
   document.getElementById('mkt-profile-content').innerHTML=`
-    <div class="biz-cover"><div style="font-size:100px;position:relative;z-index:1;">${biz.emoji}</div></div>
+    ${buildGalleryHTML(biz)}
     <div class="biz-profile-body">
       ${boostBanner}
       <div class="biz-header">
@@ -4265,7 +4295,7 @@ function nextStep(n){
   window.scrollTo({top:400,behavior:'smooth'});
 }
 
-function submitBusiness(){
+async function submitBusiness(){
   const name=document.getElementById('biz_name').value.trim();
   const cat=document.getElementById('biz_cat').value;
   const phone=document.getElementById('biz_phone').value.trim();
@@ -4295,6 +4325,34 @@ function submitBusiness(){
     .map(id=>id.replace('pay_','').replace('cash','Cash').replace('eft','EFT')
       .replace('snapscan','SnapScan').replace('ozow','Ozow').replace('card','Card')).join(', ');
   const boost=document.querySelector('input[name="boost_select"]:checked')?.value||'none';
+
+  // Upload photos to Supabase Storage
+  let photoUrls = [];
+  const photoInput = document.getElementById('biz_place_photos');
+  if(photoInput && photoInput.files && photoInput.files.length > 0) {
+    const files = Array.from(photoInput.files).slice(0, 5);
+    for(const file of files) {
+      try {
+        const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+        const { data, error } = await _supa.storage.from('business-photos').upload(fileName, file, { upsert: true });
+        if(!error) {
+          const { data: urlData } = _supa.storage.from('business-photos').getPublicUrl(fileName);
+          photoUrls.push(urlData.publicUrl);
+        }
+      } catch(e){ console.warn('Photo upload failed', e); }
+    }
+  }
+  const photoUrl = photoUrls[0] || '';
+
+  // Also save listing to Supabase
+  try {
+    await _supa.from('listings').insert({
+      name, owner, type: cat, area, description: desc,
+      phone, boost_tier: boost, photo_url: photoUrl,
+      photo_urls: JSON.stringify(photoUrls)
+    });
+  } catch(e){ console.warn('Supabase listing save failed', e); }
+
   fetch('https://formspree.io/f/xaqajvvj',{
     method:'POST',
     headers:{'Content-Type':'application/json','Accept':'application/json'},
