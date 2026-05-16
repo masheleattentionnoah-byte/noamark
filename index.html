@@ -858,7 +858,7 @@
     box-shadow:0 8px 32px rgba(22,101,52,0.15);min-width:200px;
     padding:8px;z-index:200;
   }
-  .nav-user-pill:hover .nav-user-dropdown { display:block; }
+  .nav-user-dropdown.open { display:block; }
   .nav-dd-item {
     display:block;width:100%;padding:10px 14px;border:none;background:transparent;
     text-align:left;font-family:'Poppins',sans-serif;font-size:12px;
@@ -1097,7 +1097,7 @@
       <a class="nav-cta" onclick="openAuth('subscriber')">Sign Up</a>
     </div>
     <!-- Logged-in user pill (hidden by default) -->
-    <div class="nav-user-pill" id="nav-user-pill" style="display:none;">
+    <div class="nav-user-pill" id="nav-user-pill" style="display:none;" onclick="toggleNavDropdown(event)">
       <div class="nav-user-avatar" id="nav-user-avatar">?</div>
       <span class="nav-user-name" id="nav-user-name">User</span>
       <div class="nav-user-dropdown">
@@ -5290,6 +5290,17 @@ function applyRoleHomePage(user) {
 // ──────────────────────────────────────────────────
 // LOGOUT
 // ──────────────────────────────────────────────────
+function toggleNavDropdown(e) {
+  e.stopPropagation();
+  const dd = document.querySelector('.nav-user-dropdown');
+  if(dd) dd.classList.toggle('open');
+}
+// Close dropdown when clicking anywhere else
+document.addEventListener('click', function() {
+  const dd = document.querySelector('.nav-user-dropdown');
+  if(dd) dd.classList.remove('open');
+});
+
 function handleLogout() {
   currentUser = null;
   clearSession();
