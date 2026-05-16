@@ -3025,36 +3025,43 @@
       <div class="onboard-form-panel" id="step-5">
         <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:48px;">
           <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:8px;">Step 5 — Business Photos</p>
-          <p style="font-size:13px;color:var(--white-dim);margin-bottom:8px;">Great photos make customers trust your business. Upload up to <strong style="color:var(--white-soft);">5 photos</strong> per section.</p>
-          <p style="font-size:11px;color:var(--gold);margin-bottom:32px;">✔ At least 1 shop photo is required to continue.</p>
+          <p style="font-size:13px;color:var(--white-dim);margin-bottom:4px;">Great photos build customer trust. Upload up to <strong style="color:var(--white-soft);">5 photos</strong> per section.</p>
+          <p style="font-size:11px;color:var(--gold);margin-bottom:32px;" id="step5-subtitle">✔ At least 1 work photo is required to continue.</p>
 
-          <!-- Place / Shop Photos -->
-          <div class="form-group">
-            <label class="form-label">📸 Shop / Place Photos <span style="color:var(--danger);">*</span>
-              <span style="font-size:10px;color:var(--white-dim);font-weight:400;margin-left:8px;">Shop front · Interior · Signage · Work area — up to 5 photos</span>
-            </label>
+          <!-- Section 1 — Place/Shop (optional, changes by category) -->
+          <div class="form-group" id="section1-wrap">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <label class="form-label" style="margin-bottom:0;" id="section1-label">📸 Photos <span style="font-size:10px;color:var(--white-dim);font-weight:400;" id="section1-sublabel">Up to 5 photos</span></label>
+              <button type="button" id="section1-skip-btn" onclick="toggleSkipSection(1)" style="font-size:11px;color:var(--white-dim);background:transparent;border:1px solid var(--border-soft);padding:5px 12px;cursor:pointer;transition:all .2s;">I don't have photos for this</button>
+            </div>
             <div id="place-photo-preview" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;min-height:0;"></div>
-            <label for="biz_place_photos" style="display:flex;align-items:center;gap:16px;padding:24px 28px;border:2px dashed var(--border-soft);cursor:pointer;transition:border-color .3s,background .3s;background:var(--black-3);border-radius:4px;" onmouseover="this.style.borderColor='var(--gold)';this.style.background='rgba(212,175,55,.04)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.background='var(--black-3)'">
-              <span style="font-size:32px;flex-shrink:0;">🏪</span>
-              <div>
-                <div style="font-size:13px;color:var(--white-soft);font-weight:600;margin-bottom:4px;">Click to select shop photos</div>
-                <div style="font-size:11px;color:var(--white-dim);">JPG · PNG · WEBP &nbsp;·&nbsp; Max 5 MB each &nbsp;·&nbsp; Up to 5 photos</div>
-              </div>
-              <span style="margin-left:auto;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);background:rgba(212,175,55,.1);padding:6px 14px;border:1px solid rgba(212,175,55,.3);">Browse</span>
-            </label>
-            <input type="file" id="biz_place_photos" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" onchange="previewMedia(this,'place-photo-preview','image',5)">
+            <div id="section1-upload-area">
+              <label for="biz_place_photos" style="display:flex;align-items:center;gap:16px;padding:24px 28px;border:2px dashed var(--border-soft);cursor:pointer;transition:border-color .3s,background .3s;background:var(--black-3);border-radius:4px;" onmouseover="this.style.borderColor='var(--gold)';this.style.background='rgba(212,175,55,.04)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.background='var(--black-3)'">
+                <span style="font-size:32px;flex-shrink:0;" id="section1-icon">🏪</span>
+                <div>
+                  <div style="font-size:13px;color:var(--white-soft);font-weight:600;margin-bottom:4px;" id="section1-upload-label">Click to select photos</div>
+                  <div style="font-size:11px;color:var(--white-dim);">JPG · PNG · WEBP &nbsp;·&nbsp; Max 5 MB each &nbsp;·&nbsp; Up to 5 photos</div>
+                </div>
+                <span style="margin-left:auto;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);background:rgba(212,175,55,.1);padding:6px 14px;border:1px solid rgba(212,175,55,.3);">Browse</span>
+              </label>
+              <input type="file" id="biz_place_photos" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" onchange="previewMedia(this,'place-photo-preview','image',5)">
+            </div>
+            <div id="section1-skipped" style="display:none;padding:16px 20px;background:var(--black-3);border:1px dashed var(--border-soft);border-radius:4px;text-align:center;">
+              <span style="font-size:12px;color:var(--white-dim);">Skipped — no photos for this section.</span>
+              <button type="button" onclick="toggleSkipSection(1)" style="margin-left:12px;font-size:11px;color:var(--gold);background:transparent;border:none;cursor:pointer;text-decoration:underline;">Add photos</button>
+            </div>
           </div>
 
-          <!-- Food / Product Photos -->
-          <div class="form-group">
-            <label class="form-label">🍽️ Product / Food / Service Photos
-              <span style="font-size:10px;color:var(--white-dim);font-weight:400;margin-left:8px;">What you sell or offer — up to 5 photos (optional)</span>
-            </label>
+          <!-- Section 2 — Work/Portfolio (required, changes by category) -->
+          <div class="form-group" id="section2-wrap">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <label class="form-label" style="margin-bottom:0;" id="section2-label">📷 Work Photos <span style="color:var(--danger);">*</span> <span style="font-size:10px;color:var(--white-dim);font-weight:400;" id="section2-sublabel">Up to 5 photos — required</span></label>
+            </div>
             <div id="food-photo-preview" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;min-height:0;"></div>
             <label for="biz_food_photos" style="display:flex;align-items:center;gap:16px;padding:24px 28px;border:2px dashed var(--border-soft);cursor:pointer;transition:border-color .3s,background .3s;background:var(--black-3);border-radius:4px;" onmouseover="this.style.borderColor='var(--gold)';this.style.background='rgba(212,175,55,.04)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.background='var(--black-3)'">
-              <span style="font-size:32px;flex-shrink:0;">📷</span>
+              <span style="font-size:32px;flex-shrink:0;" id="section2-icon">📷</span>
               <div>
-                <div style="font-size:13px;color:var(--white-soft);font-weight:600;margin-bottom:4px;">Click to select product photos</div>
+                <div style="font-size:13px;color:var(--white-soft);font-weight:600;margin-bottom:4px;" id="section2-upload-label">Click to select photos</div>
                 <div style="font-size:11px;color:var(--white-dim);">JPG · PNG · WEBP &nbsp;·&nbsp; Max 5 MB each &nbsp;·&nbsp; Up to 5 photos</div>
               </div>
               <span style="margin-left:auto;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);background:rgba(212,175,55,.1);padding:6px 14px;border:1px solid rgba(212,175,55,.3);">Browse</span>
@@ -3063,7 +3070,7 @@
           </div>
 
           <div style="background:rgba(212,175,55,.04);border:1px solid rgba(212,175,55,.15);padding:16px 20px;margin-bottom:28px;border-radius:4px;">
-            <p style="font-size:11px;color:var(--white-dim);line-height:1.8;">💡 <strong style="color:var(--gold);">Pro tip:</strong> Businesses with clear photos get up to 3× more customer enquiries. Use good natural lighting and show your best work.</p>
+            <p style="font-size:11px;color:var(--white-dim);line-height:1.8;" id="step5-tip">💡 <strong style="color:var(--gold);">Pro tip:</strong> Businesses with clear photos get up to 3× more customer enquiries. Use good natural lighting and show your best work.</p>
           </div>
 
           <div style="display:flex;gap:12px;">
@@ -4189,10 +4196,64 @@ function showBizProfile(id){
 }
 
 // ── ONBOARDING STEPS ──
+// ── STEP 5 PHOTO LOGIC ──
+const PHOTO_LABELS = {
+  food:      { s1: { icon:'🍳', label:'Kitchen / Shop Photos', sub:'Your kitchen, cooking space or shop front — optional', upload:'Click to select kitchen or shop photos' },
+                s2: { icon:'🍔', label:'Food & Menu Photos *', sub:'Your dishes, menu items, specials — required', upload:'Click to select food photos', tip:'Show your most popular dishes in good lighting.' } },
+  shops:     { s1: { icon:'🏪', label:'Shop Front Photos', sub:'Your shop exterior, entrance, signage — optional', upload:'Click to select shop front photos' },
+                s2: { icon:'🛒', label:'Products & Stock Photos *', sub:'Items you sell, shelves, stock — required', upload:'Click to select product photos', tip:'Clear shelf and product shots help customers know what to expect.' } },
+  beauty:    { s1: { icon:'💇', label:'Salon / Home Setup Photos', sub:'Your salon, chair, workspace or home setup — optional', upload:'Click to select workspace photos' },
+                s2: { icon:'✂️', label:'Your Work & Styles *', sub:'Haircuts, braids, nails, makeup you have done — required', upload:'Click to select your work photos', tip:'Before & after shots or finished styles build instant trust.' } },
+  laundry:   { s1: { icon:'🧺', label:'Shop / Drop-off Point Photos', sub:'Your laundry shop or collection point — optional', upload:'Click to select shop photos' },
+                s2: { icon:'👗', label:'Your Work Photos *', sub:'Clean laundry, folded clothes, ironing — required', upload:'Click to select work photos', tip:'Show clean, neatly folded results to build confidence.' } },
+  services:  { s1: { icon:'🔧', label:'Workspace / Setup Photos', sub:'Your tools, vehicle, workspace or home base — optional', upload:'Click to select workspace photos' },
+                s2: { icon:'🧰', label:'Your Work Examples *', sub:'Completed jobs, before & after, in-action shots — required', upload:'Click to select work example photos', tip:'Show a completed job — even phone photos work great.' } },
+  transport: { s1: { icon:'🚕', label:'Vehicle Photos', sub:'Your car, bakkie or taxi — optional', upload:'Click to select vehicle photos' },
+                s2: { icon:'🛣️', label:'More Vehicle / Route Photos *', sub:'Interior, boot space, route areas — required', upload:'Click to select more photos', tip:'Show a clean interior — customers feel safer booking.' } },
+};
+
+function applyStep5Labels() {
+  const cat = document.getElementById('biz_cat')?.value || 'services';
+  const labels = PHOTO_LABELS[cat] || PHOTO_LABELS.services;
+
+  // Section 1
+  document.getElementById('section1-icon').textContent = labels.s1.icon;
+  document.getElementById('section1-label').innerHTML = labels.s1.icon + ' ' + labels.s1.label + ' <span style="font-size:10px;color:var(--white-dim);font-weight:400;" id="section1-sublabel">' + labels.s1.sub + '</span>';
+  document.getElementById('section1-upload-label').textContent = labels.s1.upload;
+
+  // Section 2
+  document.getElementById('section2-icon').textContent = labels.s2.icon;
+  document.getElementById('section2-label').innerHTML = labels.s2.icon + ' ' + labels.s2.label + ' <span style="font-size:10px;color:var(--white-dim);font-weight:400;">' + labels.s2.sub + '</span>';
+  document.getElementById('section2-upload-label').textContent = labels.s2.upload;
+
+  // Tip
+  if(labels.s2.tip) {
+    document.getElementById('step5-tip').innerHTML = '💡 <strong style="color:var(--gold);">Pro tip:</strong> ' + labels.s2.tip;
+  }
+}
+
+let section1Skipped = false;
+
+function toggleSkipSection(n) {
+  if(n === 1) {
+    section1Skipped = !section1Skipped;
+    document.getElementById('section1-upload-area').style.display = section1Skipped ? 'none' : 'block';
+    document.getElementById('section1-skipped').style.display = section1Skipped ? 'block' : 'none';
+    document.getElementById('place-photo-preview').innerHTML = '';
+    document.getElementById('biz_place_photos').value = '';
+    const btn = document.getElementById('section1-skip-btn');
+    btn.style.color = section1Skipped ? 'var(--gold)' : 'var(--white-dim)';
+    btn.style.borderColor = section1Skipped ? 'var(--gold)' : 'var(--border-soft)';
+  }
+}
+
 function validateAndContinueStep5() {
-  const shopPhotos = document.getElementById('biz_place_photos');
-  if(!shopPhotos || shopPhotos.files.length === 0) {
-    alert('⚠️ Please upload at least 1 shop photo before continuing.');
+  const workPhotos = document.getElementById('biz_food_photos');
+  if(!workPhotos || workPhotos.files.length === 0) {
+    const cat = document.getElementById('biz_cat')?.value || 'services';
+    const labels = PHOTO_LABELS[cat] || PHOTO_LABELS.services;
+    const sectionName = labels.s2.label.replace(' *','');
+    alert('⚠️ Please upload at least 1 photo for "' + sectionName + '" before continuing.');
     return;
   }
   nextStep(6);
@@ -4231,6 +4292,7 @@ function previewMedia(input, previewId, type, maxFiles){
 }
 
 function nextStep(n){
+  if(n === 5) { setTimeout(applyStep5Labels, 50); }
   // Validate before moving forward
   const validations={
     2:()=>{
