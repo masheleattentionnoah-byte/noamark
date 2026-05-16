@@ -1070,6 +1070,8 @@
   @media(max-width:900px){.bp-sidebar{display:none;}.bp-metrics{grid-template-columns:1fr 1fr;}.bp-2col,.bp-3col,.bp-form-grid{grid-template-columns:1fr;}}
 
 </style>
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -3910,6 +3912,38 @@ document.querySelectorAll('.opp-filter').forEach(btn=>{
 // ── LISTINGS DATABASE ──
 const LISTINGS = [];
 
+async function loadListingsFromSupabase() {
+  try {
+    const { data } = await _supa.from('listings').select('*');
+    if(data && data.length > 0) {
+      // Map Supabase columns to the format the site expects
+      data.forEach(l => {
+        LISTINGS.push({
+          id: l.id,
+          name: l.name,
+          owner: l.owner,
+          cat: l.type || 'services',
+          area: l.area || '',
+          desc: l.description || '',
+          phone: l.phone || '',
+          whatsapp: l.phone || '',
+          emoji: '🏪',
+          boost: l.boost_tier || 'none',
+          status: 'open',
+          price: 'Contact for pricing',
+          menu: [],
+          photo: l.photo_url || ''
+        });
+      });
+      renderAllListings();
+      renderBoostedListings();
+    }
+  } catch(e){ console.warn('Could not load listings from Supabase', e); }
+}
+
+// Load listings on startup
+loadListingsFromSupabase();
+
 // ── BOOST RANKING ALGORITHM ──
 // Priority: dominance(4) > growth(3) > starter(2) > none(1)
 // Within same tier: newest listing first (id desc)
@@ -4673,19 +4707,35 @@ function getDeviceFingerprint() {
 }
 const DEVICE_FP = getDeviceFingerprint();
 
-// ── Persistent user store backed by localStorage ──
-function loadNMUsers() {
+// ── Supabase client ──
+const SUPA_URL = 'https://nfafmsuwxkkcrubinera.supabase.co';
+const SUPA_KEY = 'sb_publishable_1jDWKNHf9gfi68w9A2jfLw_v-a9wyLf';
+const _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// ── Persistent user store (in-memory + Supabase backend) ──
+const NM_USERS = { businesses:[], subscribers:[], guests:[] };
+
+async function loadNMUsers() {
   try {
-    const d = localStorage.getItem('nm_users_v2');
-    if(d) return JSON.parse(d);
-  } catch(e){}
-  return { businesses:[], subscribers:[], guests:[] };
-}
-function saveNMUsers() {
-  try { localStorage.setItem('nm_users_v2', JSON.stringify(NM_USERS)); } catch(e){}
+    const { data } = await _supa.from('users').select('*');
+    if(data) {
+      NM_USERS.businesses = data.filter(u=>u.role==='business');
+      NM_USERS.subscribers = data.filter(u=>u.role==='subscriber');
+      NM_USERS.guests = data.filter(u=>u.role==='guest');
+    }
+  } catch(e){ console.warn('Supabase load failed, using local cache', e); }
 }
 
-const NM_USERS = loadNMUsers();
+async function saveUserToSupabase(user) {
+  try {
+    await _supa.from('users').upsert(user, { onConflict: 'email' });
+  } catch(e){ console.warn('Supabase save failed', e); }
+}
+
+// Load users on startup
+loadNMUsers();
+
+function saveNMUsers() { /* handled by Supabase now */ }
 
 // ── Persistent session store (keyed by device fingerprint) ──
 function loadSessions() {
@@ -4889,7 +4939,7 @@ function handleBizSignup() {
 
   const biz = { name, owner, email, password:pass, id:generateId(), joinedAt: new Date().toISOString() };
   NM_USERS.businesses.push(biz);
-  saveNMUsers();
+  saveUserToSupabase({ name, email, password:pass, role:'business' });
   trackUser('business', name, email);
   loginAs({ type:'business', name:biz.name, owner:biz.owner, email:biz.email, plan:'Free Listing', id:biz.id });
   showAuthSuccess('biz-signup-success', '✓ Account created! Welcome, '+name+'. Redirecting to add your listing…');
@@ -4947,7 +4997,7 @@ function handleSubSignup() {
 
   const sub = { name, email, password:pass, plan:'Free', id:generateId(), joinedAt: new Date().toISOString() };
   NM_USERS.subscribers.push(sub);
-  saveNMUsers();
+  saveUserToSupabase({ name, email, password:pass, role:'subscriber' });
   trackUser('subscriber', name, email);
   loginAs({ type:'subscriber', name:sub.name, email:sub.email, plan:'Free', id:sub.id });
   showAuthSuccess('sub-signup-success', '✓ Account created! Welcome, '+name+'.');
@@ -5435,6 +5485,34 @@ let bpData = { enquiries: [], reviews: [], enhancedDesc: '' };
 
 function bpSave() { try { localStorage.setItem('nm_bp_data', JSON.stringify(bpData)); } catch(e){} }
 function bpLoad() { try { const d = localStorage.getItem('nm_bp_data'); if(d) bpData = {...bpData, ...JSON.parse(d)}; } catch(e){} }
+
+async function bpSyncEnquiries() {
+  if(!currentUser) return;
+  try {
+    const myListing = LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser.owner||currentUser.name).toLowerCase());
+    if(!myListing) return;
+    const { data } = await _supa.from('enquiries').select('*').eq('listing_id', myListing.id);
+    if(data && data.length > 0) {
+      const supaEnqs = data.map(e => ({ id: e.id, name: e.customer_name, subject: e.subject, msg: e.message, status: e.status, time: e.created_at }));
+      bpData.enquiries = [...supaEnqs, ...bpData.enquiries.filter(e => !supaEnqs.find(s => s.id === e.id))];
+      bpSave();
+    }
+  } catch(e){ console.warn('Could not sync enquiries', e); }
+}
+
+async function bpSyncReviews() {
+  if(!currentUser) return;
+  try {
+    const myListing = LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser.owner||currentUser.name).toLowerCase());
+    if(!myListing) return;
+    const { data } = await _supa.from('reviews').select('*').eq('listing_id', myListing.id);
+    if(data && data.length > 0) {
+      const supaRevs = data.map(r => ({ id: r.id, name: r.customer_name, rating: r.rating, comment: r.comment, time: r.created_at }));
+      bpData.reviews = [...supaRevs, ...bpData.reviews.filter(r => !supaRevs.find(s => s.id === r.id))];
+      bpSave();
+    }
+  } catch(e){ console.warn('Could not sync reviews', e); }
+}
 
 // ── NAV ──
 document.querySelectorAll('.bp-nav-item[data-bppage]').forEach(item => {
