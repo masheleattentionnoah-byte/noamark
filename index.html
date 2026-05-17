@@ -290,7 +290,7 @@
   .testimonial-location{font-size:11px;color:var(--white-dim);}
 
   /* ── CHATBOT ── */
-  .chatbot-fab{position:fixed;bottom:32px;right:32px;width:60px;height:60px;background:var(--gold);border:none;cursor:pointer;z-index:1000;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 8px 32px rgba(212,175,55,.3);transition:all .3s;}
+  .chatbot-fab{position:fixed;bottom:90px;right:16px;width:60px;height:60px;background:var(--gold);border:none;cursor:pointer;z-index:1000;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 8px 32px rgba(212,175,55,.3);transition:all .3s;}
   .chatbot-fab:hover{background:var(--gold-light);transform:scale(1.05);}
   .chatbot-window{position:fixed;bottom:108px;right:32px;width:380px;height:560px;background:var(--black-2);border:1px solid var(--border-soft);z-index:1001;display:none;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.5);}
   .chatbot-window.open{display:flex;}
@@ -361,6 +361,11 @@
   .biz-gallery-thumb{width:80px;height:60px;object-fit:cover;cursor:pointer;opacity:0.65;transition:opacity .2s,outline .2s;flex-shrink:0;outline:2px solid transparent;}
   .biz-gallery-thumb.active{opacity:1;outline:2px solid var(--gold);}
   .biz-gallery-emoji{width:100%;height:320px;display:flex;align-items:center;justify-content:center;font-size:100px;background:linear-gradient(160deg,#1a1f2c,#0d0f15);}
+  @media(max-width:600px){
+    .upload-label-row{flex-direction:column!important;align-items:flex-start!important;gap:10px!important;padding:18px!important;}
+    .upload-label-row .browse-btn{margin-left:0!important;align-self:flex-end;}
+    .chat-fab{bottom:90px!important;right:12px!important;}
+  }
   /* Listing card photo */
   .listing-img img{width:100%;height:100%;object-fit:cover;}
   .listing-boost-badge{position:absolute;top:12px;left:12px;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:5px 12px;z-index:2;}
@@ -3036,13 +3041,13 @@
             </div>
             <div id="place-photo-preview" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;min-height:0;"></div>
             <div id="section1-upload-area">
-              <label for="biz_place_photos" style="display:flex;align-items:center;gap:16px;padding:24px 28px;border:2px dashed var(--border-soft);cursor:pointer;transition:border-color .3s,background .3s;background:var(--black-3);border-radius:4px;" onmouseover="this.style.borderColor='var(--gold)';this.style.background='rgba(212,175,55,.04)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.background='var(--black-3)'">
+              <label for="biz_place_photos" class="upload-label-row" style="display:flex;align-items:center;gap:16px;padding:24px 28px;border:2px dashed var(--border-soft);cursor:pointer;transition:border-color .3s,background .3s;background:var(--black-3);border-radius:4px;" onmouseover="this.style.borderColor='var(--gold)';this.style.background='rgba(212,175,55,.04)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.background='var(--black-3)'">
                 <span style="font-size:32px;flex-shrink:0;" id="section1-icon">🏪</span>
-                <div>
+                <div style="flex:1;min-width:0;">
                   <div style="font-size:13px;color:var(--white-soft);font-weight:600;margin-bottom:4px;" id="section1-upload-label">Click to select photos</div>
-                  <div style="font-size:11px;color:var(--white-dim);">JPG · PNG · WEBP &nbsp;·&nbsp; Max 5 MB each &nbsp;·&nbsp; Up to 5 photos</div>
+                  <div style="font-size:11px;color:var(--white-dim);">JPG · PNG · WEBP · Max 5 MB · Up to 5</div>
                 </div>
-                <span style="margin-left:auto;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);background:rgba(212,175,55,.1);padding:6px 14px;border:1px solid rgba(212,175,55,.3);">Browse</span>
+                <span class="browse-btn" style="margin-left:auto;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);background:rgba(212,175,55,.1);padding:6px 14px;border:1px solid rgba(212,175,55,.3);white-space:nowrap;flex-shrink:0;">Browse</span>
               </label>
               <input type="file" id="biz_place_photos" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" onchange="previewMedia(this,'place-photo-preview','image',5)">
             </div>
@@ -3058,13 +3063,13 @@
               <label class="form-label" style="margin-bottom:0;" id="section2-label">📷 Work Photos <span style="color:var(--danger);">*</span> <span style="font-size:10px;color:var(--white-dim);font-weight:400;" id="section2-sublabel">Up to 5 photos — required</span></label>
             </div>
             <div id="food-photo-preview" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;min-height:0;"></div>
-            <label for="biz_food_photos" style="display:flex;align-items:center;gap:16px;padding:24px 28px;border:2px dashed var(--border-soft);cursor:pointer;transition:border-color .3s,background .3s;background:var(--black-3);border-radius:4px;" onmouseover="this.style.borderColor='var(--gold)';this.style.background='rgba(212,175,55,.04)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.background='var(--black-3)'">
+            <label for="biz_food_photos" class="upload-label-row" style="display:flex;align-items:center;gap:16px;padding:24px 28px;border:2px dashed var(--border-soft);cursor:pointer;transition:border-color .3s,background .3s;background:var(--black-3);border-radius:4px;" onmouseover="this.style.borderColor='var(--gold)';this.style.background='rgba(212,175,55,.04)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.background='var(--black-3)'">
               <span style="font-size:32px;flex-shrink:0;" id="section2-icon">📷</span>
-              <div>
+              <div style="flex:1;min-width:0;">
                 <div style="font-size:13px;color:var(--white-soft);font-weight:600;margin-bottom:4px;" id="section2-upload-label">Click to select photos</div>
-                <div style="font-size:11px;color:var(--white-dim);">JPG · PNG · WEBP &nbsp;·&nbsp; Max 5 MB each &nbsp;·&nbsp; Up to 5 photos</div>
+                <div style="font-size:11px;color:var(--white-dim);">JPG · PNG · WEBP · Max 5 MB · Up to 5</div>
               </div>
-              <span style="margin-left:auto;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);background:rgba(212,175,55,.1);padding:6px 14px;border:1px solid rgba(212,175,55,.3);">Browse</span>
+              <span class="browse-btn" style="margin-left:auto;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);background:rgba(212,175,55,.1);padding:6px 14px;border:1px solid rgba(212,175,55,.3);white-space:nowrap;flex-shrink:0;">Browse</span>
             </label>
             <input type="file" id="biz_food_photos" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" onchange="previewMedia(this,'food-photo-preview','image',5)">
           </div>
@@ -4249,14 +4254,27 @@ function toggleSkipSection(n) {
 
 function validateAndContinueStep5() {
   const workPhotos = document.getElementById('biz_food_photos');
-  if(!workPhotos || workPhotos.files.length === 0) {
+  const shopPhotos = document.getElementById('biz_place_photos');
+  const hasWorkPhotos = workPhotos && workPhotos.files.length > 0;
+  const hasShopPhotos = !section1Skipped && shopPhotos && shopPhotos.files.length > 0;
+
+  if(!hasWorkPhotos && !hasShopPhotos) {
     const cat = document.getElementById('biz_cat')?.value || 'services';
     const labels = PHOTO_LABELS[cat] || PHOTO_LABELS.services;
-    const sectionName = labels.s2.label.replace(' *','');
-    alert('⚠️ Please upload at least 1 photo for "' + sectionName + '" before continuing.');
+    const sectionName = labels.s2.label.replace(' *','').replace(/[📷🍔🛒✂️👗🧰🛣️]/u,'').trim();
+    alert('⚠️ Please upload at least 1 photo to show your work or business before continuing.');
     return;
   }
-  nextStep(6);
+  // Skip nextStep validation for step 6 by calling it directly
+  document.querySelectorAll('.onboard-form-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.onboard-step').forEach((s,i)=>{
+    s.classList.remove('active','done');
+    if(i+1<6) s.classList.add('done');
+    if(i+1===6) s.classList.add('active');
+  });
+  const panel=document.getElementById('step-6');
+  if(panel) panel.classList.add('active');
+  window.scrollTo({top:400,behavior:'smooth'});
 }
 
 function previewMedia(input, previewId, type, maxFiles){
@@ -4322,6 +4340,15 @@ function nextStep(n){
       return true;
     },
     4:()=>{
+      const hint=document.getElementById('biz_price_hint').value.trim();
+      const menu=document.getElementById('biz_menu').value.trim();
+      if(!hint){alert('Please enter a Price Range Summary.');return false;}
+      const items=menu.split('\n').filter(l=>l.trim().length>0);
+      if(items.length<3){alert('Please add at least 3 menu / service items.');return false;}
+      return true;
+    },
+    5:()=>{ return true; },
+    6:()=>{
       const wd=document.getElementById('biz_hours_weekday').value.trim();
       const sat=document.getElementById('biz_hours_sat').value.trim();
       const sun=document.getElementById('biz_hours_sun').value.trim();
@@ -4330,18 +4357,6 @@ function nextStep(n){
       if(!sat){alert('Please enter your Saturday hours.');return false;}
       if(!sun){alert('Please enter your Sunday / Public Holiday hours.');return false;}
       if(!status){alert('Please select your current status (Open / Closed).');return false;}
-      return true;
-    },
-    5:()=>{
-      const hint=document.getElementById('biz_price_hint').value.trim();
-      const menu=document.getElementById('biz_menu').value.trim();
-      if(!hint){alert('Please enter a Price Range Summary.');return false;}
-      const items=menu.split('\n').filter(l=>l.trim().length>0);
-      if(items.length<3){alert('Please add at least 3 menu / service items.');return false;}
-      return true;
-    },
-    6:()=>{
-      if(getPlacePhotoCount()===0){alert('Please upload at least 1 photo of your shop or place.');return false;}
       return true;
     },
     7:()=>{
