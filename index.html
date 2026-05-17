@@ -3218,6 +3218,53 @@
 
         <!-- ══ PAGE: OVERVIEW ══ -->
         <div class="bp-page active" id="bppage-overview">
+
+          <!-- ADMIN APPROVAL SECTION — only shown for admin -->
+          <div id="admin-approval-section" style="display:none;margin-bottom:32px;">
+            <div style="background:linear-gradient(135deg,rgba(212,175,55,.06),transparent);border:1px solid rgba(212,175,55,.25);padding:32px;margin-bottom:24px;">
+              <div style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:6px;">Admin Panel</div>
+              <div style="font-size:20px;font-weight:600;color:var(--white);margin-bottom:24px;">Pending Business Approvals <span id="admin-pending-count" style="background:var(--danger);color:#fff;font-size:11px;padding:2px 10px;border-radius:10px;margin-left:8px;vertical-align:middle;">0</span></div>
+              <div style="overflow-x:auto;margin-bottom:12px;">
+                <table style="width:100%;border-collapse:collapse;border:1px solid var(--border-soft);">
+                  <thead>
+                    <tr style="background:var(--black-3);">
+                      <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);border-bottom:1px solid var(--border-soft);">Business</th>
+                      <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);border-bottom:1px solid var(--border-soft);">Owner</th>
+                      <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);border-bottom:1px solid var(--border-soft);">Category</th>
+                      <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);border-bottom:1px solid var(--border-soft);">Area</th>
+                      <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);border-bottom:1px solid var(--border-soft);">Contact</th>
+                      <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);border-bottom:1px solid var(--border-soft);">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-pending-tbody">
+                    <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--white-dim);">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <button onclick="loadPendingListings()" style="font-size:11px;color:var(--gold);background:transparent;border:1px solid rgba(212,175,55,.3);padding:8px 18px;cursor:pointer;">↻ Refresh Pending</button>
+            </div>
+
+            <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:32px;">
+              <div style="font-size:14px;font-weight:600;color:var(--white);margin-bottom:16px;">Live Listings <button onclick="loadApprovedListings()" style="font-size:11px;color:var(--gold);background:transparent;border:1px solid rgba(212,175,55,.3);padding:5px 12px;cursor:pointer;margin-left:12px;">↻ Refresh</button></div>
+              <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;border:1px solid var(--border-soft);">
+                  <thead>
+                    <tr style="background:var(--black-3);">
+                      <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);border-bottom:1px solid var(--border-soft);">Business</th>
+                      <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);border-bottom:1px solid var(--border-soft);">Category</th>
+                      <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);border-bottom:1px solid var(--border-soft);">Area</th>
+                      <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);border-bottom:1px solid var(--border-soft);">Boost</th>
+                      <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);border-bottom:1px solid var(--border-soft);">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-approved-tbody">
+                    <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--white-dim);">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
           <div class="bp-metrics" id="bp-overview-metrics">
             <div class="bp-metric">
               <div class="bp-metric-label">Listing Status</div>
@@ -3974,7 +4021,7 @@ const LISTINGS = [];
 
 async function loadListingsFromSupabase() {
   try {
-    const { data } = await _supa.from('listings').select('*');
+    const { data } = await _supa.from('listings').select('*').eq('status', 'approved');
     if(data && data.length > 0) {
       // Map Supabase columns to the format the site expects
       data.forEach(l => {
@@ -4141,6 +4188,9 @@ function setCat(cat,btn){
 }
 
 function showMktView(view){
+  if(view === 'admin' && currentUser && currentUser.type === 'admin') {
+    setTimeout(()=>{ loadPendingListings(); loadApprovedListings(); }, 300);
+  }
   const map={main:'mkt-main-view',profile:'mkt-profile-view',boost:'mkt-boost-view',add:'mkt-add-view',admin:'mkt-admin-view'};
   Object.values(map).forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   const target=map[view];
@@ -4427,6 +4477,13 @@ function nextStep(n){
 }
 
 async function submitBusiness(){
+  // Show loading state
+  const submitBtn = document.querySelector('#step-7 .form-submit');
+  if(submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = '⏳ Uploading photos...';
+    submitBtn.style.opacity = '0.7';
+  }
   const name=document.getElementById('biz_name').value.trim();
   const cat=document.getElementById('biz_cat').value;
   const phone=document.getElementById('biz_phone').value.trim();
@@ -4478,15 +4535,21 @@ async function submitBusiness(){
   }
   const photoUrl = photoUrls[0] || '';
 
-  // Also save listing to Supabase
+  // Save listing to Supabase with pending status
+  if(submitBtn) submitBtn.textContent = '⏳ Saving your listing...';
+  let listingId = null;
   try {
-    await _supa.from('listings').insert({
+    const { data: listingData, error } = await _supa.from('listings').insert({
       name, owner, type: cat, area, description: desc,
       phone, boost_tier: boost, photo_url: photoUrl,
-      photo_urls: JSON.stringify(photoUrls)
-    });
+      photo_urls: JSON.stringify(photoUrls),
+      status: 'pending',
+      email, whatsapp: wa, city, province
+    }).select();
+    if(listingData && listingData[0]) listingId = listingData[0].id;
   } catch(e){ console.warn('Supabase listing save failed', e); }
 
+  if(submitBtn) submitBtn.textContent = '⏳ Sending notification...';
   fetch('https://formspree.io/f/xaqajvvj',{
     method:'POST',
     headers:{'Content-Type':'application/json','Accept':'application/json'},
@@ -4499,15 +4562,24 @@ async function submitBusiness(){
       transport_sub:document.getElementById('biz_transport_sub')?.value||'',boost,source:'NoaMark Business Listing Submission'
     })
   }).then(r=>{
+    if(submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Listing'; submitBtn.style.opacity = '1'; }
     if(r.ok){
-      alert('✅ Listing submitted! "'+name+'" will be reviewed and approved within 24 hours. We will contact you at '+phone+'.');
       showMktView('main');
+      // Show success message
+      const toast = document.createElement('div');
+      toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#166534;color:#fff;padding:20px 32px;border-radius:4px;font-size:14px;font-weight:500;z-index:9999;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.4);max-width:90vw;';
+      toast.innerHTML = '✅ Listing submitted successfully!<br><span style="font-size:12px;opacity:.85;">Your business will be reviewed and approved within 24 hours. We will contact you at ' + phone + '.</span>';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 6000);
       ['biz_name','biz_cat','biz_type','biz_desc','biz_years','biz_address','biz_area','biz_city','biz_province','biz_landmark','biz_hours_weekday','biz_hours_sat','biz_hours_sun','biz_status','biz_price_hint','biz_menu','biz_owner','biz_phone','biz_whatsapp','biz_email','biz_facebook','biz_instagram'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
       nextStep(1);
     } else {
-      alert('There was an issue. Please contact noamarkinvest@gmail.com');
+      alert('There was an issue submitting. Please contact noamarkinvest@gmail.com');
     }
-  }).catch(()=>alert('Connection error. Please email noamarkinvest@gmail.com'));
+  }).catch(()=>{
+    if(submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Listing'; submitBtn.style.opacity = '1'; }
+    alert('Connection error. Please email noamarkinvest@gmail.com');
+  });
 }
 
 // ── BOOST HANDLER ──
@@ -4516,17 +4588,92 @@ function handleBoost(type,price,duration){
 }
 
 // ── ADMIN ACTIONS ──
-function adminAction(btn,action){
-  const row=btn.closest('tr');
-  const bizName=row.cells[0].textContent;
-  if(action==='approve'){
-    row.style.opacity='.4';
-    btn.closest('td').innerHTML=`<span style="color:var(--success);font-size:11px;font-weight:600;">✓ Approved</span>`;
-    setTimeout(()=>row.remove(),1200);
-  } else {
-    row.style.opacity='.4';
-    btn.closest('td').innerHTML=`<span style="color:var(--danger);font-size:11px;font-weight:600;">✗ Rejected</span>`;
-    setTimeout(()=>row.remove(),1200);
+async function adminAction(btn, action, listingId) {
+  const row = btn.closest('tr');
+  const bizName = row.cells[0].textContent;
+  btn.disabled = true;
+  btn.textContent = action === 'approve' ? '...' : '...';
+
+  try {
+    const newStatus = action === 'approve' ? 'approved' : 'rejected';
+    const { error } = await _supa.from('listings').update({ status: newStatus }).eq('id', listingId);
+    if(error) throw error;
+
+    row.style.opacity = '.4';
+    row.style.transition = 'opacity .5s';
+    if(action === 'approve') {
+      btn.closest('td').innerHTML = '<span style="color:var(--success);font-size:11px;font-weight:600;">✓ Approved — Now Live</span>';
+      // Add to LISTINGS so it shows in marketplace immediately
+      loadListingsFromSupabase();
+    } else {
+      btn.closest('td').innerHTML = '<span style="color:var(--danger);font-size:11px;font-weight:600;">✗ Rejected</span>';
+    }
+    setTimeout(() => row.remove(), 1500);
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = action === 'approve' ? 'Approve' : 'Reject';
+    alert('Error updating listing. Please try again.');
+  }
+}
+
+// Load pending listings from Supabase for admin review
+async function loadPendingListings() {
+  const tbody = document.getElementById('admin-pending-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--white-dim);">Loading pending listings...</td></tr>';
+
+  try {
+    const { data, error } = await _supa.from('listings').select('*').eq('status', 'pending').order('created_at', { ascending: false });
+    if(error) throw error;
+
+    if(!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--white-dim);">✅ No pending listings — all caught up!</td></tr>';
+      document.getElementById('admin-pending-count').textContent = '0';
+      return;
+    }
+
+    document.getElementById('admin-pending-count').textContent = data.length;
+    tbody.innerHTML = data.map(l => `
+      <tr>
+        <td style="font-weight:600;">${l.name}</td>
+        <td>${l.owner || '—'}</td>
+        <td>${l.type || '—'}</td>
+        <td>${l.area || '—'}, ${l.city || '—'}</td>
+        <td>${l.phone || '—'}<br><span style="font-size:11px;color:var(--white-dim);">${l.email || ''}</span></td>
+        <td>
+          <button class="admin-action-btn approve" onclick="adminAction(this,'approve','${l.id}')">✓ Approve</button>
+          <button class="admin-action-btn reject" onclick="adminAction(this,'reject','${l.id}')">✗ Reject</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--danger);">Error loading listings. Please refresh.</td></tr>';
+  }
+}
+
+// Load approved listings for admin to manage
+async function loadApprovedListings() {
+  const tbody = document.getElementById('admin-approved-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--white-dim);">Loading...</td></tr>';
+
+  try {
+    const { data } = await _supa.from('listings').select('*').eq('status', 'approved').order('created_at', { ascending: false });
+    if(!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--white-dim);">No approved listings yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map(l => `
+      <tr>
+        <td style="font-weight:600;">${l.name}</td>
+        <td>${l.type || '—'}</td>
+        <td>${l.area || '—'}</td>
+        <td><span style="color:${l.boost_tier==='pro'?'var(--gold)':l.boost_tier==='dominance'?'var(--gold)':'var(--white-dim)'};">${l.boost_tier || 'free'}</span></td>
+        <td><button class="admin-action-btn reject" onclick="adminAction(this,'reject','${l.id}')">Remove</button></td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger);">Error loading.</td></tr>';
   }
 }
 
@@ -4969,6 +5116,10 @@ async function saveUserToSupabase(user) {
 // Load users on startup
 loadNMUsers();
 
+// ── ADMIN CREDENTIALS ──
+const ADMIN_EMAIL = 'noamarkinvest@gmail.com';
+const ADMIN_PASSWORD = 'Noah#2026';
+
 function saveNMUsers() { /* handled by Supabase now */ }
 
 // ── Persistent session store (keyed by device fingerprint) ──
@@ -5191,6 +5342,14 @@ async function handleBizLogin() {
   if(!loginName||!email||!pass) { showAuthError('biz-login-error','Please fill in all fields before continuing.'); return; }
   if(!validateEmail(email))     { showAuthError('biz-login-error','Please enter a valid email address.'); return; }
 
+  // ── ADMIN LOGIN CHECK ──
+  if(email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && pass === ADMIN_PASSWORD) {
+    loginAs({ type:'admin', name:'NoaMark Admin', owner:'NoaMark', email:ADMIN_EMAIL, plan:'Admin', id:'admin-001' });
+    showAuthSuccess('biz-login-success', '✓ Welcome back, Admin!');
+    setTimeout(()=>{ closeAuth(); showPage('marketplace', ()=>setTimeout(()=>showMktView('admin'), 200)); }, 900);
+    return;
+  }
+
   showAuthError('biz-login-error', 'Checking account...');
   try {
     const { data } = await _supa.from('users').select('*').eq('role','business').ilike('name', loginName).limit(1);
@@ -5336,6 +5495,15 @@ function loginAs(user) {
 
   // Update home page to role-specific view
   applyRoleHomePage(user);
+
+  // Show admin approval section if admin
+  const adminSection = document.getElementById('admin-approval-section');
+  if(adminSection) {
+    adminSection.style.display = user && user.type === 'admin' ? 'block' : 'none';
+    if(user && user.type === 'admin') {
+      setTimeout(() => { loadPendingListings(); loadApprovedListings(); }, 500);
+    }
+  }
 
   // Show tracker pill
   showTracker(user);
