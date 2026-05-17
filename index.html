@@ -2855,6 +2855,23 @@
         </ul>
         <button class="boost-cta dominance-cta" onclick="handleBoost('Dominance','R199.99','14 days')">Activate Dominance Boost</button>
       </div>
+      <!-- PRO -->
+      <div class="boost-card" style="border:2px solid var(--gold);background:linear-gradient(160deg,rgba(212,175,55,.1),var(--black-2));grid-column:1/-1;max-width:600px;margin:0 auto;width:100%;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--gold),#fff8dc,var(--gold));box-shadow:0 0 12px rgba(212,175,55,.6);"></div>
+        <div style="position:absolute;top:16px;right:20px;font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;background:var(--gold);color:#111827;padding:4px 10px;">BEST VALUE</div>
+        <div class="boost-name dominance">👑 Pro Listing</div>
+        <div class="boost-price"><sup>R</sup>329</div>
+        <div class="boost-duration">Per Month</div>
+        <ul class="boost-features dominance" style="text-align:left;max-width:400px;margin:0 auto 36px;">
+          <li>Permanent featured placement</li>
+          <li>✅ Verified business badge</li>
+          <li>Priority leads & enquiries</li>
+          <li>Unlimited photo uploads</li>
+          <li>Monthly auto-renewal</li>
+          <li>Top of every search result</li>
+        </ul>
+        <button class="boost-cta dominance-cta" onclick="handleBoost('Pro','R329.99','monthly')">Activate Pro Listing</button>
+      </div>
     </div>
 
     <!-- BOOST COMPARISON TABLE -->
@@ -3366,42 +3383,62 @@
           </div>
           <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:40px;margin-bottom:24px;">
             <div class="bp-section-label">Available boost plans</div>
-            <div class="bp-3col">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;">
+              <!-- STARTER -->
               <div style="background:var(--black-3);border:1px solid var(--border-soft);padding:28px;text-align:center;">
-                <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);margin-bottom:16px;">Starter</div>
+                <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);margin-bottom:16px;">🟡 Starter</div>
                 <div style="font-family:var(--font-display);font-size:40px;font-weight:300;color:var(--white);margin-bottom:4px;"><sup style="font-size:16px;color:var(--gold-dim);">R</sup>49.99</div>
-                <div style="font-size:10px;color:var(--white-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;">/month</div>
+                <div style="font-size:10px;color:var(--white-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;">/ 3 days</div>
                 <ul style="list-style:none;font-size:12px;color:var(--white-dim);text-align:left;margin-bottom:24px;display:flex;flex-direction:column;gap:10px;">
-                  <li style="display:flex;gap:8px;align-items:flex-start;"><span style="color:var(--gold-dim);margin-top:2px;">—</span>Priority above unranked listings</li>
-                  <li style="display:flex;gap:8px;align-items:flex-start;"><span style="color:var(--gold-dim);margin-top:2px;">—</span>🟡 Starter badge on profile</li>
-                  <li style="display:flex;gap:8px;align-items:flex-start;"><span style="color:var(--gold-dim);margin-top:2px;">—</span>Basic visibility boost</li>
+                  <li>— Priority above free listings</li>
+                  <li>— 🟡 Starter badge</li>
+                  <li>— Basic visibility boost</li>
                 </ul>
-                <button class="bp-btn" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Starter','R49.99/month')">Select Starter</button>
+                <button class="bp-btn" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Starter','R49.99/3 days')">Select Starter</button>
               </div>
+              <!-- GROWTH -->
               <div style="background:linear-gradient(160deg,rgba(212,175,55,.06),var(--black-3));border:1px solid rgba(212,175,55,.35);padding:28px;text-align:center;position:relative;">
-                <div style="position:absolute;top:-1px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#111;background:var(--gold);padding:5px 16px;">Most Popular</div>
-                <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:16px;margin-top:12px;">Growth</div>
-                <div style="font-family:var(--font-display);font-size:40px;font-weight:300;color:var(--white);margin-bottom:4px;"><sup style="font-size:16px;color:var(--gold-dim);">R</sup>149.99</div>
-                <div style="font-size:10px;color:var(--white-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;">/month</div>
+                <div style="position:absolute;top:-1px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#111;background:var(--gold);padding:5px 16px;white-space:nowrap;">Most Popular</div>
+                <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:16px;margin-top:12px;">⭐ Growth</div>
+                <div style="font-family:var(--font-display);font-size:40px;font-weight:300;color:var(--white);margin-bottom:4px;"><sup style="font-size:16px;color:var(--gold-dim);">R</sup>99.99</div>
+                <div style="font-size:10px;color:var(--white-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;">/ 7 days</div>
                 <ul style="list-style:none;font-size:12px;color:var(--white-dim);text-align:left;margin-bottom:24px;display:flex;flex-direction:column;gap:10px;">
-                  <li style="display:flex;gap:8px;align-items:flex-start;"><span style="color:var(--gold-dim);margin-top:2px;">—</span>Featured placement in marketplace</li>
-                  <li style="display:flex;gap:8px;align-items:flex-start;"><span style="color:var(--gold-dim);margin-top:2px;">—</span>⭐ Growth badge on profile</li>
-                  <li style="display:flex;gap:8px;align-items:flex-start;"><span style="color:var(--gold-dim);margin-top:2px;">—</span>Priority above Starter listings</li>
-                  <li style="display:flex;gap:8px;align-items:flex-start;"><span style="color:var(--gold-dim);margin-top:2px;">—</span>Appear on homepage showcase</li>
+                  <li>— Featured in marketplace</li>
+                  <li>— ⭐ Growth badge</li>
+                  <li>— Homepage showcase</li>
+                  <li>— Above Starter listings</li>
                 </ul>
-                <button class="bp-btn bp-btn-gold" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Growth','R149.99/month')">Select Growth</button>
+                <button class="bp-btn bp-btn-gold" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Growth','R99.99/7 days')">Select Growth</button>
               </div>
-              <div style="background:linear-gradient(160deg,rgba(22,101,52,.1),var(--black-3));border:1px solid rgba(34,197,94,.3);padding:28px;text-align:center;">
-                <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green-fresh);margin-bottom:16px;">Dominance</div>
-                <div style="font-family:var(--font-display);font-size:40px;font-weight:300;color:var(--white);margin-bottom:4px;"><sup style="font-size:16px;color:var(--green-fresh);">R</sup>299.99</div>
-                <div style="font-size:10px;color:var(--white-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;">/month</div>
+              <!-- DOMINANCE -->
+              <div style="background:linear-gradient(160deg,rgba(212,175,55,.08),var(--black-3));border:1px solid var(--gold);padding:28px;text-align:center;position:relative;">
+                <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold);box-shadow:0 0 12px rgba(212,175,55,.5);"></div>
+                <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:16px;">🔥 Dominance</div>
+                <div style="font-family:var(--font-display);font-size:40px;font-weight:300;color:var(--white);margin-bottom:4px;"><sup style="font-size:16px;color:var(--gold);">R</sup>199.99</div>
+                <div style="font-size:10px;color:var(--white-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;">/ 14 days</div>
                 <ul style="list-style:none;font-size:12px;color:var(--white-dim);text-align:left;margin-bottom:24px;display:flex;flex-direction:column;gap:10px;">
-                  <li style="display:flex;gap:8px;align-items:flex-start;"><span style="color:var(--green-fresh);margin-top:2px;">—</span>Top position in all searches</li>
-                  <li style="display:flex;gap:8px;align-items:flex-start;"><span style="color:var(--green-fresh);margin-top:2px;">—</span>🔥 Dominance badge + glow effect</li>
-                  <li style="display:flex;gap:8px;align-items:flex-start;"><span style="color:var(--green-fresh);margin-top:2px;">—</span>Maximum homepage visibility</li>
-                  <li style="display:flex;gap:8px;align-items:flex-start;"><span style="color:var(--green-fresh);margin-top:2px;">—</span>Priority above all other listings</li>
+                  <li>— Priority #1 ranking</li>
+                  <li>— 🔥 Glowing gold border</li>
+                  <li>— Maximum exposure</li>
+                  <li>— Top of Featured section</li>
                 </ul>
-                <button class="bp-btn bp-btn-g" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Dominance','R299.99/month')">Select Dominance</button>
+                <button class="bp-btn bp-btn-gold" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Dominance','R199.99/14 days')">Select Dominance</button>
+              </div>
+              <!-- PRO -->
+              <div style="background:linear-gradient(160deg,rgba(212,175,55,.12),var(--black-2));border:2px solid var(--gold);padding:28px;text-align:center;position:relative;">
+                <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--gold),#fff8dc,var(--gold));box-shadow:0 0 16px rgba(212,175,55,.6);"></div>
+                <div style="position:absolute;top:12px;right:12px;font-size:7px;font-weight:700;letter-spacing:2px;text-transform:uppercase;background:var(--gold);color:#111827;padding:3px 8px;">BEST VALUE</div>
+                <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:16px;">👑 Pro</div>
+                <div style="font-family:var(--font-display);font-size:40px;font-weight:300;color:var(--white);margin-bottom:4px;"><sup style="font-size:16px;color:var(--gold);">R</sup>329.99</div>
+                <div style="font-size:10px;color:var(--white-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;">/ month</div>
+                <ul style="list-style:none;font-size:12px;color:var(--white-dim);text-align:left;margin-bottom:24px;display:flex;flex-direction:column;gap:10px;">
+                  <li>— Permanent top placement</li>
+                  <li>— ✅ Verified badge</li>
+                  <li>— Priority leads</li>
+                  <li>— Unlimited photos</li>
+                  <li>— Monthly auto-renewal</li>
+                </ul>
+                <button class="bp-btn bp-btn-gold" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Pro','R329.99/month')">👑 Select Pro</button>
               </div>
             </div>
             <p style="font-size:11px;color:var(--white-dim);margin-top:16px;line-height:1.6;">To activate a plan, contact us after selecting: <a href="mailto:noamarkinvest@gmail.com" style="color:var(--gold-dim);">noamarkinvest@gmail.com</a> · <a href="tel:+27634189749" style="color:var(--gold-dim);">+27 63 418 9749</a>. Payment via EFT, PayFast, or SnapScan.</p>
