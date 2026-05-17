@@ -4313,7 +4313,13 @@ function nextStep(n){
   if(n === 5) { setTimeout(applyStep5Labels, 50); }
   // Validate before moving forward
   const validations={
+    // Key = step you are GOING TO. Validates content of the step you are LEAVING.
     2:()=>{
+      // Leaving step 1 — no validation needed
+      return true;
+    },
+    3:()=>{
+      // Leaving step 2 — validate business info
       const name=document.getElementById('biz_name').value.trim();
       const cat=document.getElementById('biz_cat').value;
       const type=document.getElementById('biz_type').value.trim();
@@ -4326,7 +4332,8 @@ function nextStep(n){
       if(!years){alert('Please select how long you have been in business.');return false;}
       return true;
     },
-    3:()=>{
+    4:()=>{
+      // Leaving step 3 — validate location
       const addr=document.getElementById('biz_address').value.trim();
       const area=document.getElementById('biz_area').value.trim();
       const city=document.getElementById('biz_city').value.trim();
@@ -4339,7 +4346,8 @@ function nextStep(n){
       if(!land){alert('Please enter a Nearest Landmark.');return false;}
       return true;
     },
-    4:()=>{
+    5:()=>{
+      // Leaving step 4 — validate menu & pricing
       const hint=document.getElementById('biz_price_hint').value.trim();
       const menu=document.getElementById('biz_menu').value.trim();
       if(!hint){alert('Please enter a Price Range Summary.');return false;}
@@ -4347,8 +4355,9 @@ function nextStep(n){
       if(items.length<3){alert('Please add at least 3 menu / service items.');return false;}
       return true;
     },
-    5:()=>{ return true; },
-    6:()=>{
+    6:()=>{ return true; },
+    7:()=>{
+      // Leaving step 6 — validate hours
       const wd=document.getElementById('biz_hours_weekday').value.trim();
       const sat=document.getElementById('biz_hours_sat').value.trim();
       const sun=document.getElementById('biz_hours_sun').value.trim();
@@ -4359,7 +4368,8 @@ function nextStep(n){
       if(!status){alert('Please select your current status (Open / Closed).');return false;}
       return true;
     },
-    7:()=>{
+    8:()=>{
+      // Leaving step 7 — validate contact info
       const owner=document.getElementById('biz_owner').value.trim();
       const phone=document.getElementById('biz_phone').value.trim();
       const wa=document.getElementById('biz_whatsapp').value.trim();
