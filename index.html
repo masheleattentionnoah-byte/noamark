@@ -6498,64 +6498,69 @@ bpLoad();
 <!-- ════════════════════════════════════
      NOAMARK ADMIN DASHBOARD
 ════════════════════════════════════ -->
-<div id="page-admin" style="display:none;min-height:100vh;background:#0a0c10;padding-top:70px;">
+<div id="page-admin" style="display:none;min-height:100vh;background:#f0f2f5;padding-top:70px;">
   <style>
-    .adm-shell{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 70px);}
-    .adm-sidebar{background:#0d0f15;border-right:1px solid #1a1f2c;padding:0;position:sticky;top:70px;height:calc(100vh - 70px);overflow-y:auto;display:flex;flex-direction:column;}
-    .adm-sb-head{padding:28px 24px 20px;border-bottom:1px solid #1a1f2c;}
-    .adm-sb-tag{font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#d4af37;margin-bottom:4px;}
-    .adm-sb-title{font-size:16px;font-weight:600;color:#fff;}
-    .adm-sb-sub{font-size:11px;color:#6b7280;margin-top:2px;}
-    .adm-nav-sec{font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#374151;padding:20px 24px 8px;}
-    .adm-nav-item{display:flex;align-items:center;gap:10px;padding:11px 24px;font-size:12px;font-weight:500;color:#9ca3af;cursor:pointer;transition:all .2s;border-left:2px solid transparent;}
-    .adm-nav-item:hover{color:#fff;background:rgba(255,255,255,.03);}
-    .adm-nav-item.active{color:#d4af37;background:rgba(212,175,55,.06);border-left-color:#d4af37;}
-    .adm-nav-badge{background:#dc2626;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto;}
-    .adm-main{padding:32px;overflow-y:auto;}
-    .adm-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid #1a1f2c;}
-    .adm-page-title{font-size:22px;font-weight:600;color:#fff;}
+    /* ── ADMIN DASHBOARD — Professional Light-Dark Theme ── */
+    #page-admin { background:#f0f2f5 !important; }
+    .adm-shell{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 70px);}
+    .adm-sidebar{background:#1a1f2c;padding:0;position:sticky;top:70px;height:calc(100vh - 70px);overflow-y:auto;display:flex;flex-direction:column;box-shadow:2px 0 8px rgba(0,0,0,.08);}
+    .adm-sb-head{padding:24px 20px 18px;border-bottom:1px solid rgba(255,255,255,.08);}
+    .adm-sb-logo{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+    .adm-sb-logo-dot{width:8px;height:8px;background:#d4af37;border-radius:50%;}
+    .adm-sb-tag{font-size:14px;font-weight:700;color:#fff;letter-spacing:.3px;}
+    .adm-sb-title{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;}
+    .adm-nav-sec{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.25);padding:18px 20px 6px;}
+    .adm-nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:12px;font-weight:500;color:rgba(255,255,255,.55);cursor:pointer;transition:all .2s;border-left:3px solid transparent;margin:1px 0;}
+    .adm-nav-item:hover{color:#fff;background:rgba(255,255,255,.06);}
+    .adm-nav-item.active{color:#d4af37;background:rgba(212,175,55,.1);border-left-color:#d4af37;font-weight:600;}
+    .adm-nav-badge{background:#ef4444;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto;}
+    .adm-main{padding:28px 32px;overflow-y:auto;background:#f0f2f5;}
+    .adm-topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;}
+    .adm-page-title{font-size:22px;font-weight:700;color:#111827;line-height:1.2;}
     .adm-page-sub{font-size:12px;color:#6b7280;margin-top:4px;}
-    .adm-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px;}
-    .adm-stat{background:#0d0f15;border:1px solid #1a1f2c;padding:24px;transition:border-color .2s;}
-    .adm-stat:hover{border-color:rgba(212,175,55,.3);}
-    .adm-stat-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:12px;}
-    .adm-stat-val{font-size:36px;font-weight:300;color:#fff;line-height:1;margin-bottom:6px;}
+    .adm-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+    .adm-stat{background:#fff;border:1px solid #e5e7eb;padding:20px 24px;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.05);transition:box-shadow .2s;}
+    .adm-stat:hover{box-shadow:0 4px 12px rgba(0,0,0,.08);}
+    .adm-stat-label{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9ca3af;margin-bottom:10px;}
+    .adm-stat-val{font-size:32px;font-weight:700;color:#111827;line-height:1;margin-bottom:4px;}
     .adm-stat-val.gold{color:#d4af37;}
-    .adm-stat-val.green{color:#22c55e;}
-    .adm-stat-val.red{color:#ef4444;}
-    .adm-stat-sub{font-size:11px;color:#6b7280;}
-    .adm-card{background:#0d0f15;border:1px solid #1a1f2c;padding:28px;margin-bottom:20px;}
-    .adm-card-title{font-size:13px;font-weight:600;color:#fff;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;}
+    .adm-stat-val.green{color:#16a34a;}
+    .adm-stat-val.red{color:#dc2626;}
+    .adm-stat-sub{font-size:11px;color:#9ca3af;}
+    .adm-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:24px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+    .adm-card-title{font-size:13px;font-weight:700;color:#111827;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;}
     .adm-table{width:100%;border-collapse:collapse;}
-    .adm-table th{padding:12px 16px;text-align:left;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;border-bottom:1px solid #1a1f2c;background:#0a0c10;}
-    .adm-table td{padding:14px 16px;font-size:12px;color:#d1d5db;border-bottom:1px solid rgba(26,31,44,.6);}
-    .adm-table tr:hover td{background:rgba(212,175,55,.02);}
-    .adm-btn{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:none;cursor:pointer;transition:all .2s;}
-    .adm-btn-approve{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);}
-    .adm-btn-approve:hover{background:rgba(34,197,94,.25);}
-    .adm-btn-reject{background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2);}
-    .adm-btn-reject:hover{background:rgba(239,68,68,.2);}
-    .adm-btn-refresh{font-size:10px;color:#d4af37;background:transparent;border:1px solid rgba(212,175,55,.3);padding:6px 14px;cursor:pointer;transition:all .2s;}
-    .adm-btn-refresh:hover{background:rgba(212,175,55,.08);}
-    .adm-badge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:.5px;}
-    .adm-badge-pending{background:rgba(251,191,36,.15);color:#fbbf24;}
-    .adm-badge-approved{background:rgba(34,197,94,.15);color:#22c55e;}
-    .adm-badge-rejected{background:rgba(239,68,68,.1);color:#ef4444;}
-    .adm-badge-pro{background:rgba(212,175,55,.15);color:#d4af37;}
+    .adm-table th{padding:10px 14px;text-align:left;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#9ca3af;border-bottom:2px solid #f3f4f6;background:#f9fafb;}
+    .adm-table td{padding:12px 14px;font-size:12px;color:#374151;border-bottom:1px solid #f3f4f6;}
+    .adm-table tr:hover td{background:#fffbeb;}
+    .adm-btn{font-size:10px;font-weight:700;letter-spacing:.5px;padding:5px 12px;border:none;cursor:pointer;transition:all .2s;border-radius:4px;}
+    .adm-btn-approve{background:#dcfce7;color:#16a34a;border:1px solid #bbf7d0;}
+    .adm-btn-approve:hover{background:#bbf7d0;}
+    .adm-btn-reject{background:#fee2e2;color:#dc2626;border:1px solid #fecaca;}
+    .adm-btn-reject:hover{background:#fecaca;}
+    .adm-btn-refresh{font-size:10px;color:#d4af37;background:#fff;border:1px solid #d4af37;padding:6px 14px;cursor:pointer;border-radius:4px;transition:all .2s;font-weight:600;}
+    .adm-btn-refresh:hover{background:#fffbeb;}
+    .adm-badge{font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;}
+    .adm-badge-pending{background:#fef3c7;color:#d97706;}
+    .adm-badge-approved{background:#dcfce7;color:#16a34a;}
+    .adm-badge-rejected{background:#fee2e2;color:#dc2626;}
+    .adm-badge-pro{background:#fef3c7;color:#d4af37;}
     .adm-page{display:none;}
     .adm-page.active{display:block;}
-    .adm-empty{text-align:center;padding:48px;color:#6b7280;font-size:13px;}
-    @media(max-width:768px){
+    .adm-empty{text-align:center;padding:40px;color:#9ca3af;font-size:13px;}
+    @media(max-width:900px){
       .adm-shell{grid-template-columns:1fr;}
-      .adm-sidebar{position:fixed;bottom:0;top:auto;height:56px;width:100%;flex-direction:row;border-right:none;border-top:1px solid #1a1f2c;z-index:100;overflow-x:auto;overflow-y:hidden;}
+      .adm-sidebar{position:fixed;bottom:0;top:auto;height:60px;width:100%;flex-direction:row;border-right:none;border-top:2px solid rgba(212,175,55,.3);z-index:1000;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;}
       .adm-sb-head{display:none;}
       .adm-nav-sec{display:none;}
-      .adm-nav-item{padding:0 16px;border-left:none;border-top:2px solid transparent;flex-direction:column;gap:2px;font-size:9px;min-width:60px;justify-content:center;height:56px;}
-      .adm-nav-item.active{border-left:none;border-top-color:#d4af37;}
-      .adm-main{padding:16px;padding-bottom:72px;}
+      .adm-nav-item{padding:0 14px;border-left:none;border-top:3px solid transparent;border-bottom:none;flex-direction:column;gap:3px;font-size:9px;font-weight:600;min-width:70px;max-width:80px;justify-content:center;align-items:center;height:60px;white-space:nowrap;flex-shrink:0;}
+      .adm-nav-item.active{border-left:none;border-top-color:#d4af37;color:#d4af37;background:rgba(212,175,55,.08);}
+      .adm-nav-badge{position:absolute;top:8px;right:8px;margin:0;}
+      .adm-main{padding:16px;padding-bottom:76px;}
       .adm-stats{grid-template-columns:1fr 1fr;gap:10px;}
-      .adm-stat{padding:16px;}
-      .adm-stat-val{font-size:28px;}
+      .adm-stat{padding:16px 18px;}
+      .adm-stat-val{font-size:26px;}
+      .adm-topbar{flex-direction:column;gap:12px;margin-bottom:20px;}
     }
   </style>
 
@@ -6939,21 +6944,34 @@ async function admLoadApprovals() {
 }
 
 async function admApproveListing(id, btn) {
-  btn.disabled = true; btn.textContent = '...';
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
   try {
-    await _supa.from('listings').update({status:'approved'}).eq('id', id);
-    const row = document.getElementById('adm-row-' + id);
-    if(row) { row.style.opacity = '.3'; setTimeout(()=>{ admLoadApprovals(); admLoadOverview(); loadListingsFromSupabase(); }, 600); }
-  } catch(e) { btn.disabled = false; btn.textContent = '✓ Approve'; alert('Error. Try again.'); }
+    const { error } = await _supa.from('listings').update({status:'approved'}).eq('id', id);
+    if(error) throw error;
+    // Show success feedback
+    btn.textContent = '✓ Done!'; btn.style.background = '#dcfce7'; btn.style.opacity = '1';
+    setTimeout(()=>{ admLoadApprovals(); admLoadOverview(); loadListingsFromSupabase(); }, 800);
+  } catch(e) {
+    console.error('Approve error:', e);
+    btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
+    alert('Error approving. Check your Supabase connection and try again.');
+  }
 }
 
 async function admRejectListing(id, btn) {
-  btn.disabled = true; btn.textContent = '...';
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
   try {
-    await _supa.from('listings').update({status:'rejected'}).eq('id', id);
-    const row = document.getElementById('adm-row-' + id);
-    if(row) { row.style.opacity = '.3'; setTimeout(()=>{ admLoadApprovals(); admLoadOverview(); loadListingsFromSupabase(); }, 600); }
-  } catch(e) { btn.disabled = false; btn.textContent = '✗ Reject'; alert('Error. Try again.'); }
+    const { error } = await _supa.from('listings').update({status:'rejected'}).eq('id', id);
+    if(error) throw error;
+    btn.textContent = '✓ Done!'; btn.style.background = '#fee2e2'; btn.style.opacity = '1';
+    setTimeout(()=>{ admLoadApprovals(); admLoadOverview(); loadListingsFromSupabase(); }, 800);
+  } catch(e) {
+    console.error('Reject error:', e);
+    btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
+    alert('Error rejecting. Check your Supabase connection and try again.');
+  }
 }
 
 async function admLoadRevenue() {
@@ -7032,12 +7050,33 @@ async function admLoadAnalytics() {
   } catch(e) { console.warn('Analytics load failed', e); }
 }
 
-// Restore admin session on page refresh
+// Restore admin session on page refresh — no blink
+(function() {
+  try {
+    const sessions = JSON.parse(localStorage.getItem('nm_sessions_v2') || '{}');
+    const keys = Object.keys(sessions);
+    for(const key of keys) {
+      const s = sessions[key];
+      if(s && s.user && s.user.type === 'admin') {
+        // Hide all pages immediately before DOM is painted
+        const style = document.createElement('style');
+        style.id = 'adm-preload';
+        style.textContent = '.page,.section-page,[class*="page-"]{display:none!important;}#page-admin{display:block!important;}';
+        document.head.appendChild(style);
+        break;
+      }
+    }
+  } catch(e) {}
+})();
+
 document.addEventListener('DOMContentLoaded', function() {
   const saved = restoreSession();
   if(saved && saved.type === 'admin') {
+    // Remove the preload style
+    const preload = document.getElementById('adm-preload');
+    if(preload) preload.remove();
     loginAs(saved);
-    setTimeout(showAdminDashboard, 400);
+    showAdminDashboard();
   }
 });
 </script>
