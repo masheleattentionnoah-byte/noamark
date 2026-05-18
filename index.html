@@ -6697,7 +6697,9 @@ bpLoad();
         -webkit-overflow-scrolling:touch;scrollbar-width:none;
       }
       .adm-sidebar::-webkit-scrollbar{display:none;}
-      .adm-sb-head,.adm-nav-sec,.adm-signout{display:none;}
+      .adm-sb-head,.adm-nav-sec{display:none;}
+      .adm-signout{display:block;padding:0;border:none;background:transparent;}
+      .adm-signout-btn{border-radius:0;border:none;border-top:1px solid rgba(239,68,68,.15);height:60px;padding:0 12px;font-size:9px;flex-direction:column;gap:3px;justify-content:center;align-items:center;min-width:64px;background:transparent;}
       .adm-nav-item{
         padding:0 10px;border-left:none;
         border-top:2px solid transparent;border-bottom:none;
@@ -6708,6 +6710,14 @@ bpLoad();
       .adm-nav-item.active{border-top-color:#F4C430;color:#F4C430;background:rgba(244,196,48,.05);}
       .adm-nav-icon{font-size:16px;}
       .adm-nav-badge{position:absolute;top:7px;right:4px;margin:0;font-size:7px;padding:1px 4px;}
+      .adm-signout-btn{
+        flex-direction:column;gap:3px;font-size:9px;font-weight:600;
+        min-width:64px;height:60px;padding:0 10px;
+        border-radius:0;border:none;border-top:2px solid rgba(239,68,68,.3);
+        background:rgba(239,68,68,.04);justify-content:center;align-items:center;
+        white-space:nowrap;flex-shrink:0;
+      }
+      .adm-signout-btn::before{content:'🚪';font-size:16px;display:block;margin-bottom:3px;}
       .adm-main{padding:20px 14px 76px;background:#0A0D0F;}
       .adm-topbar{flex-direction:column;gap:10px;margin-bottom:20px;padding-bottom:16px;}
       .adm-page-title{font-size:20px;}
@@ -7009,6 +7019,11 @@ function showAdminDashboard() {
   });
   const admEl = document.getElementById('page-admin');
   if(admEl) admEl.style.display = 'block';
+  // Hide AI chat and other customer elements from admin
+  const chatFab = document.getElementById('chat-fab');
+  const chatWin = document.getElementById('chat-window');
+  if(chatFab) chatFab.style.display = 'none';
+  if(chatWin) chatWin.style.display = 'none';
   window.scrollTo(0, 0);
   setTimeout(()=>admGoPage('overview'), 100);
 }
