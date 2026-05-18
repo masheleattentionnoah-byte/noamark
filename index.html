@@ -6498,69 +6498,223 @@ bpLoad();
 <!-- ════════════════════════════════════
      NOAMARK ADMIN DASHBOARD
 ════════════════════════════════════ -->
-<div id="page-admin" style="display:none;min-height:100vh;background:#f0f2f5;padding-top:70px;">
+<div id="page-admin" style="display:none;min-height:100vh;background:#0A0D0F;padding-top:70px;">
   <style>
-    /* ── ADMIN DASHBOARD — Professional Light-Dark Theme ── */
-    #page-admin { background:#f0f2f5 !important; }
-    .adm-shell{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 70px);}
-    .adm-sidebar{background:#1a1f2c;padding:0;position:sticky;top:70px;height:calc(100vh - 70px);overflow-y:auto;display:flex;flex-direction:column;box-shadow:2px 0 8px rgba(0,0,0,.08);}
-    .adm-sb-head{padding:24px 20px 18px;border-bottom:1px solid rgba(255,255,255,.08);}
-    .adm-sb-logo{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
-    .adm-sb-logo-dot{width:8px;height:8px;background:#d4af37;border-radius:50%;}
-    .adm-sb-tag{font-size:14px;font-weight:700;color:#fff;letter-spacing:.3px;}
-    .adm-sb-title{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;}
-    .adm-nav-sec{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.25);padding:18px 20px 6px;}
-    .adm-nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:12px;font-weight:500;color:rgba(255,255,255,.55);cursor:pointer;transition:all .2s;border-left:3px solid transparent;margin:1px 0;}
-    .adm-nav-item:hover{color:#fff;background:rgba(255,255,255,.06);}
-    .adm-nav-item.active{color:#d4af37;background:rgba(212,175,55,.1);border-left-color:#d4af37;font-weight:600;}
-    .adm-nav-badge{background:#ef4444;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto;}
-    .adm-main{padding:28px 32px;overflow-y:auto;background:#f0f2f5;}
-    .adm-topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;}
-    .adm-page-title{font-size:22px;font-weight:700;color:#111827;line-height:1.2;}
-    .adm-page-sub{font-size:12px;color:#6b7280;margin-top:4px;}
+    /* ══════════════════════════════════════════════
+       NOAMARK ADMIN — Brand Colors Dark Dashboard
+       Background : #0A0D0F
+       Surface L1 : #111620
+       Surface L2 : #141920
+       Surface L3 : #1A2030
+       Border     : rgba(244,196,48,.10)
+       Gold       : #F4C430  dim: #C9A227  bright: #F9D84A
+       Green      : #166534  fresh: #22C55E
+    ══════════════════════════════════════════════ */
+
+    #page-admin{background:#0A0D0F !important;}
+
+    .adm-shell{display:grid;grid-template-columns:228px 1fr;min-height:calc(100vh - 70px);}
+
+    /* ── Sidebar ── */
+    .adm-sidebar{
+      background:#080B0E;
+      border-right:1px solid rgba(244,196,48,.08);
+      padding:0;position:sticky;top:70px;
+      height:calc(100vh - 70px);overflow-y:auto;
+      display:flex;flex-direction:column;
+    }
+    .adm-sb-head{
+      padding:28px 22px 20px;
+      border-bottom:1px solid rgba(244,196,48,.08);
+      background:linear-gradient(160deg,rgba(244,196,48,.04),transparent);
+    }
+    .adm-sb-logo{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+    .adm-sb-logo-mark{
+      width:32px;height:32px;
+      background:linear-gradient(135deg,#F4C430,#C9A227);
+      display:flex;align-items:center;justify-content:center;
+      font-size:14px;font-weight:900;color:#0A0D0F;
+      border-radius:6px;letter-spacing:-1px;
+      box-shadow:0 0 12px rgba(244,196,48,.3);
+    }
+    .adm-sb-brand{font-size:15px;font-weight:700;color:#fff;letter-spacing:.3px;}
+    .adm-sb-title{font-size:9px;color:rgba(244,196,48,.45);letter-spacing:2.5px;text-transform:uppercase;margin-top:2px;}
+    .adm-admin-pill{
+      display:inline-flex;align-items:center;gap:5px;
+      background:rgba(244,196,48,.1);border:1px solid rgba(244,196,48,.2);
+      color:#F4C430;font-size:9px;font-weight:700;
+      letter-spacing:1.5px;text-transform:uppercase;
+      padding:3px 10px;border-radius:20px;margin-top:10px;
+    }
+    .adm-admin-pill::before{content:'';width:5px;height:5px;background:#F4C430;border-radius:50%;box-shadow:0 0 4px #F4C430;}
+
+    .adm-nav-sec{
+      font-size:8px;font-weight:700;letter-spacing:2.5px;
+      text-transform:uppercase;color:rgba(255,255,255,.15);
+      padding:20px 22px 6px;
+    }
+    .adm-nav-item{
+      display:flex;align-items:center;gap:12px;
+      padding:12px 22px;font-size:12px;font-weight:500;
+      color:rgba(255,255,255,.38);cursor:pointer;
+      transition:all .18s;border-left:3px solid transparent;
+    }
+    .adm-nav-item:hover{color:rgba(255,255,255,.75);background:rgba(255,255,255,.03);}
+    .adm-nav-item.active{
+      color:#F4C430;background:rgba(244,196,48,.07);
+      border-left-color:#F4C430;font-weight:600;
+    }
+    .adm-nav-icon{font-size:14px;width:18px;text-align:center;opacity:.8;}
+    .adm-nav-label{flex:1;}
+    .adm-nav-badge{
+      background:#ef4444;color:#fff;font-size:8px;
+      font-weight:700;padding:1px 6px;border-radius:10px;
+      animation:pulse 2s infinite;
+    }
+    @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4);}50%{box-shadow:0 0 0 4px rgba(239,68,68,0);}}
+
+    /* ── Main ── */
+    .adm-main{padding:36px 36px 40px;overflow-y:auto;background:#0A0D0F;}
+
+    .adm-topbar{
+      display:flex;align-items:flex-start;justify-content:space-between;
+      margin-bottom:32px;padding-top:4px;
+      border-bottom:1px solid rgba(244,196,48,.07);
+      padding-bottom:24px;
+    }
+    .adm-page-title{font-size:24px;font-weight:700;color:#F9FAFB;line-height:1.2;letter-spacing:-.3px;}
+    .adm-page-sub{font-size:12px;color:rgba(255,255,255,.3);margin-top:5px;}
+
+    /* ── Stat Cards ── */
     .adm-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
-    .adm-stat{background:#fff;border:1px solid #e5e7eb;padding:20px 24px;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.05);transition:box-shadow .2s;}
-    .adm-stat:hover{box-shadow:0 4px 12px rgba(0,0,0,.08);}
-    .adm-stat-label{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9ca3af;margin-bottom:10px;}
-    .adm-stat-val{font-size:32px;font-weight:700;color:#111827;line-height:1;margin-bottom:4px;}
-    .adm-stat-val.gold{color:#d4af37;}
-    .adm-stat-val.green{color:#16a34a;}
-    .adm-stat-val.red{color:#dc2626;}
-    .adm-stat-sub{font-size:11px;color:#9ca3af;}
-    .adm-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:24px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
-    .adm-card-title{font-size:13px;font-weight:700;color:#111827;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;}
+    .adm-stat{
+      background:#111620;border:1px solid rgba(244,196,48,.08);
+      padding:22px 20px;border-radius:8px;
+      transition:border-color .2s,background .2s;position:relative;overflow:hidden;
+    }
+    .adm-stat::before{
+      content:'';position:absolute;top:0;left:0;right:0;height:2px;
+      background:linear-gradient(to right,transparent,rgba(244,196,48,.15),transparent);
+    }
+    .adm-stat:hover{border-color:rgba(244,196,48,.25);background:#141920;}
+    .adm-stat-label{
+      font-size:9px;font-weight:700;letter-spacing:2px;
+      text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:14px;
+    }
+    .adm-stat-val{font-size:36px;font-weight:700;color:#F9FAFB;line-height:1;margin-bottom:6px;}
+    .adm-stat-val.gold{color:#F4C430;text-shadow:0 0 20px rgba(244,196,48,.3);}
+    .adm-stat-val.green{color:#22C55E;}
+    .adm-stat-val.red{color:#ef4444;}
+    .adm-stat-sub{font-size:11px;color:rgba(255,255,255,.25);}
+
+    /* ── Cards ── */
+    .adm-card{
+      background:#111620;border:1px solid rgba(244,196,48,.07);
+      border-radius:8px;padding:26px;margin-bottom:16px;
+    }
+    .adm-card-title{
+      font-size:13px;font-weight:700;color:#F9FAFB;
+      margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;
+      padding-bottom:14px;border-bottom:1px solid rgba(244,196,48,.06);
+    }
+
+    /* ── Table ── */
     .adm-table{width:100%;border-collapse:collapse;}
-    .adm-table th{padding:10px 14px;text-align:left;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#9ca3af;border-bottom:2px solid #f3f4f6;background:#f9fafb;}
-    .adm-table td{padding:12px 14px;font-size:12px;color:#374151;border-bottom:1px solid #f3f4f6;}
-    .adm-table tr:hover td{background:#fffbeb;}
-    .adm-btn{font-size:10px;font-weight:700;letter-spacing:.5px;padding:5px 12px;border:none;cursor:pointer;transition:all .2s;border-radius:4px;}
-    .adm-btn-approve{background:#dcfce7;color:#16a34a;border:1px solid #bbf7d0;}
-    .adm-btn-approve:hover{background:#bbf7d0;}
-    .adm-btn-reject{background:#fee2e2;color:#dc2626;border:1px solid #fecaca;}
-    .adm-btn-reject:hover{background:#fecaca;}
-    .adm-btn-refresh{font-size:10px;color:#d4af37;background:#fff;border:1px solid #d4af37;padding:6px 14px;cursor:pointer;border-radius:4px;transition:all .2s;font-weight:600;}
-    .adm-btn-refresh:hover{background:#fffbeb;}
-    .adm-badge{font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;}
-    .adm-badge-pending{background:#fef3c7;color:#d97706;}
-    .adm-badge-approved{background:#dcfce7;color:#16a34a;}
-    .adm-badge-rejected{background:#fee2e2;color:#dc2626;}
-    .adm-badge-pro{background:#fef3c7;color:#d4af37;}
+    .adm-table th{
+      padding:11px 14px;text-align:left;font-size:9px;font-weight:700;
+      letter-spacing:1.5px;text-transform:uppercase;
+      color:rgba(255,255,255,.25);
+      border-bottom:1px solid rgba(244,196,48,.08);
+      background:#0A0D0F;
+    }
+    .adm-table td{
+      padding:14px;font-size:12px;color:rgba(255,255,255,.65);
+      border-bottom:1px solid rgba(255,255,255,.03);
+    }
+    .adm-table tr:last-child td{border-bottom:none;}
+    .adm-table tr:hover td{background:rgba(244,196,48,.03);}
+    .adm-table .biz-name{color:#F9FAFB;font-weight:600;}
+
+    /* ── Buttons ── */
+    .adm-btn{
+      font-size:10px;font-weight:700;letter-spacing:.5px;
+      padding:6px 13px;border:none;cursor:pointer;
+      transition:all .18s;border-radius:4px;
+    }
+    .adm-btn-approve{
+      background:rgba(34,197,94,.12);color:#22C55E;
+      border:1px solid rgba(34,197,94,.25);
+    }
+    .adm-btn-approve:hover{background:rgba(34,197,94,.22);transform:translateY(-1px);}
+    .adm-btn-reject{
+      background:rgba(239,68,68,.1);color:#ef4444;
+      border:1px solid rgba(239,68,68,.2);
+    }
+    .adm-btn-reject:hover{background:rgba(239,68,68,.18);transform:translateY(-1px);}
+    .adm-btn-refresh{
+      font-size:10px;font-weight:700;color:#C9A227;
+      background:rgba(244,196,48,.06);
+      border:1px solid rgba(244,196,48,.2);
+      padding:7px 16px;cursor:pointer;border-radius:4px;
+      transition:all .18s;letter-spacing:.5px;
+    }
+    .adm-btn-refresh:hover{background:rgba(244,196,48,.12);color:#F4C430;}
+
+    /* ── Badges ── */
+    .adm-badge{font-size:9px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.5px;}
+    .adm-badge-pending{background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.2);}
+    .adm-badge-approved{background:rgba(34,197,94,.12);color:#22C55E;border:1px solid rgba(34,197,94,.2);}
+    .adm-badge-rejected{background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.15);}
+    .adm-badge-pro{background:rgba(244,196,48,.1);color:#F4C430;border:1px solid rgba(244,196,48,.2);}
+
     .adm-page{display:none;}
     .adm-page.active{display:block;}
-    .adm-empty{text-align:center;padding:40px;color:#9ca3af;font-size:13px;}
+    .adm-empty{text-align:center;padding:48px;color:rgba(255,255,255,.2);font-size:13px;}
+
+    /* ── Sign Out ── */
+    .adm-signout{
+      margin-top:auto;padding:16px 22px;
+      border-top:1px solid rgba(255,255,255,.05);
+    }
+    .adm-signout-btn{
+      display:flex;align-items:center;gap:10px;width:100%;
+      padding:10px 14px;background:rgba(239,68,68,.06);
+      border:1px solid rgba(239,68,68,.15);border-radius:6px;
+      color:rgba(239,68,68,.7);font-size:12px;font-weight:600;
+      cursor:pointer;transition:all .2s;
+    }
+    .adm-signout-btn:hover{background:rgba(239,68,68,.12);color:#ef4444;}
+
+    /* ══ MOBILE ══ */
     @media(max-width:900px){
       .adm-shell{grid-template-columns:1fr;}
-      .adm-sidebar{position:fixed;bottom:0;top:auto;height:60px;width:100%;flex-direction:row;border-right:none;border-top:2px solid rgba(212,175,55,.3);z-index:1000;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;}
-      .adm-sb-head{display:none;}
-      .adm-nav-sec{display:none;}
-      .adm-nav-item{padding:0 14px;border-left:none;border-top:3px solid transparent;border-bottom:none;flex-direction:column;gap:3px;font-size:9px;font-weight:600;min-width:70px;max-width:80px;justify-content:center;align-items:center;height:60px;white-space:nowrap;flex-shrink:0;}
-      .adm-nav-item.active{border-left:none;border-top-color:#d4af37;color:#d4af37;background:rgba(212,175,55,.08);}
-      .adm-nav-badge{position:absolute;top:8px;right:8px;margin:0;}
-      .adm-main{padding:16px;padding-bottom:76px;}
+      .adm-sidebar{
+        position:fixed;bottom:0;left:0;right:0;top:auto;
+        height:60px;width:100%;flex-direction:row;
+        background:#080B0E;
+        border-right:none;border-top:1px solid rgba(244,196,48,.15);
+        z-index:9999;overflow-x:auto;overflow-y:hidden;
+        -webkit-overflow-scrolling:touch;scrollbar-width:none;
+      }
+      .adm-sidebar::-webkit-scrollbar{display:none;}
+      .adm-sb-head,.adm-nav-sec,.adm-signout{display:none;}
+      .adm-nav-item{
+        padding:0 10px;border-left:none;
+        border-top:2px solid transparent;border-bottom:none;
+        flex-direction:column;gap:3px;font-size:9px;font-weight:600;
+        min-width:64px;justify-content:center;align-items:center;
+        height:60px;white-space:nowrap;flex-shrink:0;position:relative;
+      }
+      .adm-nav-item.active{border-top-color:#F4C430;color:#F4C430;background:rgba(244,196,48,.05);}
+      .adm-nav-icon{font-size:16px;}
+      .adm-nav-badge{position:absolute;top:7px;right:4px;margin:0;font-size:7px;padding:1px 4px;}
+      .adm-main{padding:20px 14px 76px;background:#0A0D0F;}
+      .adm-topbar{flex-direction:column;gap:10px;margin-bottom:20px;padding-bottom:16px;}
+      .adm-page-title{font-size:20px;}
       .adm-stats{grid-template-columns:1fr 1fr;gap:10px;}
-      .adm-stat{padding:16px 18px;}
-      .adm-stat-val{font-size:26px;}
-      .adm-topbar{flex-direction:column;gap:12px;margin-bottom:20px;}
+      .adm-stat{padding:16px 14px;}
+      .adm-stat-val{font-size:28px;}
+      .adm-card{padding:18px 14px;}
     }
   </style>
 
@@ -6568,20 +6722,26 @@ bpLoad();
     <!-- SIDEBAR -->
     <div class="adm-sidebar">
       <div class="adm-sb-head">
-        <div class="adm-sb-tag">NoaMark</div>
-        <div class="adm-sb-title">Admin Dashboard</div>
-        <div class="adm-sb-sub">noamarkinvest@gmail.com</div>
+        <div class="adm-sb-logo">
+          <div class="adm-sb-logo-mark">NM</div>
+          <div>
+            <div class="adm-sb-brand">NoaMark</div>
+            <div class="adm-sb-title">Admin Console</div>
+          </div>
+        </div>
+        <div class="adm-admin-pill">Super Admin</div>
       </div>
       <nav style="flex:1;">
         <div class="adm-nav-sec">Main</div>
-        <div class="adm-nav-item active" onclick="admGoPage('overview')">📊 Overview</div>
-        <div class="adm-nav-item" onclick="admGoPage('approvals')">🏪 Businesses <span class="adm-nav-badge" id="adm-pending-badge" style="display:none;">0</span></div>
-        <div class="adm-nav-item" onclick="admGoPage('revenue')">💰 Revenue</div>
+        <div class="adm-nav-item active" onclick="admGoPage('overview')"><span class="adm-nav-icon">📊</span><span class="adm-nav-label">Overview</span></div>
+        <div class="adm-nav-item" onclick="admGoPage('approvals')"><span class="adm-nav-icon">🏪</span><span class="adm-nav-label">Businesses</span><span class="adm-nav-badge" id="adm-pending-badge" style="display:none;">0</span></div>
+        <div class="adm-nav-item" onclick="admGoPage('revenue')"><span class="adm-nav-icon">💰</span><span class="adm-nav-label">Revenue</span></div>
         <div class="adm-nav-sec">Platform</div>
-        <div class="adm-nav-item" onclick="admGoPage('users')">👥 Users</div>
-        <div class="adm-nav-item" onclick="admGoPage('analytics')">📈 Analytics</div>
-        <div class="adm-nav-sec">Account</div>
-        <div class="adm-nav-item" onclick="handleLogout()">🚪 Sign Out</div>
+        <div class="adm-nav-item" onclick="admGoPage('users')"><span class="adm-nav-icon">👥</span><span class="adm-nav-label">Users</span></div>
+        <div class="adm-nav-item" onclick="admGoPage('analytics')"><span class="adm-nav-icon">📈</span><span class="adm-nav-label">Analytics</span></div>
+        <div class="adm-signout">
+          <div class="adm-signout-btn" onclick="handleLogout()">🚪 Sign Out of Admin</div>
+        </div>
       </nav>
     </div>
 
