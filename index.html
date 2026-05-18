@@ -4021,22 +4021,10 @@ const LISTINGS = [];
 
 async function loadListingsFromSupabase() {
   try {
-    const { data, error } = await _supa.from('listings').select('*').eq('status', 'approved');
-    
-    if(error) {
-      console.warn('Supabase listings error:', error);
-      return;
-    }
-
-    // ── CRITICAL: Clear existing listings before reloading ──
-    LISTINGS.length = 0;
-
+    const { data } = await _supa.from('listings').select('*').eq('status', 'approved');
     if(data && data.length > 0) {
+      // Map Supabase columns to the format the site expects
       data.forEach(l => {
-        let parsedPhotos = [];
-        try { parsedPhotos = l.photo_urls ? JSON.parse(l.photo_urls) : []; } catch(e) {}
-        if(parsedPhotos.length === 0 && l.photo_url) parsedPhotos = [l.photo_url];
-
         LISTINGS.push({
           id: l.id,
           name: l.name,
@@ -4045,34 +4033,20 @@ async function loadListingsFromSupabase() {
           area: l.area || '',
           desc: l.description || '',
           phone: l.phone || '',
-          whatsapp: l.whatsapp || l.phone || '',
-          email: l.email || '',
-          city: l.city || '',
-          province: l.province || '',
-          emoji: getCategoryEmoji(l.type),
+          whatsapp: l.phone || '',
+          emoji: '🏪',
           boost: l.boost_tier || 'none',
           status: 'open',
           price: 'Contact for pricing',
           menu: [],
           photo: l.photo_url || '',
-          photos: parsedPhotos,
-          createdAt: l.created_at || ''
+          photos: l.photo_urls ? JSON.parse(l.photo_urls) : (l.photo_url ? [l.photo_url] : [])
         });
       });
+      renderAllListings();
+      renderBoostedListings();
     }
-
-    // Always render even if empty — shows "no listings" message
-    renderAllListings();
-    renderBoostedListings();
-
-  } catch(e) {
-    console.warn('Could not load listings from Supabase:', e);
-  }
-}
-
-function getCategoryEmoji(cat) {
-  const map = {food:'🍔', shops:'🛒', beauty:'💇', laundry:'🧺', services:'🔧', transport:'🚕'};
-  return map[cat] || '🏪';
+  } catch(e){ console.warn('Could not load listings from Supabase', e); }
 }
 
 // Load listings on startup
@@ -5575,32 +5549,8 @@ function applyRoleNav(user) {
       if(el) el.style.display = 'none';
     });
     const navCta = document.querySelector('.nav-cta');
-    if(navCta) {
-      navCta.textContent = '⚙ Admin Panel';
-      navCta.onclick = ()=>showAdminDashboard();
-      navCta.style.display = '';
-      navCta.style.background = 'var(--gold)';
-      navCta.style.color = '#111827';
-    }
+    if(navCta) { navCta.textContent = '⚙ Admin Panel'; navCta.onclick = ()=>showAdminDashboard(); navCta.style.display = ''; }
     return;
-  }
-
-  // Logged out — restore Sign Up button
-  if(role === 'logged-out') {
-    const navCta = document.querySelector('.nav-cta');
-    if(navCta) {
-      navCta.textContent = 'Sign Up';
-      navCta.onclick = ()=>openAuth('subscriber');
-      navCta.style.background = '';
-      navCta.style.color = '';
-    }
-  }
-
-  // Reset Admin Panel button back to Sign Up for non-admin
-  const navCta = document.querySelector('.nav-cta');
-  if(navCta && navCta.textContent.includes('Admin')) {
-    navCta.textContent = 'Sign Up';
-    navCta.onclick = ()=>openAuth('subscriber');
   }
 
   const allowed = NAV_RULES[role] || NAV_RULES['logged-out'];
@@ -5733,52 +5683,15 @@ document.addEventListener('click', function() {
 });
 
 function handleLogout() {
+  // Restore chat fab for next user
+  const chatFab = document.getElementById('chat-fab');
+  if(chatFab) chatFab.style.display = '';
   currentUser = null;
   clearSession();
-
-  // Hide admin dashboard
-  const adminPage = document.getElementById('page-admin');
-  if(adminPage) adminPage.style.display = 'none';
-
-  // Restore nav CTA button to normal Sign Up
-  const navCta = document.querySelector('.nav-cta');
-  if(navCta) {
-    navCta.textContent = 'Sign Up';
-    navCta.onclick = ()=>openAuth('subscriber');
-    navCta.style.display = '';
-    navCta.style.background = '';
-    navCta.style.color = '';
-  }
-
-  // Restore all nav items to logged-out state
-  ['home','marketplace','opportunities','learning','videos','plans'].forEach(item => {
-    const el = document.getElementById('nav-item-' + item);
-    if(el) el.style.display = '';
-  });
-
-  // Restore chat for next user
-  const chatFab = document.getElementById('chat-fab');
-  const chatWin = document.getElementById('chat-window');
-  if(chatFab) { chatFab.style.display = ''; chatFab.textContent = '💬'; }
-  if(chatWin) { chatWin.classList.remove('open'); chatWin.style.display = ''; }
-
-  // Restore auth area
-  const authArea = document.getElementById('nav-auth-area');
-  if(authArea) authArea.style.display = 'flex';
-  const pill = document.getElementById('nav-user-pill');
-  if(pill) pill.style.display = 'none';
-  const listings = document.getElementById('nav-dd-listings');
-  if(listings) listings.style.display = 'none';
-  const dashboard = document.getElementById('nav-dd-dashboard');
-  if(dashboard) dashboard.style.display = 'none';
-  const upgrade = document.getElementById('nav-dd-upgrade');
-  if(upgrade) upgrade.style.display = 'none';
-
-  const tracker = document.getElementById('user-tracker');
-  if(tracker) tracker.classList.remove('visible');
-
-  // Reset nav to logged-out state
-  applyRoleNav(null);
+  document.getElementById('nav-auth-area').style.display = 'flex';
+  document.getElementById('nav-user-pill').style.display = 'none';
+  document.getElementById('nav-dd-listings').style.display = 'none';
+  document.getElementById('user-tracker').classList.remove('visible');
   applyRoleHomePage(null);
   showPage('home');
 }
