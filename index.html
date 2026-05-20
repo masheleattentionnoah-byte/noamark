@@ -4101,7 +4101,7 @@ function renderCard(biz){
   const statusBadge=biz.status==='open'
     ?'<div class="listing-status status-open">● Open</div>'
     :'<div class="listing-status status-closed">● Closed</div>';
-  return `<div class="listing-card ${boostClass}" onclick="showBizProfile(${biz.id})">
+  return `<div class="listing-card ${boostClass}" onclick="showBizProfile('${biz.id}')">
     <div class="listing-img">${biz.photo ? `<img src="${biz.photo}" alt="${biz.name}" style="width:100%;height:100%;object-fit:cover;">` : `<div class="listing-img-bg">${biz.emoji}</div>`}${badge}${statusBadge}</div>
     <div class="listing-info">
       <div class="listing-cat">${getCatLabel(biz.cat)}</div>
@@ -4162,11 +4162,19 @@ function populateMarketplace(){
   if(currentCat!=='all') list=list.filter(l=>l.cat===currentCat);
   if(currentCat==='transport' && currentTransportSub!=='all')
     list=list.filter(l=>l.transport_sub===currentTransportSub);
-  if(currentSearch) list=list.filter(l=>
-    l.name.toLowerCase().includes(currentSearch)||
-    l.area.toLowerCase().includes(currentSearch)||
-    l.cat.includes(currentSearch)
-  );
+  if(currentSearch) list=list.filter(l=>{
+    const q = currentSearch;
+    const catLabel = (getCatLabel(l.cat)||'').toLowerCase();
+    return (
+      (l.name||'').toLowerCase().includes(q) ||
+      (l.area||'').toLowerCase().includes(q) ||
+      (l.cat||'').toLowerCase().includes(q)  ||
+      catLabel.includes(q)                   ||
+      (l.desc||'').toLowerCase().includes(q) ||
+      (l.type||'').toLowerCase().includes(q) ||
+      (l.owner||'').toLowerCase().includes(q)
+    );
+  });
   const sorted = currentSort==='ranking' ? getSortedListings(list) : getSortedByMode(list);
   const featured = currentSort==='ranking'
     ? sorted.filter(l=>l.boost==='dominance'||l.boost==='growth')
@@ -4245,7 +4253,8 @@ function switchGalleryPhoto(thumb, url) {
 }
 
 function showBizProfile(id){
-  const biz=LISTINGS.find(b=>b.id===id);if(!biz)return;
+  // Coerce both sides to string so UUID strings and numeric IDs both match
+  const biz=LISTINGS.find(b=>String(b.id)===String(id));if(!biz)return;
   const fullAddress=encodeURIComponent([biz.address,biz.area,biz.city,biz.province].filter(Boolean).join(', ')||biz.area||biz.name);
   const googleMapsUrl=`https://www.google.com/maps/search/?api=1&query=${fullAddress}`;
   const boltUrl=`https://bolt.eu/en-za/ride/?destination=${fullAddress}`;
@@ -4565,13 +4574,13 @@ async function submitBusiness(){
   if(submitBtn) submitBtn.textContent = '⏳ Saving your listing...';
   let listingId = null;
   try {
-    const { data: listingData, error } = await _supa.from('listings').insert({
+    const { data: listingData, error } = await nmSupaQuery(() => _supa.from('listings').insert({
       name, owner, type: cat, area, description: desc,
       phone, boost_tier: boost, photo_url: photoUrl,
       photo_urls: JSON.stringify(photoUrls),
       status: 'pending',
       email, whatsapp: wa, city, province
-    }).select();
+    }).select());
     if(listingData && listingData[0]) listingId = listingData[0].id;
   } catch(e){ console.warn('Supabase listing save failed', e); }
 
@@ -4622,7 +4631,7 @@ async function adminAction(btn, action, listingId) {
 
   try {
     const newStatus = action === 'approve' ? 'approved' : 'rejected';
-    const { error } = await _supa.from('listings').update({ status: newStatus }).eq('id', listingId);
+    const { error } = await nmSupaQuery(() => _supa.from('listings').update({ status: newStatus }).eq('id', listingId));
     if(error) throw error;
 
     row.style.opacity = '.4';
@@ -4649,7 +4658,7 @@ async function loadPendingListings() {
   tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--white-dim);">Loading pending listings...</td></tr>';
 
   try {
-    const { data, error } = await _supa.from('listings').select('*').eq('status', 'pending').order('created_at', { ascending: false });
+    const { data, error } = await nmSupaQuery(() => _supa.from('listings').select('*').eq('status', 'pending').order('created_at', { ascending: false }));
     if(error) throw error;
 
     if(!data || data.length === 0) {
@@ -4684,7 +4693,7 @@ async function loadApprovedListings() {
   tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--white-dim);">Loading...</td></tr>';
 
   try {
-    const { data } = await _supa.from('listings').select('*').eq('status', 'approved').order('created_at', { ascending: false });
+    const { data } = await nmSupaQuery(() => _supa.from('listings').select('*').eq('status', 'approved').order('created_at', { ascending: false }));
     if(!data || data.length === 0) {
       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--white-dim);">No approved listings yet.</td></tr>';
       return;
@@ -5644,7 +5653,7 @@ function checkBizNameAvail() {
 // ──────────────────────────────────────────────────
 // BUSINESS SIGN UP
 // ──────────────────────────────────────────────────
-function handleBizSignup() {
+async function handleBizSignup() {
   const name    = document.getElementById('biz-reg-name').value.trim();
   const owner   = document.getElementById('biz-reg-owner').value.trim();
   const email   = document.getElementById('biz-reg-email').value.trim();
@@ -5655,18 +5664,35 @@ function handleBizSignup() {
   if(!validateEmail(email))                   { showAuthError('biz-signup-error','Please enter a valid email address.'); return; }
   if(!validateStrongPassword(pass,'biz-signup-error')) return;
   if(pass !== confirm)                        { showAuthError('biz-signup-error','Passwords do not match. Please try again.'); return; }
+
+  // Check local cache first (fast), then Supabase (authoritative for cross-device)
   if(NM_USERS.businesses.find(b=>b.email.toLowerCase()===email.toLowerCase())) {
     showAuthError('biz-signup-error','This email is already registered. Please log in instead.'); return;
   }
   if(NM_USERS.businesses.find(b=>b.name.toLowerCase()===name.toLowerCase())) {
     showAuthError('biz-signup-error','This business name is already taken. Please choose a different name.'); return;
   }
+  // Check Supabase — catches accounts created on other devices not yet in local cache
+  try {
+    const emailCheck = await nmSupaQuery(() => _supa.from('users').select('id').eq('role','business').ilike('email', email).limit(1));
+    if(emailCheck && emailCheck.data && emailCheck.data.length > 0) {
+      showAuthError('biz-signup-error','This email is already registered. Please log in instead.'); return;
+    }
+    const nameCheck = await nmSupaQuery(() => _supa.from('users').select('id').eq('role','business').ilike('name', name).limit(1));
+    if(nameCheck && nameCheck.data && nameCheck.data.length > 0) {
+      showAuthError('biz-signup-error','This business name is already taken. Please choose a different name.'); return;
+    }
+  } catch(e){ /* Network check failed — continue, upsert will handle conflicts */ }
 
-  const biz = { name, owner, email, password:pass, id:generateId(), joinedAt: new Date().toISOString() };
+  const biz = { name, owner, email, id:generateId(), joinedAt: new Date().toISOString() };
   NM_USERS.businesses.push(biz);
-  saveUserToSupabase({ name, email, password:pass, role:'business' });
+  // MUST await — saveUserToSupabase hashes the password before writing to Supabase.
+  // Without await, the hash is not complete before we log the user in,
+  // and login from another device will fail the password check.
+  showAuthError('biz-signup-error', 'Creating your account…');
+  await saveUserToSupabase({ name, email, password:pass, role:'business' });
   trackUser('business', name, email);
-  loginAs({ type:'business', name:biz.name, owner:biz.owner, email:biz.email, plan:'Free Listing', id:biz.id });
+  loginAs({ type:'business', name:biz.name, owner:owner, email:biz.email, plan:'Free Listing', id:biz.id });
   showAuthSuccess('biz-signup-success', '✓ Account created! Welcome, '+name+'. Redirecting to add your listing…');
   setTimeout(()=>{ closeAuth(); showPage('marketplace',()=>setTimeout(()=>showMktView('add'),200)); }, 1400);
 }
@@ -5711,7 +5737,7 @@ async function handleBizLogin() {
 // ──────────────────────────────────────────────────
 // LEARNER SIGN UP
 // ──────────────────────────────────────────────────
-function handleSubSignup() {
+async function handleSubSignup() {
   const name    = document.getElementById('sub-reg-name').value.trim();
   const email   = document.getElementById('sub-reg-email').value.trim();
   const pass    = document.getElementById('sub-reg-password').value;
@@ -5721,17 +5747,29 @@ function handleSubSignup() {
   if(!validateEmail(email))           { showAuthError('sub-signup-error','Please enter a valid email address.'); return; }
   if(!validateStrongPassword(pass,'sub-signup-error')) return;
   if(pass !== confirm)                { showAuthError('sub-signup-error','Passwords do not match. Please try again.'); return; }
-  if(NM_USERS.subscribers.find(s=>s.email.toLowerCase()===email.toLowerCase())) {
-    showAuthError('sub-signup-error','This email is already registered. Please log in instead.'); return;
-  }
 
   // Rate limiting: max 3 signups per 10 minutes per email
   const rl = nmRateLimit('sub-signup:' + email.toLowerCase(), 3, 600000);
   if (rl.blocked) { showAuthError('sub-signup-error','Too many attempts. Please wait ' + rl.waitSec + ' seconds.'); return; }
 
-  const sub = { name, email, password:pass, plan:'Free', id:generateId(), joinedAt: new Date().toISOString() };
+  // Check local cache first (fast), then Supabase (catches accounts from other devices)
+  if(NM_USERS.subscribers.find(s=>s.email.toLowerCase()===email.toLowerCase())) {
+    showAuthError('sub-signup-error','This email is already registered. Please log in instead.'); return;
+  }
+  try {
+    const emailCheck = await nmSupaQuery(() => _supa.from('users').select('id').eq('role','subscriber').ilike('email', email).limit(1));
+    if(emailCheck && emailCheck.data && emailCheck.data.length > 0) {
+      showAuthError('sub-signup-error','This email is already registered. Please log in instead.'); return;
+    }
+  } catch(e){ /* Network check failed — continue, upsert handles conflicts */ }
+
+  const sub = { name, email, plan:'Free', id:generateId(), joinedAt: new Date().toISOString() };
   NM_USERS.subscribers.push(sub);
-  saveUserToSupabase({ name, email, password:pass, role:'subscriber' });
+  // MUST await — saveUserToSupabase hashes the password asynchronously.
+  // Without await, hashing is incomplete before the user is logged in,
+  // causing login from another device to fail the password check.
+  showAuthError('sub-signup-error', 'Creating your account…');
+  await saveUserToSupabase({ name, email, password:pass, role:'subscriber' });
   trackUser('subscriber', name, email);
   loginAs({ type:'subscriber', name:sub.name, email:sub.email, plan:'Free', id:sub.id });
   showAuthSuccess('sub-signup-success', '✓ Account created! Welcome, '+name+'.');
@@ -5770,7 +5808,7 @@ async function handleSubLogin() {
 // ──────────────────────────────────────────────────
 // GUEST / EXPLORER SIGN UP
 // ──────────────────────────────────────────────────
-function handleGuestSignup() {
+async function handleGuestSignup() {
   const name     = document.getElementById('guest-name').value.trim();
   const location = document.getElementById('guest-location').value.trim();
   const pass     = document.getElementById('guest-password').value;
@@ -5779,13 +5817,24 @@ function handleGuestSignup() {
   if(!name||!location||!pass||!confirm) { showAuthError('guest-error','Please fill in all fields.'); return; }
   if(!validateStrongPassword(pass,'guest-error')) return;
   if(pass !== confirm) { showAuthError('guest-error','Passwords do not match. Please try again.'); return; }
-  if(NM_USERS.guests.find(g=>g.name.toLowerCase()===name.toLowerCase()&&g.location.toLowerCase()===location.toLowerCase())) {
-    showAuthError('guest-error','This name and location are already registered. Please log in instead.'); return;
-  }
 
-  const guest = { name, location, password:pass, id:generateId(), visitedAt: new Date().toISOString() };
+  // Check duplicate in memory first, then Supabase to be safe
+  const localDup = NM_USERS.guests.find(g=>g.name.toLowerCase()===name.toLowerCase());
+  if(localDup) { showAuthError('guest-error','This name is already registered. Please log in instead.'); return; }
+  try {
+    const result = await nmSupaQuery(() =>
+      _supa.from('users').select('id').eq('role','guest').ilike('name', name).limit(1)
+    );
+    if(result && result.data && result.data.length > 0) {
+      showAuthError('guest-error','This name is already registered. Please log in instead.'); return;
+    }
+  } catch(e){ /* If check fails, continue — save will upsert safely */ }
+
+  const guestId = generateId();
+  const guest = { name, location, password:pass, id:guestId, visitedAt: new Date().toISOString() };
   NM_USERS.guests.push(guest);
-  saveUserToSupabase({ name, email: name+'_explorer@noamark.local', password:pass, role:'guest' });
+  // Await the save so hashing completes before we proceed
+  await saveUserToSupabase({ name, email: name+'_explorer@noamark.local', password:pass, role:'guest' });
   trackUser('guest', name, location);
   loginAs({ type:'guest', name:guest.name, location:guest.location, plan:'Explorer', id:guest.id });
   showAuthSuccess('guest-success', '✓ Welcome, '+name+'! Taking you to the marketplace…');
@@ -6288,7 +6337,7 @@ async function bpSyncEnquiries() {
   try {
     const myListing = LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser.owner||currentUser.name).toLowerCase());
     if(!myListing) return;
-    const { data } = await _supa.from('enquiries').select('*').eq('listing_id', myListing.id);
+    const { data } = (await nmSupaQuery(() => _supa.from('enquiries').select('*').eq('listing_id', myListing.id))) || {};
     if(data && data.length > 0) {
       const supaEnqs = data.map(e => ({ id: e.id, name: e.customer_name, subject: e.subject, msg: e.message, status: e.status, time: e.created_at }));
       bpData.enquiries = [...supaEnqs, ...bpData.enquiries.filter(e => !supaEnqs.find(s => s.id === e.id))];
@@ -6302,7 +6351,7 @@ async function bpSyncReviews() {
   try {
     const myListing = LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser.owner||currentUser.name).toLowerCase());
     if(!myListing) return;
-    const { data } = await _supa.from('reviews').select('*').eq('listing_id', myListing.id);
+    const { data } = (await nmSupaQuery(() => _supa.from('reviews').select('*').eq('listing_id', myListing.id))) || {};
     if(data && data.length > 0) {
       const supaRevs = data.map(r => ({ id: r.id, name: r.customer_name, rating: r.rating, comment: r.comment, time: r.created_at }));
       bpData.reviews = [...supaRevs, ...bpData.reviews.filter(r => !supaRevs.find(s => s.id === r.id))];
@@ -7447,9 +7496,9 @@ function admGoPage(page) {
 async function admLoadOverview() {
   try {
     const [bizRes, userRes, enqRes] = await Promise.all([
-      _supa.from('listings').select('id,status,boost_tier'),
-      _supa.from('users').select('id,role'),
-      _supa.from('enquiries').select('id'),
+      nmSupaQuery(() => _supa.from('listings').select('id,status,boost_tier')),
+      nmSupaQuery(() => _supa.from('users').select('id,role')),
+      nmSupaQuery(() => _supa.from('enquiries').select('id')),
     ]);
     const listings = bizRes.data || [];
     const users = userRes.data || [];
@@ -7475,7 +7524,7 @@ async function admLoadOverview() {
     if(badge) { badge.textContent = pending; badge.style.display = pending > 0 ? 'inline' : 'none'; }
     set('adm-pending-count-label', pending);
 
-    const pendingRes = await _supa.from('listings').select('*').eq('status','pending').order('created_at',{ascending:false}).limit(5);
+    const pendingRes = await nmSupaQuery(() => _supa.from('listings').select('*').eq('status','pending').order('created_at',{ascending:false}).limit(5));
     const pendingData = pendingRes.data || [];
     const tbody = document.getElementById('adm-recent-pending');
     if(tbody) {
@@ -7488,7 +7537,7 @@ async function admLoadOverview() {
 
 async function admLoadApprovals() {
   try {
-    const { data } = await _supa.from('listings').select('*').order('created_at',{ascending:false});
+    const { data } = await nmSupaQuery(() => _supa.from('listings').select('*').order('created_at',{ascending:false}));
     const all = data || [];
     const pending = all.filter(l => l.status === 'pending');
     const approved = all.filter(l => l.status === 'approved');
@@ -7532,7 +7581,7 @@ async function admApproveListing(id, btn) {
   const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
   try {
-    const { error } = await _supa.from('listings').update({status:'approved'}).eq('id', id);
+    const { error } = await nmSupaQuery(() => _supa.from('listings').update({status:'approved'}).eq('id', id));
     if(error) throw error;
     // Show success feedback
     btn.textContent = '✓ Done!'; btn.style.background = '#dcfce7'; btn.style.opacity = '1';
@@ -7548,7 +7597,7 @@ async function admRejectListing(id, btn) {
   const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
   try {
-    const { error } = await _supa.from('listings').update({status:'rejected'}).eq('id', id);
+    const { error } = await nmSupaQuery(() => _supa.from('listings').update({status:'rejected'}).eq('id', id));
     if(error) throw error;
     btn.textContent = '✓ Done!'; btn.style.background = '#fee2e2'; btn.style.opacity = '1';
     setTimeout(()=>{ admLoadApprovals(); admLoadOverview(); loadListingsFromSupabase(); }, 800);
@@ -7561,7 +7610,7 @@ async function admRejectListing(id, btn) {
 
 async function admLoadRevenue() {
   try {
-    const { data } = await _supa.from('listings').select('*').eq('status','approved');
+    const { data } = await nmSupaQuery(() => _supa.from('listings').select('*').eq('status','approved'));
     const listings = data || [];
     const boosted = listings.filter(l => l.boost_tier && l.boost_tier !== 'none' && l.boost_tier !== 'free');
     const pro = boosted.filter(l => l.boost_tier === 'pro');
@@ -7590,7 +7639,7 @@ async function admLoadRevenue() {
 
 async function admLoadUsers() {
   try {
-    const { data } = await _supa.from('users').select('*').order('created_at',{ascending:false});
+    const { data } = await nmSupaQuery(() => _supa.from('users').select('*').order('created_at',{ascending:false}));
     const users = data || [];
     const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
     set('adm-users-biz', users.filter(u => u.role === 'business').length);
