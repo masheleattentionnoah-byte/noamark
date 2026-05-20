@@ -1083,10 +1083,9 @@
   .bp-ai-toast.show{transform:translateY(0);opacity:1;}
   @media(max-width:900px){.bp-sidebar{display:none;}.bp-metrics{grid-template-columns:1fr 1fr;}.bp-2col,.bp-3col,.bp-form-grid{grid-template-columns:1fr;}}
 
-  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 </style>
 <!-- Supabase SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -4022,10 +4021,9 @@ const LISTINGS = [];
 
 async function loadListingsFromSupabase() {
   try {
-    const { data, error } = await _supa.from('listings').select('*').eq('status', 'approved');
-    if(error) { console.warn('Listings error:', error); return; }
-    LISTINGS.length = 0; // Clear before reload
+    const { data } = await _supa.from('listings').select('*').eq('status', 'approved');
     if(data && data.length > 0) {
+      // Map Supabase columns to the format the site expects
       data.forEach(l => {
         LISTINGS.push({
           id: l.id,
@@ -4069,19 +4067,6 @@ function getSortedListings(list){
 function getCatLabel(cat){
   const m={food:'🍔 Food',shops:'🛒 Shops',beauty:'💇 Beauty',laundry:'🧺 Laundry',services:'🧰 Services',transport:'🚕 Transport'};
   return m[cat]||cat;
-}
-
-function showListingSkeleton() {
-  const grid = document.getElementById('mkt-listings-grid');
-  if(!grid) return;
-  grid.innerHTML = Array(6).fill(0).map(() =>
-    '<div style="background:var(--black-2);border:1px solid var(--border-soft);">' +
-    '<div style="height:180px;background:linear-gradient(90deg,var(--black-3) 25%,var(--black-2) 50%,var(--black-3) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;"></div>' +
-    '<div style="padding:16px;">' +
-    '<div style="height:14px;background:var(--black-3);margin-bottom:8px;width:70%;"></div>' +
-    '<div style="height:10px;background:var(--black-3);width:50%;"></div>' +
-    '</div></div>'
-  ).join('');
 }
 
 function renderCard(biz){
@@ -4379,34 +4364,6 @@ function validateAndContinueStep5() {
   window.scrollTo({top:400,behavior:'smooth'});
 }
 
-// ── IMAGE COMPRESSION ──
-async function compressImage(file, maxWidth=1200, quality=0.82) {
-  return new Promise(resolve => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let w = img.width, h = img.height;
-        if(w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        canvas.toBlob(blob => {
-          const result = blob && blob.size < file.size ? new File([blob], file.name, {type:'image/jpeg'}) : file;
-          resolve(result);
-        }, 'image/jpeg', quality);
-      };
-      img.onerror = () => resolve(file);
-      img.src = e.target.result;
-    };
-    reader.onerror = () => resolve(file);
-    reader.readAsDataURL(file);
-  });
-}
-
-const _compressedFiles = {};
-
 function previewMedia(input, previewId, type, maxFiles){
   const preview = document.getElementById(previewId);
   const files = Array.from(input.files).slice(0, maxFiles);
@@ -4626,38 +4583,8 @@ async function submitBusiness(){
 }
 
 // ── BOOST HANDLER ──
-function handleBoost(type, price, duration) {
-  const amounts = {Starter:'49.99', Growth:'99.99', Dominance:'199.99', Pro:'329.99'};
-  const amount = amounts[type] || price.replace('R','').split('/')[0];
-  const biz = currentUser ? currentUser.name : 'Business';
-  openBoostModal(type, amount, biz, duration);
-}
-
-function openBoostModal(planName, amount, businessName, duration) {
-  const waText = encodeURIComponent('Hi NoaMark, I want to activate the ' + planName + ' boost for ' + businessName + '. Amount: R' + amount);
-  const mailSub = encodeURIComponent('Boost Activation: ' + planName);
-  const mailBod = encodeURIComponent('Business: ' + businessName + '\nPlan: ' + planName + '\nAmount: R' + amount);
-  const existing = document.querySelector('.nm-boost-modal');
-  if(existing) existing.remove();
-  const modal = document.createElement('div');
-  modal.className = 'nm-boost-modal';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
-  modal.innerHTML =
-    '<div style="background:#111620;border:1px solid rgba(244,196,48,.3);max-width:420px;width:100%;padding:36px;position:relative;border-radius:8px;">' +
-    '<button onclick="document.querySelector(\'.nm-boost-modal\').remove()" style="position:absolute;top:12px;right:16px;background:transparent;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;line-height:1;">✕</button>' +
-    '<div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#F4C430;margin-bottom:8px;">BOOST ACTIVATION</div>' +
-    '<div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:2px;">' + planName + ' Boost</div>' +
-    '<div style="font-size:30px;font-weight:700;color:#F4C430;margin-bottom:4px;">R' + amount + '</div>' +
-    '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:24px;">' + duration + '</div>' +
-    '<div style="background:rgba(244,196,48,.05);border:1px solid rgba(244,196,48,.12);padding:16px;border-radius:6px;margin-bottom:20px;">' +
-    '<p style="font-size:12px;color:rgba(255,255,255,.7);line-height:1.7;margin:0 0 6px 0;">Send payment and reference your business name:</p>' +
-    '<p style="font-size:11px;color:rgba(255,255,255,.35);margin:0;">Ref: ' + businessName + ' — ' + planName + '</p>' +
-    '</div>' +
-    '<div style="display:flex;gap:10px;">' +
-    '<a href="mailto:noamarkinvest@gmail.com?subject=' + mailSub + '&body=' + mailBod + '" style="flex:1;padding:13px;background:rgba(244,196,48,.1);border:1px solid rgba(244,196,48,.3);color:#F4C430;text-align:center;font-size:11px;font-weight:700;text-decoration:none;border-radius:4px;letter-spacing:1px;">EMAIL</a>' +
-    '<a href="https://wa.me/27634189749?text=' + waText + '" target="_blank" style="flex:1;padding:13px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#22C55E;text-align:center;font-size:11px;font-weight:700;text-decoration:none;border-radius:4px;letter-spacing:1px;">WHATSAPP</a>' +
-    '</div></div>';
-  document.body.appendChild(modal);
+function handleBoost(type,price,duration){
+  alert('🚀 '+type+' Boost selected ('+price+' / '+duration+').\n\nTo activate: contact us at noamarkinvest@gmail.com or +27 63 418 9749 with your business name and we will set this up for you.\n\nPayment: EFT, PayFast, or SnapScan.');
 }
 
 // ── ADMIN ACTIONS ──
@@ -5163,16 +5090,8 @@ const DEVICE_FP = getDeviceFingerprint();
 
 // ── Supabase client ──
 const SUPA_URL = 'https://nfafmsuwxkkcrubinera.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mYWZtc3V3eGtrY3J1YmluZXJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4Nzc2NTYsImV4cCI6MjA5NDQ1MzY1Nn0.4VkS96XfMZ0sFKozRL4-rxonbPlCmYQ6Ade1dhmZ0eE';
-let _supa;
-try {
-  _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true }
-  });
-  console.log('Supabase initialized successfully');
-} catch(e) {
-  console.error('Supabase init failed:', e);
-}
+const SUPA_KEY = 'sb_publishable_1jDWKNHf9gfi68w9A2jfLw_v-a9wyLf';
+const _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ── Persistent user store (in-memory + Supabase backend) ──
 const NM_USERS = { businesses:[], subscribers:[], guests:[] };
@@ -5197,43 +5116,9 @@ async function saveUserToSupabase(user) {
 // Load users on startup
 loadNMUsers();
 
-// ── OFFLINE DETECTION ──
-window.addEventListener('offline', () => {
-  if(document.getElementById('nm-offline-banner')) return;
-  const b = document.createElement('div');
-  b.id = 'nm-offline-banner';
-  b.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;text-align:center;padding:10px;font-size:12px;font-weight:600;z-index:99999;';
-  b.textContent = '⚠️ You are offline. Please check your connection.';
-  document.body.prepend(b);
-});
-window.addEventListener('online', () => {
-  const b = document.getElementById('nm-offline-banner');
-  if(b) b.remove();
-  loadListingsFromSupabase();
-});
-
 // ── ADMIN CREDENTIALS ──
 const ADMIN_EMAIL = 'noamarkinvest@gmail.com';
 const ADMIN_PASSWORD = 'Noah#2026';
-
-// ── PASSWORD HASHING (SHA-256) ──
-async function hashPassword(password) {
-  try {
-    const msgBuffer = new TextEncoder().encode(password + 'noamark_salt_2026');
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
-  } catch(e) { return password; }
-}
-
-async function verifyPassword(input, stored) {
-  if(!stored) return false;
-  if(stored.length === 64) {
-    const hashed = await hashPassword(input);
-    return hashed === stored;
-  }
-  return input === stored; // legacy plain text
-}
 
 function saveNMUsers() { /* handled by Supabase now */ }
 
@@ -5419,7 +5304,7 @@ function checkBizNameAvail() {
 // ──────────────────────────────────────────────────
 // BUSINESS SIGN UP
 // ──────────────────────────────────────────────────
-async function handleBizSignup() {
+function handleBizSignup() {
   const name    = document.getElementById('biz-reg-name').value.trim();
   const owner   = document.getElementById('biz-reg-owner').value.trim();
   const email   = document.getElementById('biz-reg-email').value.trim();
@@ -5437,10 +5322,9 @@ async function handleBizSignup() {
     showAuthError('biz-signup-error','This business name is already taken. Please choose a different name.'); return;
   }
 
-  const hashedPass = await hashPassword(pass);
-  const biz = { name, owner, email, password:hashedPass, id:generateId(), joinedAt: new Date().toISOString() };
+  const biz = { name, owner, email, password:pass, id:generateId(), joinedAt: new Date().toISOString() };
   NM_USERS.businesses.push(biz);
-  saveUserToSupabase({ name, email, password:hashedPass, role:'business' });
+  saveUserToSupabase({ name, email, password:pass, role:'business' });
   trackUser('business', name, email);
   loginAs({ type:'business', name:biz.name, owner:biz.owner, email:biz.email, plan:'Free Listing', id:biz.id });
   showAuthSuccess('biz-signup-success', '✓ Account created! Welcome, '+name+'. Redirecting to add your listing…');
@@ -5472,8 +5356,7 @@ async function handleBizLogin() {
     const bizByName = data && data[0];
     if(!bizByName) { showAuthError('biz-login-error','\u274C No business account found with that name. Please check the spelling or create a new account.'); return; }
     if(bizByName.email.toLowerCase() !== email.toLowerCase()) { showAuthError('biz-login-error','\u274C That email does not match. Please check your email.'); return; }
-    const bizPassOk = await verifyPassword(pass, bizByName.password);
-    if(!bizPassOk) { showAuthError('biz-login-error','\u274C Incorrect password. Please try again.'); return; }
+    if(bizByName.password !== pass) { showAuthError('biz-login-error','\u274C Incorrect password. Please try again.'); return; }
     loginAs({ type:'business', name:bizByName.name, owner:bizByName.name, email:bizByName.email, plan:'Business', id:bizByName.id });
     showAuthSuccess('biz-login-success', '\u2713 Welcome back, '+bizByName.name+'!');
     setTimeout(closeAuth, 900);
@@ -5483,7 +5366,7 @@ async function handleBizLogin() {
 // ──────────────────────────────────────────────────
 // LEARNER SIGN UP
 // ──────────────────────────────────────────────────
-async function handleSubSignup() {
+function handleSubSignup() {
   const name    = document.getElementById('sub-reg-name').value.trim();
   const email   = document.getElementById('sub-reg-email').value.trim();
   const pass    = document.getElementById('sub-reg-password').value;
@@ -5497,10 +5380,9 @@ async function handleSubSignup() {
     showAuthError('sub-signup-error','This email is already registered. Please log in instead.'); return;
   }
 
-  const hashedPass = await hashPassword(pass);
-  const sub = { name, email, password:hashedPass, plan:'Free', id:generateId(), joinedAt: new Date().toISOString() };
+  const sub = { name, email, password:pass, plan:'Free', id:generateId(), joinedAt: new Date().toISOString() };
   NM_USERS.subscribers.push(sub);
-  saveUserToSupabase({ name, email, password:hashedPass, role:'subscriber' });
+  saveUserToSupabase({ name, email, password:pass, role:'subscriber' });
   trackUser('subscriber', name, email);
   loginAs({ type:'subscriber', name:sub.name, email:sub.email, plan:'Free', id:sub.id });
   showAuthSuccess('sub-signup-success', '✓ Account created! Welcome, '+name+'.');
@@ -5524,8 +5406,7 @@ async function handleSubLogin() {
     const subByName = data && data[0];
     if(!subByName) { showAuthError('sub-login-error','\u274C No learner account found with that name. Please check your name or sign up.'); return; }
     if(subByName.email.toLowerCase() !== email.toLowerCase()) { showAuthError('sub-login-error','\u274C That email does not match. Please check your email.'); return; }
-    const subPassOk = await verifyPassword(pass, subByName.password);
-    if(!subPassOk) { showAuthError('sub-login-error','\u274C Incorrect password. Please try again.'); return; }
+    if(subByName.password !== pass) { showAuthError('sub-login-error','\u274C Incorrect password. Please try again.'); return; }
     loginAs({ type:'subscriber', name:subByName.name, email:subByName.email, plan:subByName.plan||'Free', id:subByName.id });
     showAuthSuccess('sub-login-success', '\u2713 Welcome back, '+subByName.name+'!');
     setTimeout(closeAuth, 900);
@@ -5572,8 +5453,7 @@ async function handleGuestLogin() {
     const { data } = await _supa.from('users').select('*').eq('role','guest').ilike('name', loginName).limit(1);
     const guestByName = data && data[0];
     if(!guestByName) { showAuthError('guest-login-error','\u274C No Explorer account found with that name. Please check your name or register.'); return; }
-    const guestPassOk = await verifyPassword(pass, guestByName.password);
-    if(!guestPassOk) { showAuthError('guest-login-error','\u274C Incorrect password. Please try again.'); return; }
+    if(guestByName.password !== pass) { showAuthError('guest-login-error','\u274C Incorrect password. Please try again.'); return; }
     loginAs({ type:'guest', name:guestByName.name, location:guestByName.email||loginLoc, plan:'Explorer', id:guestByName.id });
     showAuthSuccess('guest-login-success', '\u2713 Welcome back, '+guestByName.name+'!');
     setTimeout(()=>{ closeAuth(); showPage('marketplace'); }, 900);
@@ -5613,12 +5493,6 @@ function loginAs(user) {
     badge.textContent=user.plan||'Free';badge.className='nav-user-badge badge-subscriber';
   } else {
     badge.textContent='Explorer';badge.className='nav-user-badge badge-guest';
-  }
-
-  // Restore chat for non-admin users
-  if(user.type !== 'admin') {
-    const chatFab = document.getElementById('chat-fab');
-    if(chatFab) chatFab.style.display = '';
   }
 
   // Update home page to role-specific view
@@ -5803,9 +5677,6 @@ document.addEventListener('click', function() {
 });
 
 function handleLogout() {
-  // Restore chat fab for next user
-  const chatFab = document.getElementById('chat-fab');
-  if(chatFab) chatFab.style.display = '';
   currentUser = null;
   clearSession();
   document.getElementById('nav-auth-area').style.display = 'flex';
@@ -6607,9 +6478,7 @@ function bpRenderSettings() {
 
 // ── BOOST SELECT ──
 function bpSelectBoost(plan, price) {
-  const durations = {Starter:'3 days', Growth:'7 days', Dominance:'14 days', Pro:'Monthly'};
-  const amounts = {Starter:'49.99', Growth:'99.99', Dominance:'199.99', Pro:'329.99'};
-  openBoostModal(plan, amounts[plan] || '49.99', currentUser?.name || 'Business', durations[plan] || '');
+  alert('⭐ '+plan+' Boost selected ('+price+').\n\nTo activate, contact the NoaMark team:\n✉ noamarkinvest@gmail.com\n📞 +27 63 418 9749\n\nMention your business name and selected plan. Payment via EFT, PayFast, or SnapScan.');
 }
 
 // ── TOAST ──
@@ -6629,238 +6498,69 @@ bpLoad();
 <!-- ════════════════════════════════════
      NOAMARK ADMIN DASHBOARD
 ════════════════════════════════════ -->
-<div id="page-admin" style="display:none;min-height:100vh;background:#0A0D0F;padding-top:70px;">
+<div id="page-admin" style="display:none;min-height:100vh;background:#f0f2f5;padding-top:70px;">
   <style>
-    /* ══ NOAMARK ADMIN DASHBOARD ══ */
-    #page-admin { background:#0A0D0F !important; font-family:'Poppins',sans-serif; }
-
-    /* Shell */
-    .adm-shell { display:flex; min-height:calc(100vh - 70px); }
-
-    /* ── DESKTOP SIDEBAR ── */
-    .adm-sidebar {
-      width:220px; flex-shrink:0;
-      background:#080B0E;
-      border-right:1px solid rgba(244,196,48,.1);
-      display:flex; flex-direction:column;
-      position:sticky; top:70px;
-      height:calc(100vh - 70px);
-      overflow-y:auto;
-    }
-    .adm-sb-head {
-      padding:24px 20px 18px;
-      border-bottom:1px solid rgba(244,196,48,.08);
-    }
-    .adm-sb-logo { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
-    .adm-sb-logo-mark {
-      width:32px; height:32px;
-      background:linear-gradient(135deg,#F4C430,#C9A227);
-      display:flex; align-items:center; justify-content:center;
-      font-size:13px; font-weight:900; color:#000;
-      border-radius:6px; flex-shrink:0;
-    }
-    .adm-sb-brand { font-size:14px; font-weight:700; color:#FFFFFF; }
-    .adm-sb-title { font-size:9px; color:rgba(244,196,48,.5); letter-spacing:2px; text-transform:uppercase; }
-    .adm-admin-pill {
-      display:inline-flex; align-items:center; gap:5px;
-      background:rgba(244,196,48,.1); border:1px solid rgba(244,196,48,.25);
-      color:#F4C430; font-size:9px; font-weight:700;
-      letter-spacing:1.5px; text-transform:uppercase;
-      padding:3px 10px; border-radius:20px;
-    }
-    .adm-nav-sec {
-      font-size:9px; font-weight:700; letter-spacing:2px;
-      text-transform:uppercase; color:rgba(255,255,255,.25);
-      padding:16px 20px 6px;
-    }
-    .adm-nav-item {
-      display:flex !important; align-items:center; gap:10px;
-      padding:12px 20px;
-      font-size:13px; font-weight:500;
-      color:#AAAAAA !important;
-      cursor:pointer;
-      transition:all .2s;
-      border-left:3px solid transparent;
-    }
-    .adm-nav-item:hover { color:#FFFFFF !important; background:rgba(255,255,255,.04); }
-    .adm-nav-item.active { color:#F4C430 !important; background:rgba(244,196,48,.07); border-left-color:#F4C430; font-weight:600; }
-    .adm-nav-icon { font-size:16px; width:20px; text-align:center; }
-    .adm-nav-label { flex:1; }
-    .adm-nav-badge {
-      background:#ef4444; color:#fff;
-      font-size:9px; font-weight:700;
-      padding:1px 6px; border-radius:10px;
-    }
-    .adm-signout {
-      margin-top:auto;
-      padding:16px 20px;
-      border-top:1px solid rgba(255,255,255,.05);
-    }
-    .adm-signout-btn {
-      display:flex; align-items:center; gap:10px;
-      width:100%; padding:11px 14px;
-      background:rgba(239,68,68,.07);
-      border:1px solid rgba(239,68,68,.2);
-      border-radius:6px;
-      color:rgba(239,68,68,.8) !important;
-      font-size:12px; font-weight:600;
-      cursor:pointer; transition:all .2s;
-    }
-    .adm-signout-btn:hover { background:rgba(239,68,68,.15); color:#ef4444 !important; }
-
-    /* ── MAIN CONTENT ── */
-    .adm-main { flex:1; padding:32px; background:#0A0D0F; overflow-y:auto; min-width:0; }
-    .adm-topbar {
-      display:flex; align-items:flex-start; justify-content:space-between;
-      margin-bottom:28px; padding-bottom:20px;
-      border-bottom:1px solid rgba(244,196,48,.07);
-    }
-    .adm-page-title { font-size:22px; font-weight:700; color:#F9FAFB; }
-    .adm-page-sub { font-size:12px; color:rgba(255,255,255,.3); margin-top:4px; }
-
-    /* ── STATS ── */
-    .adm-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px; }
-    .adm-stat {
-      background:#111620; border:1px solid rgba(244,196,48,.08);
-      padding:20px; border-radius:8px; transition:border-color .2s;
-    }
-    .adm-stat:hover { border-color:rgba(244,196,48,.25); }
-    .adm-stat-label { font-size:9px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:rgba(255,255,255,.3); margin-bottom:12px; }
-    .adm-stat-val { font-size:34px; font-weight:700; color:#F9FAFB; line-height:1; margin-bottom:5px; }
-    .adm-stat-val.gold { color:#F4C430; }
-    .adm-stat-val.green { color:#22C55E; }
-    .adm-stat-val.red { color:#ef4444; }
-    .adm-stat-sub { font-size:11px; color:rgba(255,255,255,.25); }
-
-    /* ── CARDS ── */
-    .adm-card { background:#111620; border:1px solid rgba(244,196,48,.07); border-radius:8px; padding:24px; margin-bottom:16px; }
-    .adm-card-title {
-      font-size:13px; font-weight:700; color:#F9FAFB;
-      margin-bottom:18px; display:flex; align-items:center; justify-content:space-between;
-      padding-bottom:14px; border-bottom:1px solid rgba(244,196,48,.06);
-    }
-
-    /* ── TABLE ── */
-    .adm-table { width:100%; border-collapse:collapse; }
-    .adm-table th {
-      padding:11px 14px; text-align:left;
-      font-size:9px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;
-      color:rgba(255,255,255,.25); border-bottom:1px solid rgba(244,196,48,.08); background:#0A0D0F;
-    }
-    .adm-table td { padding:13px 14px; font-size:12px; color:rgba(255,255,255,.65); border-bottom:1px solid rgba(255,255,255,.03); }
-    .adm-table tr:hover td { background:rgba(244,196,48,.03); }
-    .adm-table .biz-name { color:#F9FAFB; font-weight:600; }
-
-    /* ── BUTTONS ── */
-    .adm-btn { font-size:10px; font-weight:700; padding:6px 13px; border:none; cursor:pointer; transition:all .18s; border-radius:4px; }
-    .adm-btn-approve { background:rgba(34,197,94,.12); color:#22C55E; border:1px solid rgba(34,197,94,.25); }
-    .adm-btn-approve:hover { background:rgba(34,197,94,.22); }
-    .adm-btn-reject { background:rgba(239,68,68,.1); color:#ef4444; border:1px solid rgba(239,68,68,.2); }
-    .adm-btn-reject:hover { background:rgba(239,68,68,.18); }
-    .adm-btn-refresh {
-      font-size:11px; font-weight:600; color:#C9A227;
-      background:rgba(244,196,48,.06); border:1px solid rgba(244,196,48,.2);
-      padding:7px 16px; cursor:pointer; border-radius:4px; transition:all .18s;
-    }
-    .adm-btn-refresh:hover { background:rgba(244,196,48,.12); color:#F4C430; }
-
-    /* ── BADGES ── */
-    .adm-badge { font-size:9px; font-weight:700; padding:3px 9px; border-radius:20px; }
-    .adm-badge-pending { background:rgba(251,191,36,.12); color:#fbbf24; border:1px solid rgba(251,191,36,.2); }
-    .adm-badge-approved { background:rgba(34,197,94,.12); color:#22C55E; border:1px solid rgba(34,197,94,.2); }
-    .adm-badge-rejected { background:rgba(239,68,68,.1); color:#ef4444; border:1px solid rgba(239,68,68,.15); }
-    .adm-badge-pro { background:rgba(244,196,48,.1); color:#F4C430; border:1px solid rgba(244,196,48,.2); }
-
-    .adm-page { display:none; }
-    .adm-page.active { display:block; }
-    .adm-empty { text-align:center; padding:40px; color:rgba(255,255,255,.2); font-size:13px; }
-
-    /* ══ MOBILE ══ */
-    @media(max-width:900px) {
-      .adm-shell { flex-direction:column; }
-
-      /* Bottom navigation bar */
-      .adm-sidebar {
-        position:fixed !important;
-        bottom:0 !important; left:0 !important; right:0 !important;
-        top:auto !important;
-        width:100% !important;
-        height:58px !important;
-        flex-direction:row !important;
-        overflow-x:auto !important;
-        overflow-y:hidden !important;
-        -webkit-overflow-scrolling:touch;
-        scrollbar-width:none;
-        border-right:none !important;
-        border-top:1px solid rgba(244,196,48,.2) !important;
-        z-index:9999;
-      }
-      .adm-sidebar::-webkit-scrollbar { display:none; }
-
-      /* Hide desktop-only elements */
-      .adm-sb-head { display:none !important; }
-      .adm-nav-sec { display:none !important; }
-
-      /* Signout as tab */
-      .adm-signout {
-        display:flex !important;
-        margin:0 !important; padding:0 !important;
-        border:none !important;
-        flex-shrink:0;
-      }
-      .adm-signout-btn {
-        display:flex !important;
-        flex-direction:column !important;
-        align-items:center !important;
-        justify-content:center !important;
-        gap:3px !important;
-        width:auto !important;
-        min-width:64px !important;
-        height:58px !important;
-        padding:0 12px !important;
-        border-radius:0 !important;
-        border:none !important;
-        border-top:2px solid rgba(239,68,68,.4) !important;
-        background:rgba(239,68,68,.06) !important;
-        color:rgba(239,68,68,.8) !important;
-        font-size:9px !important;
-        font-weight:700 !important;
-        white-space:nowrap;
-        flex-shrink:0;
-      }
-
-      /* Nav items as tabs */
-      .adm-nav-item {
-        flex-direction:column !important;
-        align-items:center !important;
-        justify-content:center !important;
-        gap:3px !important;
-        padding:0 12px !important;
-        height:58px !important;
-        min-width:64px !important;
-        font-size:9px !important;
-        font-weight:600 !important;
-        border-left:none !important;
-        border-top:2px solid transparent !important;
-        white-space:nowrap;
-        flex-shrink:0;
-      }
-      .adm-nav-item.active {
-        border-left:none !important;
-        border-top:2px solid #F4C430 !important;
-        background:rgba(244,196,48,.06) !important;
-      }
-      .adm-nav-icon { font-size:18px !important; }
-      .adm-nav-badge { position:absolute; top:6px; right:4px; font-size:8px; }
-
-      /* Main content */
-      .adm-main { padding:20px 14px 74px; }
-      .adm-topbar { flex-direction:column; gap:10px; margin-bottom:20px; }
-      .adm-page-title { font-size:20px; }
-      .adm-stats { grid-template-columns:1fr 1fr; gap:10px; }
-      .adm-stat { padding:16px 14px; }
-      .adm-stat-val { font-size:26px; }
-      .adm-card { padding:18px 14px; }
+    /* ── ADMIN DASHBOARD — Professional Light-Dark Theme ── */
+    #page-admin { background:#f0f2f5 !important; }
+    .adm-shell{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 70px);}
+    .adm-sidebar{background:#1a1f2c;padding:0;position:sticky;top:70px;height:calc(100vh - 70px);overflow-y:auto;display:flex;flex-direction:column;box-shadow:2px 0 8px rgba(0,0,0,.08);}
+    .adm-sb-head{padding:24px 20px 18px;border-bottom:1px solid rgba(255,255,255,.08);}
+    .adm-sb-logo{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+    .adm-sb-logo-dot{width:8px;height:8px;background:#d4af37;border-radius:50%;}
+    .adm-sb-tag{font-size:14px;font-weight:700;color:#fff;letter-spacing:.3px;}
+    .adm-sb-title{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;}
+    .adm-nav-sec{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.25);padding:18px 20px 6px;}
+    .adm-nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:12px;font-weight:500;color:rgba(255,255,255,.55);cursor:pointer;transition:all .2s;border-left:3px solid transparent;margin:1px 0;}
+    .adm-nav-item:hover{color:#fff;background:rgba(255,255,255,.06);}
+    .adm-nav-item.active{color:#d4af37;background:rgba(212,175,55,.1);border-left-color:#d4af37;font-weight:600;}
+    .adm-nav-badge{background:#ef4444;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto;}
+    .adm-main{padding:28px 32px;overflow-y:auto;background:#f0f2f5;}
+    .adm-topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;}
+    .adm-page-title{font-size:22px;font-weight:700;color:#111827;line-height:1.2;}
+    .adm-page-sub{font-size:12px;color:#6b7280;margin-top:4px;}
+    .adm-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+    .adm-stat{background:#fff;border:1px solid #e5e7eb;padding:20px 24px;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.05);transition:box-shadow .2s;}
+    .adm-stat:hover{box-shadow:0 4px 12px rgba(0,0,0,.08);}
+    .adm-stat-label{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9ca3af;margin-bottom:10px;}
+    .adm-stat-val{font-size:32px;font-weight:700;color:#111827;line-height:1;margin-bottom:4px;}
+    .adm-stat-val.gold{color:#d4af37;}
+    .adm-stat-val.green{color:#16a34a;}
+    .adm-stat-val.red{color:#dc2626;}
+    .adm-stat-sub{font-size:11px;color:#9ca3af;}
+    .adm-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:24px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+    .adm-card-title{font-size:13px;font-weight:700;color:#111827;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;}
+    .adm-table{width:100%;border-collapse:collapse;}
+    .adm-table th{padding:10px 14px;text-align:left;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#9ca3af;border-bottom:2px solid #f3f4f6;background:#f9fafb;}
+    .adm-table td{padding:12px 14px;font-size:12px;color:#374151;border-bottom:1px solid #f3f4f6;}
+    .adm-table tr:hover td{background:#fffbeb;}
+    .adm-btn{font-size:10px;font-weight:700;letter-spacing:.5px;padding:5px 12px;border:none;cursor:pointer;transition:all .2s;border-radius:4px;}
+    .adm-btn-approve{background:#dcfce7;color:#16a34a;border:1px solid #bbf7d0;}
+    .adm-btn-approve:hover{background:#bbf7d0;}
+    .adm-btn-reject{background:#fee2e2;color:#dc2626;border:1px solid #fecaca;}
+    .adm-btn-reject:hover{background:#fecaca;}
+    .adm-btn-refresh{font-size:10px;color:#d4af37;background:#fff;border:1px solid #d4af37;padding:6px 14px;cursor:pointer;border-radius:4px;transition:all .2s;font-weight:600;}
+    .adm-btn-refresh:hover{background:#fffbeb;}
+    .adm-badge{font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;}
+    .adm-badge-pending{background:#fef3c7;color:#d97706;}
+    .adm-badge-approved{background:#dcfce7;color:#16a34a;}
+    .adm-badge-rejected{background:#fee2e2;color:#dc2626;}
+    .adm-badge-pro{background:#fef3c7;color:#d4af37;}
+    .adm-page{display:none;}
+    .adm-page.active{display:block;}
+    .adm-empty{text-align:center;padding:40px;color:#9ca3af;font-size:13px;}
+    @media(max-width:900px){
+      .adm-shell{grid-template-columns:1fr;}
+      .adm-sidebar{position:fixed;bottom:0;top:auto;height:60px;width:100%;flex-direction:row;border-right:none;border-top:2px solid rgba(212,175,55,.3);z-index:1000;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;}
+      .adm-sb-head{display:none;}
+      .adm-nav-sec{display:none;}
+      .adm-nav-item{padding:0 14px;border-left:none;border-top:3px solid transparent;border-bottom:none;flex-direction:column;gap:3px;font-size:9px;font-weight:600;min-width:70px;max-width:80px;justify-content:center;align-items:center;height:60px;white-space:nowrap;flex-shrink:0;}
+      .adm-nav-item.active{border-left:none;border-top-color:#d4af37;color:#d4af37;background:rgba(212,175,55,.08);}
+      .adm-nav-badge{position:absolute;top:8px;right:8px;margin:0;}
+      .adm-main{padding:16px;padding-bottom:76px;}
+      .adm-stats{grid-template-columns:1fr 1fr;gap:10px;}
+      .adm-stat{padding:16px 18px;}
+      .adm-stat-val{font-size:26px;}
+      .adm-topbar{flex-direction:column;gap:12px;margin-bottom:20px;}
     }
   </style>
 
@@ -6868,26 +6568,20 @@ bpLoad();
     <!-- SIDEBAR -->
     <div class="adm-sidebar">
       <div class="adm-sb-head">
-        <div class="adm-sb-logo">
-          <div class="adm-sb-logo-mark">NM</div>
-          <div>
-            <div class="adm-sb-brand">NoaMark</div>
-            <div class="adm-sb-title">Admin Console</div>
-          </div>
-        </div>
-        <div class="adm-admin-pill">Super Admin</div>
+        <div class="adm-sb-tag">NoaMark</div>
+        <div class="adm-sb-title">Admin Dashboard</div>
+        <div class="adm-sb-sub">noamarkinvest@gmail.com</div>
       </div>
-      <nav style="flex:1;display:contents;">
+      <nav style="flex:1;">
         <div class="adm-nav-sec">Main</div>
-        <div class="adm-nav-item active" onclick="admGoPage('overview')"><span class="adm-nav-icon">📊</span><span class="adm-nav-label">Overview</span></div>
-        <div class="adm-nav-item" onclick="admGoPage('approvals')"><span class="adm-nav-icon">🏪</span><span class="adm-nav-label">Businesses</span><span class="adm-nav-badge" id="adm-pending-badge" style="display:none;">0</span></div>
-        <div class="adm-nav-item" onclick="admGoPage('revenue')"><span class="adm-nav-icon">💰</span><span class="adm-nav-label">Revenue</span></div>
+        <div class="adm-nav-item active" onclick="admGoPage('overview')">📊 Overview</div>
+        <div class="adm-nav-item" onclick="admGoPage('approvals')">🏪 Businesses <span class="adm-nav-badge" id="adm-pending-badge" style="display:none;">0</span></div>
+        <div class="adm-nav-item" onclick="admGoPage('revenue')">💰 Revenue</div>
         <div class="adm-nav-sec">Platform</div>
-        <div class="adm-nav-item" onclick="admGoPage('users')"><span class="adm-nav-icon">👥</span><span class="adm-nav-label">Users</span></div>
-        <div class="adm-nav-item" onclick="admGoPage('analytics')"><span class="adm-nav-icon">📈</span><span class="adm-nav-label">Analytics</span></div>
-        <div class="adm-signout">
-          <div class="adm-signout-btn" onclick="handleLogout()">🚪 Sign Out of Admin</div>
-        </div>
+        <div class="adm-nav-item" onclick="admGoPage('users')">👥 Users</div>
+        <div class="adm-nav-item" onclick="admGoPage('analytics')">📈 Analytics</div>
+        <div class="adm-nav-sec">Account</div>
+        <div class="adm-nav-item" onclick="handleLogout()">🚪 Sign Out</div>
       </nav>
     </div>
 
@@ -7148,26 +6842,11 @@ bpLoad();
 // ════════════════════════════════════
 
 function showAdminDashboard() {
-  // Hide all public pages
   document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
   ['home','marketplace','opportunities','learning','videos','plans','portal','subscribe','dashboard'].forEach(id => {
     const el = document.getElementById('page-' + id) || document.getElementById(id + '-page');
     if(el) el.style.display = 'none';
   });
-
-  // Hide public navigation items
-  ['home','marketplace','opportunities','learning','videos','plans'].forEach(item => {
-    const el = document.getElementById('nav-item-' + item);
-    if(el) el.style.display = 'none';
-  });
-
-  // Hide chat
-  const chatFab = document.getElementById('chat-fab');
-  const chatWin = document.getElementById('chat-window');
-  if(chatFab) chatFab.style.display = 'none';
-  if(chatWin) chatWin.style.display = 'none';
-
-  // Show admin page
   const admEl = document.getElementById('page-admin');
   if(admEl) admEl.style.display = 'block';
   window.scrollTo(0, 0);
@@ -7191,23 +6870,12 @@ function admGoPage(page) {
 }
 
 async function admLoadOverview() {
-  // Show loading state in stats
-  ['adm-stat-biz','adm-stat-live','adm-stat-pending','adm-stat-users',
-   'adm-stat-explorers','adm-stat-learners','adm-stat-boosted','adm-stat-enquiries'].forEach(id => {
-    const el = document.getElementById(id);
-    if(el) el.textContent = '...';
-  });
-
   try {
     const [bizRes, userRes, enqRes] = await Promise.all([
       _supa.from('listings').select('id,status,boost_tier'),
       _supa.from('users').select('id,role'),
       _supa.from('enquiries').select('id'),
     ]);
-
-    if(bizRes.error) console.warn('Listings error:', bizRes.error);
-    if(userRes.error) console.warn('Users error:', userRes.error);
-
     const listings = bizRes.data || [];
     const users = userRes.data || [];
     const enquiries = enqRes.data || [];
@@ -7218,7 +6886,7 @@ async function admLoadOverview() {
     const explorers = users.filter(u => u.role === 'guest').length;
     const learners = users.filter(u => u.role === 'subscriber').length;
 
-    const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = String(val); };
+    const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
     set('adm-stat-biz', businesses);
     set('adm-stat-live', live);
     set('adm-stat-pending', pending);
@@ -7229,38 +6897,18 @@ async function admLoadOverview() {
     set('adm-stat-enquiries', enquiries.length);
 
     const badge = document.getElementById('adm-pending-badge');
-    if(badge) { badge.textContent = String(pending); badge.style.display = pending > 0 ? 'inline' : 'none'; }
-    const cl = document.getElementById('adm-pending-count-label');
-    if(cl) cl.textContent = String(pending);
+    if(badge) { badge.textContent = pending; badge.style.display = pending > 0 ? 'inline' : 'none'; }
+    set('adm-pending-count-label', pending);
 
     const pendingRes = await _supa.from('listings').select('*').eq('status','pending').order('created_at',{ascending:false}).limit(5);
     const pendingData = pendingRes.data || [];
     const tbody = document.getElementById('adm-recent-pending');
     if(tbody) {
-      if(pendingData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="adm-empty">✅ No pending listings!</td></tr>';
-      } else {
-        tbody.innerHTML = pendingData.map(l =>
-          '<tr>' +
-          '<td style="font-weight:600;color:#fff;">' + (l.name||'—') + '</td>' +
-          '<td>' + (l.owner||'—') + '</td>' +
-          '<td>' + (l.type||'—') + '</td>' +
-          '<td>' + (l.area||'—') + '</td>' +
-          '<td>' +
-          '<button class="adm-btn adm-btn-approve" onclick="admApproveListing('' + l.id + '',this)">✓ Approve</button> ' +
-          '<button class="adm-btn adm-btn-reject" onclick="admRejectListing('' + l.id + '',this)">✗ Reject</button>' +
-          '</td></tr>'
-        ).join('');
-      }
+      tbody.innerHTML = pendingData.length === 0
+        ? '<tr><td colspan="5" class="adm-empty">✅ No pending listings!</td></tr>'
+        : pendingData.map(l => `<tr><td style="font-weight:600;color:#fff;">${l.name}</td><td>${l.owner||'—'}</td><td>${l.type||'—'}</td><td>${l.area||'—'}</td><td><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${l.id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${l.id}',this)">✗ Reject</button></td></tr>`).join('');
     }
-  } catch(e) {
-    console.error('Overview load failed:', e);
-    ['adm-stat-biz','adm-stat-live','adm-stat-pending','adm-stat-users',
-     'adm-stat-explorers','adm-stat-learners','adm-stat-boosted','adm-stat-enquiries'].forEach(id => {
-      const el = document.getElementById(id);
-      if(el) el.textContent = 'ERR';
-    });
-  }
+  } catch(e) { console.warn('Overview load failed', e); }
 }
 
 async function admLoadApprovals() {
