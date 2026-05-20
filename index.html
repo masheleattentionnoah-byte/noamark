@@ -5419,7 +5419,7 @@ function checkBizNameAvail() {
 // ──────────────────────────────────────────────────
 // BUSINESS SIGN UP
 // ──────────────────────────────────────────────────
-function handleBizSignup() {
+async function handleBizSignup() {
   const name    = document.getElementById('biz-reg-name').value.trim();
   const owner   = document.getElementById('biz-reg-owner').value.trim();
   const email   = document.getElementById('biz-reg-email').value.trim();
@@ -5483,7 +5483,7 @@ async function handleBizLogin() {
 // ──────────────────────────────────────────────────
 // LEARNER SIGN UP
 // ──────────────────────────────────────────────────
-function handleSubSignup() {
+async function handleSubSignup() {
   const name    = document.getElementById('sub-reg-name').value.trim();
   const email   = document.getElementById('sub-reg-email').value.trim();
   const pass    = document.getElementById('sub-reg-password').value;
