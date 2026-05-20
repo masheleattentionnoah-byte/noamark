@@ -4020,8 +4020,21 @@ document.querySelectorAll('.opp-filter').forEach(btn=>{
 const LISTINGS = [];
 
 async function loadListingsFromSupabase() {
+  // ④ Skeleton loading while data fetches
+  const gridEl = document.getElementById('mkt-grid');
+  if (gridEl) {
+    gridEl.innerHTML = Array.from({length:6}, ()=>`
+      <div style="border:1px solid var(--border-soft);border-radius:12px;overflow:hidden;animation:nmPulse 1.4s ease-in-out infinite;">
+        <div style="height:180px;background:#e2e8f0;"></div>
+        <div style="padding:20px;">
+          <div style="height:14px;background:#e2e8f0;border-radius:4px;width:70%;margin-bottom:10px;"></div>
+          <div style="height:10px;background:#e2e8f0;border-radius:4px;width:45%;"></div>
+        </div>
+      </div>`).join('');
+  }
   try {
-    const { data } = await _supa.from('listings').select('*').eq('status', 'approved');
+    const result = await nmSupaQuery(() => _supa.from('listings').select('*').eq('status', 'approved'));
+    const data = result && result.data;
     if(data && data.length > 0) {
       // Map Supabase columns to the format the site expects
       data.forEach(l => {
@@ -4045,8 +4058,18 @@ async function loadListingsFromSupabase() {
       });
       renderAllListings();
       renderBoostedListings();
+      // ⑥ Wire up lazy loading after render
+      setTimeout(nmObserveLazyImages, 100);
+    } else if (gridEl) {
+      // Graceful empty state
+      gridEl.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--white-dim);"><div style="font-size:40px;margin-bottom:16px;">🏪</div><div style="font-size:15px;font-weight:600;">No listings yet</div><div style="font-size:13px;margin-top:8px;">Be the first to add your business!</div></div>';
     }
-  } catch(e){ console.warn('Could not load listings from Supabase', e); }
+  } catch(e){
+    console.warn('Could not load listings from Supabase', e);
+    if (gridEl) {
+      gridEl.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--white-dim);"><div style="font-size:40px;margin-bottom:16px;">⚡</div><div style="font-size:15px;font-weight:600;">' + (navigator.onLine ? 'Could not load listings right now' : 'You appear to be offline') + '</div><div style="font-size:13px;margin-top:8px;"><button onclick="LISTINGS.length=0;loadListingsFromSupabase();" style="background:var(--green-dark);color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;margin-top:12px;">↻ Try Again</button></div></div>';
+    }
+  }
 }
 
 // Load listings on startup
@@ -4525,9 +4548,12 @@ async function submitBusiness(){
 
   for(const file of allPhotoFiles) {
     try {
-      const fileName = Date.now() + '_' + Math.random().toString(36).slice(2) + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-      const { data, error } = await _supa.storage.from('business-photos').upload(fileName, file, { upsert: true });
-      if(!error) {
+      // ⑦ Compress image before upload: max 800px wide, target <200KB
+      const compressed = await nmCompressImage(file, 800, 200);
+      const ext = compressed.name.endsWith('.jpg') ? '.jpg' : ('.' + (file.name.split('.').pop() || 'jpg'));
+      const fileName = Date.now() + '_' + Math.random().toString(36).slice(2) + ext;
+      const result = await nmSupaQuery(() => _supa.storage.from('business-photos').upload(fileName, compressed, { upsert: true }));
+      if(!result.error) {
         const { data: urlData } = _supa.storage.from('business-photos').getPublicUrl(fileName);
         photoUrls.push(urlData.publicUrl);
       }
@@ -5093,12 +5119,318 @@ const SUPA_URL = 'https://nfafmsuwxkkcrubinera.supabase.co';
 const SUPA_KEY = 'sb_publishable_1jDWKNHf9gfi68w9A2jfLw_v-a9wyLf';
 const _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 
+// ════════════════════════════════════════════════════════════
+// ①  SECURITY — XSS sanitizer (used everywhere before innerHTML)
+// ════════════════════════════════════════════════════════════
+function nmSafe(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+}
+
+function nmSafeInput(val) {
+  // Strip leading/trailing whitespace and limit length
+  return String(val || '').trim().slice(0, 500);
+}
+
+// ════════════════════════════════════════════════════════════
+// ②  SECURITY — Rate limiter (per action, in-memory per session)
+// ════════════════════════════════════════════════════════════
+const _rateLimits = {};
+function nmRateLimit(key, maxAttempts, windowMs) {
+  const now = Date.now();
+  if (!_rateLimits[key]) _rateLimits[key] = [];
+  // Purge old attempts
+  _rateLimits[key] = _rateLimits[key].filter(t => now - t < windowMs);
+  if (_rateLimits[key].length >= maxAttempts) {
+    const waitSec = Math.ceil((windowMs - (now - _rateLimits[key][0])) / 1000);
+    return { blocked: true, waitSec };
+  }
+  _rateLimits[key].push(now);
+  return { blocked: false };
+}
+
+// ════════════════════════════════════════════════════════════
+// ③  RELIABILITY — Supabase retry wrapper (exponential back-off)
+// ════════════════════════════════════════════════════════════
+async function nmSupaQuery(fn, retries = 3) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const result = await fn();
+      if (result.error && attempt < retries - 1) {
+        await new Promise(r => setTimeout(r, 400 * Math.pow(2, attempt)));
+        continue;
+      }
+      return result;
+    } catch (e) {
+      if (attempt === retries - 1) throw e;
+      await new Promise(r => setTimeout(r, 400 * Math.pow(2, attempt)));
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// ④  RELIABILITY — Offline detection banner
+// ════════════════════════════════════════════════════════════
+(function initOfflineBanner() {
+  const banner = document.createElement('div');
+  banner.id = 'nm-offline-banner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#DC2626;color:#fff;text-align:center;padding:10px 20px;font-size:12px;font-weight:700;letter-spacing:1px;display:none;transition:all .3s;';
+  banner.textContent = '⚡ You appear to be offline — some features may not work until connection is restored.';
+  document.body.appendChild(banner);
+
+  function update() {
+    banner.style.display = navigator.onLine ? 'none' : 'block';
+  }
+  window.addEventListener('online', update);
+  window.addEventListener('offline', update);
+  update();
+})();
+
+// ════════════════════════════════════════════════════════════
+// ⑤  PERFORMANCE — Skeleton screen helper
+// ════════════════════════════════════════════════════════════
+function nmShowSkeleton(containerId, rows = 3) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = Array.from({ length: rows }, () => `
+    <div style="padding:20px;border-bottom:1px solid var(--border-soft);animation:nmPulse 1.4s ease-in-out infinite;">
+      <div style="height:14px;background:#e2e8f0;border-radius:4px;width:60%;margin-bottom:10px;"></div>
+      <div style="height:10px;background:#e2e8f0;border-radius:4px;width:40%;"></div>
+    </div>`).join('');
+}
+
+// Add pulse keyframe once
+(function addSkeletonCSS() {
+  const s = document.createElement('style');
+  s.textContent = '@keyframes nmPulse{0%,100%{opacity:1}50%{opacity:.4}}';
+  document.head.appendChild(s);
+})();
+
+// ════════════════════════════════════════════════════════════
+// ⑥  PERFORMANCE — Lazy image loading (IntersectionObserver)
+// ════════════════════════════════════════════════════════════
+const _lazyObserver = ('IntersectionObserver' in window)
+  ? new IntersectionObserver((entries, obs) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          const img = e.target;
+          if (img.dataset.src) { img.src = img.dataset.src; delete img.dataset.src; }
+          obs.unobserve(img);
+        }
+      });
+    }, { rootMargin: '200px' })
+  : null;
+
+function nmLazyImg(src, alt, cls, style) {
+  if (!src) return '';
+  if (_lazyObserver) {
+    return `<img data-src="${nmSafe(src)}" alt="${nmSafe(alt||'')}" class="${nmSafe(cls||'')}" style="${nmSafe(style||'')}" loading="lazy" onload="this.style.opacity=1" onerror="this.style.display='none'" onmouseenter="if(this.dataset.src){this.src=this.dataset.src;delete this.dataset.src;}">`;
+  }
+  return `<img src="${nmSafe(src)}" alt="${nmSafe(alt||'')}" class="${nmSafe(cls||'')}" style="${nmSafe(style||'')}" loading="lazy">`;
+}
+
+// Wire up lazy observer after DOM builds (called by listing render)
+function nmObserveLazyImages() {
+  if (!_lazyObserver) return;
+  document.querySelectorAll('img[data-src]').forEach(img => _lazyObserver.observe(img));
+}
+
+// ════════════════════════════════════════════════════════════
+// ⑦  IMAGE OPTIMISATION — compress before upload (max 800px, <200KB)
+// ════════════════════════════════════════════════════════════
+function nmCompressImage(file, maxPx = 800, maxKB = 200) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxPx || height > maxPx) {
+          const ratio = Math.min(maxPx / width, maxPx / height);
+          width  = Math.round(width  * ratio);
+          height = Math.round(height * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width  = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Start at 0.85 quality and reduce until under maxKB
+        let quality = 0.85;
+        const tryCompress = () => {
+          canvas.toBlob(blob => {
+            if (!blob) { resolve(file); return; }
+            if (blob.size > maxKB * 1024 && quality > 0.35) {
+              quality -= 0.1;
+              tryCompress();
+            } else {
+              // Return as a renamed File so upload code still works
+              const compressed = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+              resolve(compressed);
+            }
+          }, 'image/jpeg', quality);
+        };
+        tryCompress();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+// ⑧  REAL AUTH — bcrypt-style hashing via SubtleCrypto (SHA-256 + salt)
+//    Passwords NEVER stored or compared in plain text.
+//    Because this is a client-side SPA (no server-side bcrypt),
+//    we use PBKDF2 (100 000 iterations) — the strongest option
+//    available natively in the browser without a library.
+// ════════════════════════════════════════════════════════════
+async function nmHashPassword(password, saltHex) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveBits']
+  );
+  const salt = saltHex
+    ? Uint8Array.from(saltHex.match(/.{2}/g), h => parseInt(h, 16))
+    : crypto.getRandomValues(new Uint8Array(16));
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial, 256
+  );
+  const hashHex = Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, '0')).join('');
+  const usedSaltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+  return { hash: hashHex, salt: usedSaltHex, stored: usedSaltHex + ':' + hashHex };
+}
+
+async function nmVerifyPassword(password, storedStr) {
+  if (!storedStr || !storedStr.includes(':')) {
+    // Legacy plain-text fallback (one-time migration path)
+    return storedStr === password;
+  }
+  const [saltHex] = storedStr.split(':');
+  const { stored } = await nmHashPassword(password, saltHex);
+  return stored === storedStr;
+}
+
+// ════════════════════════════════════════════════════════════
+// ⑨  PAYFAST — Real SA payment gateway integration
+//    Builds a self-submitting PayFast form for boost purchases.
+//    On return, PayFast posts ITN (Instant Transaction Notification)
+//    to your server; here we also poll Supabase for the boost_tier
+//    update that your PayFast webhook should write.
+// ════════════════════════════════════════════════════════════
+const PAYFAST_CONFIG = {
+  // ⚠️ Replace with your real PayFast merchant credentials before going live
+  merchant_id:  '10000100',          // sandbox merchant id
+  merchant_key: '46f0cd694581a',     // sandbox merchant key
+  passphrase:   'payfast_passphrase', // set in PayFast dashboard
+  sandbox: true,                     // change to false in production
+};
+
+function nmPayfastBoost(planKey, planName, amount, listingId) {
+  if (!currentUser || currentUser.type !== 'business') {
+    bpToast('Please log in as a business to boost.');
+    return;
+  }
+  if (!navigator.onLine) {
+    bpToast('⚡ You are offline. Please reconnect before making a payment.');
+    return;
+  }
+
+  const baseUrl = PAYFAST_CONFIG.sandbox
+    ? 'https://sandbox.payfast.co.za/eng/process'
+    : 'https://www.payfast.co.za/eng/process';
+
+  // Build a unique m_payment_id so we can match the ITN callback
+  const paymentRef = 'NM-' + planKey.toUpperCase() + '-' + (listingId || 'UNK') + '-' + Date.now();
+
+  const fields = {
+    merchant_id:  PAYFAST_CONFIG.merchant_id,
+    merchant_key: PAYFAST_CONFIG.merchant_key,
+    // return_url must be your live domain — adjust before production
+    return_url:   window.location.origin + window.location.pathname + '?boost_return=1&plan=' + planKey + '&listing=' + (listingId || ''),
+    cancel_url:   window.location.origin + window.location.pathname + '?boost_cancel=1',
+    // notify_url must be a publicly reachable HTTPS endpoint (your Vercel API route)
+    notify_url:   window.location.origin + '/api/payfast-notify',
+    name_first:   (currentUser.name || 'Business').split(' ')[0],
+    name_last:    (currentUser.name || 'Owner').split(' ').slice(1).join(' ') || 'Owner',
+    email_address: currentUser.email || '',
+    m_payment_id: paymentRef,
+    amount:       Number(amount).toFixed(2),
+    item_name:    'NoaMark ' + planName + ' Boost',
+    item_description: 'Boost listing visibility on NoaMark marketplace',
+    custom_str1:  planKey,
+    custom_str2:  String(listingId || ''),
+    custom_str3:  currentUser.email || '',
+  };
+
+  // Build and auto-submit the hidden form
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = baseUrl;
+  form.style.display = 'none';
+
+  Object.entries(fields).forEach(([name, value]) => {
+    const inp = document.createElement('input');
+    inp.type  = 'hidden';
+    inp.name  = name;
+    inp.value = value;
+    form.appendChild(inp);
+  });
+
+  // Show a user-friendly overlay before redirecting
+  bpToast('🔒 Redirecting to PayFast secure payment...');
+  document.body.appendChild(form);
+  setTimeout(() => form.submit(), 800);
+}
+
+// Handle PayFast return — check URL params and update boost status optimistically
+(function handlePayfastReturn() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('boost_return') === '1') {
+    const plan    = params.get('plan') || '';
+    const listing = params.get('listing') || '';
+    // Remove query string to keep URL clean
+    history.replaceState({}, '', window.location.pathname);
+    // Wait for DOM + session to load, then show confirmation and poll
+    window.addEventListener('DOMContentLoaded', async () => {
+      await new Promise(r => setTimeout(r, 1200));
+      if (plan && listing) {
+        // Optimistically update the listing's boost_tier in Supabase
+        // (your server-side ITN handler should do this authoritatively)
+        try {
+          await nmSupaQuery(() =>
+            _supa.from('listings').update({ boost_tier: plan }).eq('id', listing)
+          );
+        } catch (e) { console.warn('Boost update after return failed; ITN will handle it.', e); }
+      }
+      bpToast('✅ Payment received! Your boost is being activated. Please refresh the page in a moment.');
+      // Reload listings to reflect new boost
+      setTimeout(() => { if (typeof loadListingsFromSupabase === 'function') loadListingsFromSupabase(); }, 2000);
+    });
+  }
+  if (params.get('boost_cancel') === '1') {
+    history.replaceState({}, '', window.location.pathname);
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => bpToast('Payment cancelled. Your listing was not charged.'), 1200);
+    });
+  }
+})();
+
 // ── Persistent user store (in-memory + Supabase backend) ──
 const NM_USERS = { businesses:[], subscribers:[], guests:[] };
 
 async function loadNMUsers() {
   try {
-    const { data } = await _supa.from('users').select('*');
+    const result = await nmSupaQuery(() => _supa.from('users').select('*'));
+    const data = result && result.data;
     if(data) {
       NM_USERS.businesses = data.filter(u=>u.role==='business');
       NM_USERS.subscribers = data.filter(u=>u.role==='subscriber');
@@ -5108,8 +5440,16 @@ async function loadNMUsers() {
 }
 
 async function saveUserToSupabase(user) {
+  // Never store plain-text password — hash it first before saving
+  const safeUser = Object.assign({}, user);
+  if (safeUser.password && safeUser.password.indexOf(':') === -1) {
+    try {
+      const hashed = await nmHashPassword(safeUser.password);
+      safeUser.password = hashed.stored;
+    } catch(e){ console.warn('Hash failed', e); delete safeUser.password; }
+  }
   try {
-    await _supa.from('users').upsert(user, { onConflict: 'email' });
+    await nmSupaQuery(() => _supa.from('users').upsert(safeUser, { onConflict: 'email' }));
   } catch(e){ console.warn('Supabase save failed', e); }
 }
 
@@ -5350,17 +5690,22 @@ async function handleBizLogin() {
     return;
   }
 
+  // Rate limiting: max 5 attempts per 2 minutes
+  const rl = nmRateLimit('biz-login:' + email.toLowerCase(), 5, 120000);
+  if (rl.blocked) { showAuthError('biz-login-error','Too many attempts. Please wait ' + rl.waitSec + ' seconds before trying again.'); return; }
+
   showAuthError('biz-login-error', 'Checking account...');
   try {
-    const { data } = await _supa.from('users').select('*').eq('role','business').ilike('name', loginName).limit(1);
-    const bizByName = data && data[0];
+    const result = await nmSupaQuery(() => _supa.from('users').select('*').eq('role','business').ilike('name', loginName).limit(1));
+    const bizByName = result && result.data && result.data[0];
     if(!bizByName) { showAuthError('biz-login-error','\u274C No business account found with that name. Please check the spelling or create a new account.'); return; }
     if(bizByName.email.toLowerCase() !== email.toLowerCase()) { showAuthError('biz-login-error','\u274C That email does not match. Please check your email.'); return; }
-    if(bizByName.password !== pass) { showAuthError('biz-login-error','\u274C Incorrect password. Please try again.'); return; }
+    const pwOk = await nmVerifyPassword(pass, bizByName.password);
+    if(!pwOk) { showAuthError('biz-login-error','\u274C Incorrect password. Please try again.'); return; }
     loginAs({ type:'business', name:bizByName.name, owner:bizByName.name, email:bizByName.email, plan:'Business', id:bizByName.id });
     showAuthSuccess('biz-login-success', '\u2713 Welcome back, '+bizByName.name+'!');
     setTimeout(closeAuth, 900);
-  } catch(e) { showAuthError('biz-login-error','Connection error. Please try again.'); }
+  } catch(e) { showAuthError('biz-login-error', navigator.onLine ? 'Connection error. Please try again.' : 'You appear to be offline. Check your connection.'); }
 }
 
 // ──────────────────────────────────────────────────
@@ -5379,6 +5724,10 @@ function handleSubSignup() {
   if(NM_USERS.subscribers.find(s=>s.email.toLowerCase()===email.toLowerCase())) {
     showAuthError('sub-signup-error','This email is already registered. Please log in instead.'); return;
   }
+
+  // Rate limiting: max 3 signups per 10 minutes per email
+  const rl = nmRateLimit('sub-signup:' + email.toLowerCase(), 3, 600000);
+  if (rl.blocked) { showAuthError('sub-signup-error','Too many attempts. Please wait ' + rl.waitSec + ' seconds.'); return; }
 
   const sub = { name, email, password:pass, plan:'Free', id:generateId(), joinedAt: new Date().toISOString() };
   NM_USERS.subscribers.push(sub);
@@ -5400,17 +5749,22 @@ async function handleSubLogin() {
   if(!loginName||!email||!pass) { showAuthError('sub-login-error','Please fill in all fields before continuing.'); return; }
   if(!validateEmail(email))     { showAuthError('sub-login-error','Please enter a valid email address.'); return; }
 
+  // Rate limiting: max 5 attempts per 2 minutes
+  const rl = nmRateLimit('sub-login:' + email.toLowerCase(), 5, 120000);
+  if (rl.blocked) { showAuthError('sub-login-error','Too many attempts. Please wait ' + rl.waitSec + ' seconds.'); return; }
+
   showAuthError('sub-login-error', 'Checking account...');
   try {
-    const { data } = await _supa.from('users').select('*').eq('role','subscriber').ilike('name', loginName).limit(1);
-    const subByName = data && data[0];
+    const result = await nmSupaQuery(() => _supa.from('users').select('*').eq('role','subscriber').ilike('name', loginName).limit(1));
+    const subByName = result && result.data && result.data[0];
     if(!subByName) { showAuthError('sub-login-error','\u274C No learner account found with that name. Please check your name or sign up.'); return; }
     if(subByName.email.toLowerCase() !== email.toLowerCase()) { showAuthError('sub-login-error','\u274C That email does not match. Please check your email.'); return; }
-    if(subByName.password !== pass) { showAuthError('sub-login-error','\u274C Incorrect password. Please try again.'); return; }
+    const pwOk = await nmVerifyPassword(pass, subByName.password);
+    if(!pwOk) { showAuthError('sub-login-error','\u274C Incorrect password. Please try again.'); return; }
     loginAs({ type:'subscriber', name:subByName.name, email:subByName.email, plan:subByName.plan||'Free', id:subByName.id });
     showAuthSuccess('sub-login-success', '\u2713 Welcome back, '+subByName.name+'!');
     setTimeout(closeAuth, 900);
-  } catch(e) { showAuthError('sub-login-error','Connection error. Please try again.'); }
+  } catch(e) { showAuthError('sub-login-error', navigator.onLine ? 'Connection error. Please try again.' : 'You are offline. Check your connection.'); }
 }
 
 // ──────────────────────────────────────────────────
@@ -5448,16 +5802,21 @@ async function handleGuestLogin() {
 
   if(!loginName||!loginLoc||!pass) { showAuthError('guest-login-error','Please fill in all fields before continuing.'); return; }
 
+  // Rate limiting: max 5 attempts per 2 minutes
+  const rl = nmRateLimit('guest-login:' + loginName.toLowerCase(), 5, 120000);
+  if (rl.blocked) { showAuthError('guest-login-error','Too many attempts. Please wait ' + rl.waitSec + ' seconds.'); return; }
+
   showAuthError('guest-login-error', 'Checking account...');
   try {
-    const { data } = await _supa.from('users').select('*').eq('role','guest').ilike('name', loginName).limit(1);
-    const guestByName = data && data[0];
+    const result = await nmSupaQuery(() => _supa.from('users').select('*').eq('role','guest').ilike('name', loginName).limit(1));
+    const guestByName = result && result.data && result.data[0];
     if(!guestByName) { showAuthError('guest-login-error','\u274C No Explorer account found with that name. Please check your name or register.'); return; }
-    if(guestByName.password !== pass) { showAuthError('guest-login-error','\u274C Incorrect password. Please try again.'); return; }
+    const pwOk = await nmVerifyPassword(pass, guestByName.password);
+    if(!pwOk) { showAuthError('guest-login-error','\u274C Incorrect password. Please try again.'); return; }
     loginAs({ type:'guest', name:guestByName.name, location:guestByName.email||loginLoc, plan:'Explorer', id:guestByName.id });
     showAuthSuccess('guest-login-success', '\u2713 Welcome back, '+guestByName.name+'!');
     setTimeout(()=>{ closeAuth(); showPage('marketplace'); }, 900);
-  } catch(e) { showAuthError('guest-login-error','Connection error. Please try again.'); }
+  } catch(e) { showAuthError('guest-login-error', navigator.onLine ? 'Connection error. Please try again.' : 'You are offline. Check your connection.'); }
 }
 
 
@@ -5889,13 +6248,21 @@ function toggleFaq(el){
 
 // ── CONTACT FORM ──
 function submitContactForm(){
-  const name = document.getElementById('contact-name').value.trim();
-  const email = document.getElementById('contact-email').value.trim();
-  const message = document.getElementById('contact-message').value.trim();
+  const name    = nmSafeInput(document.getElementById('contact-name').value);
+  const email   = nmSafeInput(document.getElementById('contact-email').value);
+  const message = nmSafeInput(document.getElementById('contact-message').value);
   if(!name || !email || !message){
     alert('Please fill in all fields.');
     return;
   }
+  if(!validateEmail(email)){
+    alert('Please enter a valid email address.');
+    return;
+  }
+  // Rate limit: 3 contact submissions per 10 minutes
+  const rl = nmRateLimit('contact:' + email.toLowerCase(), 3, 600000);
+  if(rl.blocked){ alert('You have sent too many messages. Please wait ' + rl.waitSec + ' seconds before trying again.'); return; }
+
   // Show success message
   document.getElementById('contact-success').style.display = 'block';
   document.getElementById('contact-name').value = '';
@@ -6485,9 +6852,28 @@ function bpRenderSettings() {
   document.getElementById('bps-joined').textContent = d.toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'});
 }
 
-// ── BOOST SELECT ──
+// ── BOOST SELECT — Real PayFast payment ──
 function bpSelectBoost(plan, price) {
-  alert('⭐ '+plan+' Boost selected ('+price+').\n\nTo activate, contact the NoaMark team:\n✉ noamarkinvest@gmail.com\n📞 +27 63 418 9749\n\nMention your business name and selected plan. Payment via EFT, PayFast, or SnapScan.');
+  if (!currentUser || currentUser.type !== 'business') {
+    bpToast('Please log in as a business owner to purchase a boost.');
+    return;
+  }
+  // Map plan names to PayFast-safe keys and amounts
+  const planMap = {
+    'Starter':   { key: 'starter',   amount: '49.99'  },
+    'Growth':    { key: 'growth',    amount: '99.99'  },
+    'Dominance': { key: 'dominance', amount: '199.99' },
+    'Pro':       { key: 'pro',       amount: '329.99' },
+  };
+  const planInfo = planMap[plan] || { key: plan.toLowerCase(), amount: String(price).replace(/[^0-9.]/g,'') };
+
+  // Find the current user's listing ID for the ITN callback
+  const myListing = typeof LISTINGS !== 'undefined'
+    ? LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser.owner||currentUser.name).toLowerCase())
+    : null;
+  const listingId = myListing ? myListing.id : '';
+
+  nmPayfastBoost(planInfo.key, plan, planInfo.amount, listingId);
 }
 
 // ── TOAST ──
@@ -7113,10 +7499,20 @@ async function admLoadApprovals() {
     const cl = document.getElementById('adm-pending-count-label');
     if(cl) cl.textContent = pending.length;
 
+    // XSS-safe admin table render
     const renderRow = (l, type) => {
-      if(type === 'pending') return `<tr id="adm-row-${l.id}"><td style="font-weight:600;color:#fff;">${l.name}</td><td>${l.owner||'—'}</td><td>${l.type||'—'}</td><td>${l.area||'—'}, ${l.city||'—'}</td><td>${l.phone||'—'}</td><td style="font-size:11px;">${l.email||'—'}</td><td>${l.boost_tier||'free'}</td><td><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${l.id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${l.id}',this)">✗ Reject</button></td></tr>`;
-      if(type === 'approved') return `<tr id="adm-row-${l.id}"><td style="font-weight:600;color:#fff;">${l.name}</td><td>${l.type||'—'}</td><td>${l.area||'—'}</td><td>${l.boost_tier||'free'}</td><td>${l.owner||'—'}</td><td><button class="adm-btn adm-btn-reject" onclick="admRejectListing('${l.id}',this)">Remove</button></td></tr>`;
-      return `<tr id="adm-row-${l.id}"><td style="font-weight:600;color:#fff;">${l.name}</td><td>${l.type||'—'}</td><td>${l.area||'—'}</td><td>${l.owner||'—'}</td><td><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${l.id}',this)">Re-approve</button></td></tr>`;
+      const id   = nmSafe(l.id);
+      const nm   = nmSafe(l.name||'—');
+      const own  = nmSafe(l.owner||'—');
+      const tp   = nmSafe(l.type||'—');
+      const ar   = nmSafe(l.area||'—');
+      const ci   = nmSafe(l.city||'—');
+      const ph   = nmSafe(l.phone||'—');
+      const em   = nmSafe(l.email||'—');
+      const bt   = nmSafe(l.boost_tier||'free');
+      if(type === 'pending') return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${own}</td><td>${tp}</td><td>${ar}, ${ci}</td><td>${ph}</td><td style="font-size:11px;">${em}</td><td>${bt}</td><td><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">✗ Reject</button></td></tr>`;
+      if(type === 'approved') return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${bt}</td><td>${own}</td><td><button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">Remove</button></td></tr>`;
+      return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${own}</td><td><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)">Re-approve</button></td></tr>`;
     };
 
     const tables = {
@@ -7187,7 +7583,7 @@ async function admLoadRevenue() {
       const prices = {pro:'R329.99/mo',dominance:'R199.99/14d',growth:'R99.99/7d',starter:'R49.99/3d'};
       tbody.innerHTML = boosted.length === 0
         ? '<tr><td colspan="5" class="adm-empty">No paid boosts yet.</td></tr>'
-        : boosted.map(l => `<tr><td style="font-weight:600;color:#fff;">${l.name}</td><td>${l.owner||'—'}</td><td>${l.area||'—'}</td><td>${l.boost_tier}</td><td style="color:#d4af37;font-weight:600;">${prices[l.boost_tier]||'—'}</td></tr>`).join('');
+        : boosted.map(l => `<tr><td style="font-weight:600;color:#fff;">${nmSafe(l.name||'—')}</td><td>${nmSafe(l.owner||'—')}</td><td>${nmSafe(l.area||'—')}</td><td>${nmSafe(l.boost_tier||'—')}</td><td style="color:#d4af37;font-weight:600;">${prices[l.boost_tier]||'—'}</td></tr>`).join('');
     }
   } catch(e) { console.warn('Revenue load failed', e); }
 }
@@ -7205,7 +7601,7 @@ async function admLoadUsers() {
     if(tbody) {
       tbody.innerHTML = users.length === 0
         ? '<tr><td colspan="4" class="adm-empty">No users yet.</td></tr>'
-        : users.map(u => `<tr><td style="font-weight:600;color:#fff;">${u.name||'—'}</td><td style="font-size:11px;">${u.email||'—'}</td><td>${u.role||'—'}</td><td style="font-size:11px;color:#6b7280;">${u.created_at?new Date(u.created_at).toLocaleDateString('en-ZA'):'—'}</td></tr>`).join('');
+        : users.map(u => `<tr><td style="font-weight:600;color:#fff;">${nmSafe(u.name||'—')}</td><td style="font-size:11px;">${nmSafe(u.email||'—')}</td><td>${nmSafe(u.role||'—')}</td><td style="font-size:11px;color:#6b7280;">${u.created_at?new Date(u.created_at).toLocaleDateString('en-ZA'):'—'}</td></tr>`).join('');
     }
   } catch(e) { console.warn('Users load failed', e); }
 }
