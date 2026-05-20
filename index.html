@@ -1086,7 +1086,7 @@
   @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 </style>
 <!-- Supabase SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
 </head>
 <body>
 
@@ -5163,8 +5163,16 @@ const DEVICE_FP = getDeviceFingerprint();
 
 // ── Supabase client ──
 const SUPA_URL = 'https://nfafmsuwxkkcrubinera.supabase.co';
-const SUPA_KEY = 'sb_publishable_1jDWKNHf9gfi68w9A2jfLw_v-a9wyLf';
-const _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mYWZtc3V3eGtrY3J1YmluZXJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4Nzc2NTYsImV4cCI6MjA5NDQ1MzY1Nn0.4VkS96XfMZ0sFKozRL4-rxonbPlCmYQ6Ade1dhmZ0eE';
+let _supa;
+try {
+  _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true }
+  });
+  console.log('Supabase initialized successfully');
+} catch(e) {
+  console.error('Supabase init failed:', e);
+}
 
 // ── Persistent user store (in-memory + Supabase backend) ──
 const NM_USERS = { businesses:[], subscribers:[], guests:[] };
@@ -7140,18 +7148,28 @@ bpLoad();
 // ════════════════════════════════════
 
 function showAdminDashboard() {
+  // Hide all public pages
   document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
   ['home','marketplace','opportunities','learning','videos','plans','portal','subscribe','dashboard'].forEach(id => {
     const el = document.getElementById('page-' + id) || document.getElementById(id + '-page');
     if(el) el.style.display = 'none';
   });
-  const admEl = document.getElementById('page-admin');
-  if(admEl) admEl.style.display = 'block';
-  // Hide AI chat and other customer elements from admin
+
+  // Hide public navigation items
+  ['home','marketplace','opportunities','learning','videos','plans'].forEach(item => {
+    const el = document.getElementById('nav-item-' + item);
+    if(el) el.style.display = 'none';
+  });
+
+  // Hide chat
   const chatFab = document.getElementById('chat-fab');
   const chatWin = document.getElementById('chat-window');
   if(chatFab) chatFab.style.display = 'none';
   if(chatWin) chatWin.style.display = 'none';
+
+  // Show admin page
+  const admEl = document.getElementById('page-admin');
+  if(admEl) admEl.style.display = 'block';
   window.scrollTo(0, 0);
   setTimeout(()=>admGoPage('overview'), 100);
 }
@@ -7173,12 +7191,23 @@ function admGoPage(page) {
 }
 
 async function admLoadOverview() {
+  // Show loading state in stats
+  ['adm-stat-biz','adm-stat-live','adm-stat-pending','adm-stat-users',
+   'adm-stat-explorers','adm-stat-learners','adm-stat-boosted','adm-stat-enquiries'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.textContent = '...';
+  });
+
   try {
     const [bizRes, userRes, enqRes] = await Promise.all([
       _supa.from('listings').select('id,status,boost_tier'),
       _supa.from('users').select('id,role'),
       _supa.from('enquiries').select('id'),
     ]);
+
+    if(bizRes.error) console.warn('Listings error:', bizRes.error);
+    if(userRes.error) console.warn('Users error:', userRes.error);
+
     const listings = bizRes.data || [];
     const users = userRes.data || [];
     const enquiries = enqRes.data || [];
@@ -7189,7 +7218,7 @@ async function admLoadOverview() {
     const explorers = users.filter(u => u.role === 'guest').length;
     const learners = users.filter(u => u.role === 'subscriber').length;
 
-    const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+    const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = String(val); };
     set('adm-stat-biz', businesses);
     set('adm-stat-live', live);
     set('adm-stat-pending', pending);
@@ -7200,18 +7229,38 @@ async function admLoadOverview() {
     set('adm-stat-enquiries', enquiries.length);
 
     const badge = document.getElementById('adm-pending-badge');
-    if(badge) { badge.textContent = pending; badge.style.display = pending > 0 ? 'inline' : 'none'; }
-    set('adm-pending-count-label', pending);
+    if(badge) { badge.textContent = String(pending); badge.style.display = pending > 0 ? 'inline' : 'none'; }
+    const cl = document.getElementById('adm-pending-count-label');
+    if(cl) cl.textContent = String(pending);
 
     const pendingRes = await _supa.from('listings').select('*').eq('status','pending').order('created_at',{ascending:false}).limit(5);
     const pendingData = pendingRes.data || [];
     const tbody = document.getElementById('adm-recent-pending');
     if(tbody) {
-      tbody.innerHTML = pendingData.length === 0
-        ? '<tr><td colspan="5" class="adm-empty">✅ No pending listings!</td></tr>'
-        : pendingData.map(l => `<tr><td style="font-weight:600;color:#fff;">${l.name}</td><td>${l.owner||'—'}</td><td>${l.type||'—'}</td><td>${l.area||'—'}</td><td><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${l.id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${l.id}',this)">✗ Reject</button></td></tr>`).join('');
+      if(pendingData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="adm-empty">✅ No pending listings!</td></tr>';
+      } else {
+        tbody.innerHTML = pendingData.map(l =>
+          '<tr>' +
+          '<td style="font-weight:600;color:#fff;">' + (l.name||'—') + '</td>' +
+          '<td>' + (l.owner||'—') + '</td>' +
+          '<td>' + (l.type||'—') + '</td>' +
+          '<td>' + (l.area||'—') + '</td>' +
+          '<td>' +
+          '<button class="adm-btn adm-btn-approve" onclick="admApproveListing('' + l.id + '',this)">✓ Approve</button> ' +
+          '<button class="adm-btn adm-btn-reject" onclick="admRejectListing('' + l.id + '',this)">✗ Reject</button>' +
+          '</td></tr>'
+        ).join('');
+      }
     }
-  } catch(e) { console.warn('Overview load failed', e); }
+  } catch(e) {
+    console.error('Overview load failed:', e);
+    ['adm-stat-biz','adm-stat-live','adm-stat-pending','adm-stat-users',
+     'adm-stat-explorers','adm-stat-learners','adm-stat-boosted','adm-stat-enquiries'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.textContent = 'ERR';
+    });
+  }
 }
 
 async function admLoadApprovals() {
