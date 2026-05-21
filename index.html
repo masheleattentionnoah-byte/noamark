@@ -609,6 +609,19 @@
     .boost-grid{grid-template-columns:1fr!important;}
     .biz-body-grid{grid-template-columns:1fr!important;}
     .biz-profile-body{padding:0 16px!important;}
+    /* Sort bar mobile */
+    #mkt-profile-view{padding:60px 0 40px!important;}
+    #mkt-sort-bar{padding:12px 16px!important;gap:8px!important;}
+    .sort-btn{padding:6px 10px!important;font-size:9px!important;white-space:nowrap;}
+    /* Business profile mobile fixes */
+    .biz-header{flex-direction:column!important;gap:16px!important;align-items:flex-start!important;}
+    .biz-name{font-size:24px!important;word-break:break-word;}
+    .biz-avatar{margin-top:0!important;width:64px!important;height:64px!important;font-size:28px!important;}
+    .biz-meta-row{flex-direction:column!important;align-items:flex-start!important;gap:8px!important;}
+    .biz-header > div:last-child{flex-direction:row!important;flex-wrap:wrap!important;width:100%!important;gap:8px!important;}
+    .biz-header > div:last-child a{flex:1 1 calc(50% - 4px)!important;padding:12px 8px!important;font-size:9px!important;min-width:120px!important;justify-content:center!important;}
+    .biz-gallery-main{height:220px!important;}
+    .biz-gallery-thumb{width:60px!important;height:44px!important;}
     .onboard-steps{flex-wrap:wrap;}
     .onboard-step{min-width:50%;font-size:8px!important;}
     /* Inputs */
@@ -2750,7 +2763,7 @@
   </div>
 
   <!-- SORT BAR -->
-  <div style="display:flex;align-items:center;gap:12px;padding:14px 60px;background:var(--black-2);border-bottom:1px solid var(--border-soft);flex-wrap:wrap;">
+  <div id="mkt-sort-bar" style="display:flex;align-items:center;gap:12px;padding:14px 60px;background:var(--black-2);border-bottom:1px solid var(--border-soft);flex-wrap:wrap;overflow-x:auto;">
     <span style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);white-space:nowrap;">Sort by:</span>
     <button class="sort-btn active" onclick="setSort('ranking',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--gold);background:var(--gold);color:#111827;cursor:pointer;transition:all .3s;">🏆 Ranking</button>
     <button class="sort-btn" onclick="setSort('distance',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;">📍 Distance</button>
@@ -2763,12 +2776,12 @@
 
     <!-- FEATURED (BOOSTED) -->
     <div id="mkt-featured-section">
-      <div class="mkt-section-label">⭐ Featured Listings — Boosted</div>
+      <div class="mkt-section-label">⭐ Featured Listings</div>
       <div class="mkt-grid" id="mkt-featured-grid"></div>
     </div>
 
     <!-- LATEST -->
-    <div>
+    <div id="mkt-latest-section">
       <div class="mkt-section-label">🆕 Latest Listings</div>
       <div class="mkt-grid" id="mkt-latest-grid"></div>
     </div>
@@ -2798,14 +2811,14 @@
   <!-- BUSINESS PROFILE VIEW -->
   <div id="mkt-profile-view" style="display:none;padding:80px 0;">
     <div style="padding:0 60px;max-width:1100px;margin:0 auto;">
-      <button onclick="showMktView('main')" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);background:transparent;border:1px solid var(--border-soft);padding:10px 20px;cursor:pointer;margin-bottom:40px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.color='var(--white-dim)'">← Back to Marketplace</button>
+      <button onclick="showMktView('main');populateMarketplace();" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);background:transparent;border:1px solid var(--border-soft);padding:10px 20px;cursor:pointer;margin-bottom:40px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.color='var(--white-dim)'">← Back to Marketplace</button>
       <div id="mkt-profile-content"></div>
     </div>
   </div>
 
   <!-- BOOST PLANS VIEW -->
   <div id="mkt-boost-view" style="display:none;padding:80px 60px;">
-    <button onclick="showMktView('main')" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);background:transparent;border:1px solid var(--border-soft);padding:10px 20px;cursor:pointer;margin-bottom:48px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.color='var(--white-dim)'">← Back to Marketplace</button>
+    <button onclick="showMktView('main');populateMarketplace();" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);background:transparent;border:1px solid var(--border-soft);padding:10px 20px;cursor:pointer;margin-bottom:48px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.color='var(--white-dim)'">← Back to Marketplace</button>
     <div style="text-align:center;max-width:700px;margin:0 auto 80px;">
       <span class="section-tag">NoaMark Boost</span>
       <h2 class="section-title">Put Your Business <em>On Top</em></h2>
@@ -2925,7 +2938,7 @@
 
   <!-- ADD BUSINESS VIEW -->
   <div id="mkt-add-view" style="display:none;padding:80px 60px;">
-    <button onclick="showMktView('main')" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);background:transparent;border:1px solid var(--border-soft);padding:10px 20px;cursor:pointer;margin-bottom:48px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.color='var(--white-dim)'">← Back to Marketplace</button>
+    <button onclick="showMktView('main');populateMarketplace();" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);background:transparent;border:1px solid var(--border-soft);padding:10px 20px;cursor:pointer;margin-bottom:48px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.color='var(--white-dim)'">← Back to Marketplace</button>
     <div style="max-width:800px;margin:0 auto;">
       <div style="text-align:center;margin-bottom:60px;">
         <span class="section-tag">List Your Business</span>
@@ -4020,55 +4033,72 @@ document.querySelectorAll('.opp-filter').forEach(btn=>{
 const LISTINGS = [];
 
 async function loadListingsFromSupabase() {
-  // ④ Skeleton loading while data fetches
-  const gridEl = document.getElementById('mkt-grid');
-  if (gridEl) {
-    gridEl.innerHTML = Array.from({length:6}, ()=>`
-      <div style="border:1px solid var(--border-soft);border-radius:12px;overflow:hidden;animation:nmPulse 1.4s ease-in-out infinite;">
-        <div style="height:180px;background:#e2e8f0;"></div>
-        <div style="padding:20px;">
-          <div style="height:14px;background:#e2e8f0;border-radius:4px;width:70%;margin-bottom:10px;"></div>
-          <div style="height:10px;background:#e2e8f0;border-radius:4px;width:45%;"></div>
-        </div>
-      </div>`).join('');
-  }
+  // Skeleton loading on correct grid IDs
+  const skeletonHTML = Array.from({length:6}, ()=>`
+    <div style="border:1px solid var(--border-soft);border-radius:12px;overflow:hidden;animation:nmPulse 1.4s ease-in-out infinite;">
+      <div style="height:200px;background:#e2e8f0;"></div>
+      <div style="padding:20px;">
+        <div style="height:14px;background:#e2e8f0;border-radius:4px;width:70%;margin-bottom:10px;"></div>
+        <div style="height:10px;background:#e2e8f0;border-radius:4px;width:45%;"></div>
+      </div>
+    </div>`).join('');
+  const latestGridEl = document.getElementById('mkt-latest-grid');
+  if(latestGridEl) latestGridEl.innerHTML = skeletonHTML;
+  const featSec = document.getElementById('mkt-featured-section');
+  if(featSec) featSec.style.display = 'none';
+
   try {
     const result = await nmSupaQuery(() => _supa.from('listings').select('*').eq('status', 'approved'));
     const data = result && result.data;
     if(data && data.length > 0) {
-      // Map Supabase columns to the format the site expects
       data.forEach(l => {
+        // Parse menu from Supabase — stored as JSON string or array
+        let parsedMenu = [];
+        if(l.menu) {
+          try { parsedMenu = typeof l.menu === 'string' ? JSON.parse(l.menu) : l.menu; }
+          catch(e){ parsedMenu = []; }
+        }
+        // Parse photo_urls safely
+        let parsedPhotos = [];
+        if(l.photo_urls) {
+          try { parsedPhotos = typeof l.photo_urls === 'string' ? JSON.parse(l.photo_urls) : l.photo_urls; }
+          catch(e){ parsedPhotos = []; }
+        }
+        if(parsedPhotos.length === 0 && l.photo_url) parsedPhotos = [l.photo_url];
+
         LISTINGS.push({
-          id: l.id,
-          name: l.name,
-          owner: l.owner,
-          cat: l.type || 'services',
-          area: l.area || '',
-          desc: l.description || '',
-          phone: l.phone || '',
-          whatsapp: l.phone || '',
-          emoji: '🏪',
-          boost: l.boost_tier || 'none',
-          status: 'open',
-          price: 'Contact for pricing',
-          menu: [],
-          photo: l.photo_url || '',
-          photos: l.photo_urls ? JSON.parse(l.photo_urls) : (l.photo_url ? [l.photo_url] : [])
+          id:       l.id,
+          name:     l.name,
+          owner:    l.owner,
+          cat:      l.type || 'services',
+          area:     l.area || '',
+          city:     l.city || '',
+          province: l.province || '',
+          address:  l.address || '',
+          desc:     l.description || '',
+          phone:    l.phone || '',
+          whatsapp: l.whatsapp || l.phone || '',
+          email:    l.email || '',
+          emoji:    '🏪',
+          boost:    l.boost_tier || 'none',
+          status:   'open',
+          price:    'Contact for pricing',
+          menu:     parsedMenu,
+          photo:    parsedPhotos[0] || '',
+          photos:   parsedPhotos,
+          rating:   l.rating || 0,
+          joinedAt: l.created_at || ''
         });
       });
-      renderAllListings();
-      renderBoostedListings();
-      // ⑥ Wire up lazy loading after render
+      // populateMarketplace handles both featured and latest sections correctly
+      populateMarketplace();
       setTimeout(nmObserveLazyImages, 100);
-    } else if (gridEl) {
-      // Graceful empty state
-      gridEl.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--white-dim);"><div style="font-size:40px;margin-bottom:16px;">🏪</div><div style="font-size:15px;font-weight:600;">No listings yet</div><div style="font-size:13px;margin-top:8px;">Be the first to add your business!</div></div>';
+    } else {
+      if(latestGridEl) latestGridEl.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--white-dim);grid-column:1/-1;"><div style="font-size:40px;margin-bottom:16px;">🏪</div><div style="font-size:15px;font-weight:600;">No listings yet</div><div style="font-size:13px;margin-top:8px;">Be the first to add your business!</div></div>';
     }
   } catch(e){
     console.warn('Could not load listings from Supabase', e);
-    if (gridEl) {
-      gridEl.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--white-dim);"><div style="font-size:40px;margin-bottom:16px;">⚡</div><div style="font-size:15px;font-weight:600;">' + (navigator.onLine ? 'Could not load listings right now' : 'You appear to be offline') + '</div><div style="font-size:13px;margin-top:8px;"><button onclick="LISTINGS.length=0;loadListingsFromSupabase();" style="background:var(--green-dark);color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;margin-top:12px;">↻ Try Again</button></div></div>';
-    }
+    if(latestGridEl) latestGridEl.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--white-dim);grid-column:1/-1;"><div style="font-size:40px;margin-bottom:16px;">⚡</div><div style="font-size:15px;font-weight:600;">' + (navigator.onLine ? 'Could not load listings right now' : 'You appear to be offline') + '</div><div style="font-size:13px;margin-top:8px;"><button onclick="LISTINGS.length=0;loadListingsFromSupabase();" style="background:var(--green-dark);color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;margin-top:12px;">↻ Try Again</button></div></div>';
   }
 }
 
@@ -4145,14 +4175,16 @@ function getSortedByMode(list){
   if(currentSort==='ranking'){
     return [...list].sort((a,b)=>{
       const d=BOOST_RANK[b.boost]-BOOST_RANK[a.boost];
-      return d!==0?d:b.id-a.id;
+      if(d!==0) return d;
+      // Within same tier, sort by date (newest first) — IDs may be UUIDs
+      return new Date(b.joinedAt||0) - new Date(a.joinedAt||0);
     });
   }
-  if(currentSort==='newest') return [...list].sort((a,b)=>b.id-a.id);
+  // Newest: sort by date string, not by numeric ID (IDs are UUIDs)
+  if(currentSort==='newest') return [...list].sort((a,b)=>new Date(b.joinedAt||0)-new Date(a.joinedAt||0));
   if(currentSort==='rating') return [...list].sort((a,b)=>(b.rating||0)-(a.rating||0));
   if(currentSort==='distance'){
-    // Sort by area name alphabetically as proxy when no GPS available
-    return [...list].sort((a,b)=>a.area.localeCompare(b.area));
+    return [...list].sort((a,b)=>(a.area||'').localeCompare(b.area||''));
   }
   return list;
 }
@@ -4186,13 +4218,28 @@ function populateMarketplace(){
   const featGrid=document.getElementById('mkt-featured-grid');
   const latestGrid=document.getElementById('mkt-latest-grid');
   const empty=document.getElementById('mkt-empty');
+  const latestSec = document.getElementById('mkt-latest-section');
   if(sorted.length===0){
-    featSec.style.display='none'; latestGrid.innerHTML=''; empty.style.display='block';
+    if(featSec) featSec.style.display='none';
+    if(latestSec) latestSec.style.display='none';
+    if(latestGrid) latestGrid.innerHTML='';
+    if(empty) empty.style.display='block';
   } else {
-    empty.style.display='none';
-    if(featured.length>0){featSec.style.display='block';featGrid.innerHTML=featured.map(renderCard).join('');}
-    else featSec.style.display='none';
-    latestGrid.innerHTML=latest.map(renderCard).join('');
+    if(empty) empty.style.display='none';
+    if(featured.length>0){
+      if(featSec) featSec.style.display='block';
+      if(featGrid) featGrid.innerHTML=featured.map(renderCard).join('');
+    } else {
+      if(featSec) featSec.style.display='none';
+    }
+    if(latest.length>0){
+      if(latestSec) latestSec.style.display='block';
+      if(latestGrid) latestGrid.innerHTML=latest.map(renderCard).join('');
+    } else {
+      // All results are in featured — hide the Latest section cleanly
+      if(latestSec) latestSec.style.display='none';
+      if(latestGrid) latestGrid.innerHTML='';
+    }
   }
 }
 
@@ -4227,6 +4274,8 @@ function showMktView(view){
   const target=map[view];
   if(target){document.getElementById(target).style.display='block';}
   if(view==='admin') populateBizDashboard();
+  // Always re-render marketplace when returning to main view so sort/category buttons work
+  if(view==='main' && LISTINGS.length > 0) populateMarketplace();
   window.scrollTo({top:300,behavior:'smooth'});
 }
 
@@ -4258,11 +4307,16 @@ function showBizProfile(id){
   const fullAddress=encodeURIComponent([biz.address,biz.area,biz.city,biz.province].filter(Boolean).join(', ')||biz.area||biz.name);
   const googleMapsUrl=`https://www.google.com/maps/search/?api=1&query=${fullAddress}`;
   const boltUrl=`https://bolt.eu/en-za/ride/?destination=${fullAddress}`;
+  // Sanitize WhatsApp number: digits only, SA country code (0xx → 27xx)
+  const rawWa = (biz.whatsapp || biz.phone || '').replace(/[^0-9]/g, '');
+  const waNumber = rawWa.startsWith('0') ? '27' + rawWa.slice(1) : rawWa.startsWith('27') ? rawWa : '27' + rawWa;
   const boostBanner=biz.boost==='dominance'
     ?`<div style="background:linear-gradient(90deg,rgba(212,175,55,.1),transparent);border:1px solid rgba(212,175,55,.3);padding:14px 20px;margin-bottom:32px;display:flex;align-items:center;gap:14px;"><span style="font-size:18px;">🔥</span><div><span style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);">Dominance Boost Active</span><p style="font-size:12px;color:var(--white-dim);margin-top:3px;">Priority placement · Maximum visibility in NoaMark Marketplace</p></div></div>`
     :biz.boost==='growth'
     ?`<div style="border:1px solid rgba(212,175,55,.2);padding:14px 20px;margin-bottom:32px;display:flex;align-items:center;gap:14px;"><span style="font-size:18px;">⭐</span><div><span style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);">Featured Listing</span><p style="font-size:12px;color:var(--white-dim);margin-top:3px;">Boosted for increased visibility in your area</p></div></div>`:'';
-  const menuHTML=biz.menu.map(m=>`<div class="menu-item"><span class="menu-item-name">${m.item}</span><span class="menu-item-price">${m.price}</span></div>`).join('');
+  const menuHTML = (biz.menu && biz.menu.length > 0)
+    ? biz.menu.map(m=>`<div class="menu-item"><span class="menu-item-name">${nmSafe(m.item||m.name||'')}</span><span class="menu-item-price">${nmSafe(m.price||'')}</span></div>`).join('')
+    : '<p style="font-size:13px;color:var(--white-dim);margin-top:8px;">Contact the business directly for pricing and menu details.</p>';
   const sc=biz.status==='open'?'var(--success)':'var(--danger)';
   const st=biz.status==='open'?'● Open Now':'● Currently Closed';
   document.getElementById('mkt-profile-content').innerHTML=`
@@ -4282,7 +4336,7 @@ function showBizProfile(id){
         </div>
         <div style="display:flex;flex-direction:column;gap:10px;flex-shrink:0;">
           <a href="tel:${biz.phone}" class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;">📞 Call Now</a>
-          <a href="https://wa.me/${biz.whatsapp}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#25D366;color:#25D366;">💬 WhatsApp</a>
+          <a href="https://wa.me/${waNumber}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#25D366;color:#25D366;">💬 WhatsApp</a>
           <a href="${googleMapsUrl}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#4285F4;color:#4285F4;">📍 Google Maps</a>
           <a href="${boltUrl}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#34E0A1;color:#34E0A1;">🚗 Order Bolt</a>
         </div>
@@ -4299,7 +4353,7 @@ function showBizProfile(id){
             <div class="biz-section-title">Contact</div>
             <div style="display:flex;flex-direction:column;gap:10px;">
               <a href="tel:${biz.phone}" style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--white-soft);text-decoration:none;padding:12px 16px;background:var(--black-3);border:1px solid var(--border-soft);transition:border-color .3s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)'">📞 ${biz.phone}</a>
-              <a href="https://wa.me/${biz.whatsapp}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#25D366;text-decoration:none;padding:12px 16px;background:rgba(37,211,102,.05);border:1px solid rgba(37,211,102,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#25D366'" onmouseout="this.style.borderColor='rgba(37,211,102,.2)'">💬 WhatsApp</a>
+              <a href="https://wa.me/${waNumber}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#25D366;text-decoration:none;padding:12px 16px;background:rgba(37,211,102,.05);border:1px solid rgba(37,211,102,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#25D366'" onmouseout="this.style.borderColor='rgba(37,211,102,.2)'">💬 WhatsApp</a>
             </div>
           </div>
           <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:28px;margin-bottom:16px;">
@@ -4317,6 +4371,8 @@ function showBizProfile(id){
       </div>
     </div>`;
   showMktView('profile');
+  // Store that we navigated from marketplace so Back button works
+  window._nmFromMarketplace = true;
 }
 
 // ── ONBOARDING STEPS ──
@@ -4558,7 +4614,7 @@ async function submitBusiness(){
   for(const file of allPhotoFiles) {
     try {
       // ⑦ Compress image before upload: max 800px wide, target <200KB
-      const compressed = await nmCompressImage(file, 800, 200);
+      const compressed = await nmCompressImage(file, 800, 400);
       const ext = compressed.name.endsWith('.jpg') ? '.jpg' : ('.' + (file.name.split('.').pop() || 'jpg'));
       const fileName = Date.now() + '_' + Math.random().toString(36).slice(2) + ext;
       const result = await nmSupaQuery(() => _supa.storage.from('business-photos').upload(fileName, compressed, { upsert: true }));
@@ -5276,7 +5332,7 @@ function nmCompressImage(file, maxPx = 800, maxKB = 200) {
         const tryCompress = () => {
           canvas.toBlob(blob => {
             if (!blob) { resolve(file); return; }
-            if (blob.size > maxKB * 1024 && quality > 0.35) {
+            if (blob.size > maxKB * 1024 && quality > 0.65) {
               quality -= 0.1;
               tryCompress();
             } else {
