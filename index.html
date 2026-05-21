@@ -1335,7 +1335,7 @@
 }
 .biz-img-wrap { position: relative; width: 100%; height: 150px; overflow: hidden; }
 .biz-info { padding: 14px 16px; }
-.biz-name { font-size: 14px; font-weight: 700; color: #111827; margin-bottom: 2px; }
+.biz-card .biz-name { font-size: 14px; font-weight: 700; color: #111827; margin-bottom: 2px; }
 .biz-category { font-size: 12px; color: #16a34a; font-weight: 600; margin-bottom: 4px; }
 .biz-location { font-size: 11px; color: #6b7280; display: flex; align-items: center; gap: 4px; margin-bottom: 10px; }
 .biz-footer { display: flex; align-items: center; justify-content: space-between; }
@@ -4033,6 +4033,8 @@ document.querySelectorAll('.opp-filter').forEach(btn=>{
 const LISTINGS = [];
 
 async function loadListingsFromSupabase() {
+  // Always clear before loading to prevent duplicates on refresh
+  LISTINGS.length = 0;
   // Skeleton loading on correct grid IDs
   const skeletonHTML = Array.from({length:6}, ()=>`
     <div style="border:1px solid var(--border-soft);border-radius:12px;overflow:hidden;animation:nmPulse 1.4s ease-in-out infinite;">
@@ -4087,7 +4089,8 @@ async function loadListingsFromSupabase() {
           photo:    parsedPhotos[0] || '',
           photos:   parsedPhotos,
           rating:   l.rating || 0,
-          joinedAt: l.created_at || ''
+          joinedAt: l.created_at || '',
+          priceHint: l.price_hint || ''
         });
       });
       // populateMarketplace handles both featured and latest sections correctly
@@ -4113,7 +4116,9 @@ const BOOST_RANK={dominance:4,growth:3,starter:2,none:1};
 function getSortedListings(list){
   return [...list].sort((a,b)=>{
     const d=BOOST_RANK[b.boost]-BOOST_RANK[a.boost];
-    return d!==0?d:b.id-a.id;
+    if(d!==0) return d;
+    // IDs are UUIDs — sort by date instead of numeric subtraction
+    return new Date(b.joinedAt||0) - new Date(a.joinedAt||0);
   });
 }
 
@@ -4132,11 +4137,11 @@ function renderCard(biz){
     ?'<div class="listing-status status-open">● Open</div>'
     :'<div class="listing-status status-closed">● Closed</div>';
   return `<div class="listing-card ${boostClass}" onclick="showBizProfile('${biz.id}')">
-    <div class="listing-img">${biz.photo ? `<img src="${biz.photo}" alt="${biz.name}" style="width:100%;height:100%;object-fit:cover;">` : `<div class="listing-img-bg">${biz.emoji}</div>`}${badge}${statusBadge}</div>
+    <div class="listing-img">${biz.photo ? `<img src="${biz.photo}" alt="${nmSafe(biz.name)}" style="width:100%;height:100%;object-fit:cover;">` : `<div class="listing-img-bg">${biz.emoji}</div>`}${badge}${statusBadge}</div>
     <div class="listing-info">
       <div class="listing-cat">${getCatLabel(biz.cat)}</div>
-      <h3 class="listing-name">${biz.name}</h3>
-      <div class="listing-location">📍 ${biz.area}</div>
+      <h3 class="listing-name">${nmSafe(biz.name)}</h3>
+      <div class="listing-location">📍 ${nmSafe(biz.area)}</div>
       <div class="listing-price">💰 ${biz.price}</div>
       <button class="listing-cta">View Details →</button>
     </div>
@@ -4309,14 +4314,16 @@ function showBizProfile(id){
   const boltUrl=`https://bolt.eu/en-za/ride/?destination=${fullAddress}`;
   // Sanitize WhatsApp number: digits only, SA country code (0xx → 27xx)
   const rawWa = (biz.whatsapp || biz.phone || '').replace(/[^0-9]/g, '');
-  const waNumber = rawWa.startsWith('0') ? '27' + rawWa.slice(1) : rawWa.startsWith('27') ? rawWa : '27' + rawWa;
-  const boostBanner=biz.boost==='dominance'
-    ?`<div style="background:linear-gradient(90deg,rgba(212,175,55,.1),transparent);border:1px solid rgba(212,175,55,.3);padding:14px 20px;margin-bottom:32px;display:flex;align-items:center;gap:14px;"><span style="font-size:18px;">🔥</span><div><span style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);">Dominance Boost Active</span><p style="font-size:12px;color:var(--white-dim);margin-top:3px;">Priority placement · Maximum visibility in NoaMark Marketplace</p></div></div>`
-    :biz.boost==='growth'
-    ?`<div style="border:1px solid rgba(212,175,55,.2);padding:14px 20px;margin-bottom:32px;display:flex;align-items:center;gap:14px;"><span style="font-size:18px;">⭐</span><div><span style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);">Featured Listing</span><p style="font-size:12px;color:var(--white-dim);margin-top:3px;">Boosted for increased visibility in your area</p></div></div>`:'';
+  const waNumber = rawWa.length >= 9
+    ? (rawWa.startsWith('0') ? '27' + rawWa.slice(1) : rawWa.startsWith('27') ? rawWa : '27' + rawWa)
+    : '';
+  const boostBanner='';
+  const priceHintHTML = biz.priceHint
+    ? `<div style="font-size:13px;color:var(--gold);font-weight:600;margin-bottom:16px;padding:10px 16px;background:rgba(212,175,55,.07);border-left:3px solid var(--gold);">${nmSafe(biz.priceHint)}</div>`
+    : '';
   const menuHTML = (biz.menu && biz.menu.length > 0)
-    ? biz.menu.map(m=>`<div class="menu-item"><span class="menu-item-name">${nmSafe(m.item||m.name||'')}</span><span class="menu-item-price">${nmSafe(m.price||'')}</span></div>`).join('')
-    : '<p style="font-size:13px;color:var(--white-dim);margin-top:8px;">Contact the business directly for pricing and menu details.</p>';
+    ? priceHintHTML + biz.menu.map(m=>`<div class="menu-item"><span class="menu-item-name">${nmSafe(m.item||m.name||'')}</span><span class="menu-item-price">${nmSafe(m.price||'')}</span></div>`).join('')
+    : priceHintHTML || '<p style="font-size:13px;color:var(--white-dim);margin-top:8px;">Contact the business directly for pricing and menu details.</p>';
   const sc=biz.status==='open'?'var(--success)':'var(--danger)';
   const st=biz.status==='open'?'● Open Now':'● Currently Closed';
   document.getElementById('mkt-profile-content').innerHTML=`
@@ -4326,17 +4333,17 @@ function showBizProfile(id){
       <div class="biz-header">
         <div class="biz-avatar">${biz.emoji}</div>
         <div class="biz-header-info">
-          <h1 class="biz-name">${biz.name}</h1>
+          <h1 class="biz-name">${nmSafe(biz.name)}</h1>
           <div class="biz-meta-row">
             <span class="biz-meta-item">${getCatLabel(biz.cat)}</span>
-            <span class="biz-meta-item">📍 ${biz.area}</span>
+            <span class="biz-meta-item">📍 ${nmSafe(biz.area)}</span>
             <span class="biz-meta-item" style="color:${sc};font-weight:600;">${st}</span>
             <span class="biz-meta-item" style="color:var(--success);">💰 ${biz.price}</span>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:10px;flex-shrink:0;">
           <a href="tel:${biz.phone}" class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;">📞 Call Now</a>
-          <a href="https://wa.me/${waNumber}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#25D366;color:#25D366;">💬 WhatsApp</a>
+          ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#25D366;color:#25D366;">💬 WhatsApp</a>` : `<span class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;opacity:.4;cursor:not-allowed;">💬 No WhatsApp</span>`}
           <a href="${googleMapsUrl}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#4285F4;color:#4285F4;">📍 Google Maps</a>
           <a href="${boltUrl}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#34E0A1;color:#34E0A1;">🚗 Order Bolt</a>
         </div>
@@ -4344,7 +4351,7 @@ function showBizProfile(id){
       <div class="biz-body-grid">
         <div>
           <div class="biz-section-title">About This Business</div>
-          <p class="biz-description">${biz.desc}</p>
+          <p class="biz-description">${nmSafe(biz.desc)}</p>
           <div class="biz-section-title">Menu & Pricing</div>
           <div class="menu-list">${menuHTML}</div>
         </div>
@@ -4352,13 +4359,13 @@ function showBizProfile(id){
           <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:28px;margin-bottom:16px;">
             <div class="biz-section-title">Contact</div>
             <div style="display:flex;flex-direction:column;gap:10px;">
-              <a href="tel:${biz.phone}" style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--white-soft);text-decoration:none;padding:12px 16px;background:var(--black-3);border:1px solid var(--border-soft);transition:border-color .3s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)'">📞 ${biz.phone}</a>
-              <a href="https://wa.me/${waNumber}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#25D366;text-decoration:none;padding:12px 16px;background:rgba(37,211,102,.05);border:1px solid rgba(37,211,102,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#25D366'" onmouseout="this.style.borderColor='rgba(37,211,102,.2)'">💬 WhatsApp</a>
+              <a href="tel:${biz.phone}" style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--white-soft);text-decoration:none;padding:12px 16px;background:var(--black-3);border:1px solid var(--border-soft);transition:border-color .3s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)'">📞 ${nmSafe(biz.phone)}</a>
+              ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#25D366;text-decoration:none;padding:12px 16px;background:rgba(37,211,102,.05);border:1px solid rgba(37,211,102,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#25D366'" onmouseout="this.style.borderColor='rgba(37,211,102,.2)'">💬 WhatsApp</a>` : ''}
             </div>
           </div>
           <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:28px;margin-bottom:16px;">
             <div class="biz-section-title">Location</div>
-            <div style="font-size:14px;color:var(--white-soft);margin-bottom:16px;">📍 ${biz.area}</div>
+            <div style="font-size:14px;color:var(--white-soft);margin-bottom:16px;">📍 ${nmSafe(biz.area)}</div>
             <a href="${googleMapsUrl}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#4285F4;text-decoration:none;padding:12px 16px;background:rgba(66,133,244,.05);border:1px solid rgba(66,133,244,.2);margin-bottom:10px;transition:border-color .3s;" onmouseover="this.style.borderColor='#4285F4'" onmouseout="this.style.borderColor='rgba(66,133,244,.2)'">📍 View on Google Maps</a>
             <a href="${boltUrl}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#34E0A1;text-decoration:none;padding:12px 16px;background:rgba(52,224,161,.05);border:1px solid rgba(52,224,161,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#34E0A1'" onmouseout="this.style.borderColor='rgba(52,224,161,.2)'">🚗 Get a Bolt Here</a>
           </div>
@@ -4626,6 +4633,17 @@ async function submitBusiness(){
   }
   const photoUrl = photoUrls[0] || '';
 
+  // Parse menu textarea into structured [{item, price}] array for Supabase
+  const menuItems = menu.split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .map(line => {
+      // Supports formats: "Pap & Chicken - R45" or "Pap & Chicken R45" or "Pap & Chicken: R45"
+      const match = line.match(/^(.+?)[-–:]+\s*(R?\d[\d.,]*.*)$/i);
+      if(match) return { item: match[1].trim(), price: match[2].trim() };
+      return { item: line, price: '' };
+    });
+
   // Save listing to Supabase with pending status
   if(submitBtn) submitBtn.textContent = '⏳ Saving your listing...';
   let listingId = null;
@@ -4635,7 +4653,9 @@ async function submitBusiness(){
       phone, boost_tier: boost, photo_url: photoUrl,
       photo_urls: JSON.stringify(photoUrls),
       status: 'pending',
-      email, whatsapp: wa, city, province
+      email, whatsapp: wa, city, province,
+      menu: JSON.stringify(menuItems),
+      price_hint: priceHint
     }).select());
     if(listingData && listingData[0]) listingId = listingData[0].id;
   } catch(e){ console.warn('Supabase listing save failed', e); }
@@ -5379,9 +5399,14 @@ async function nmVerifyPassword(password, storedStr) {
     // Legacy plain-text fallback (one-time migration path)
     return storedStr === password;
   }
-  const [saltHex] = storedStr.split(':');
-  const { stored } = await nmHashPassword(password, saltHex);
-  return stored === storedStr;
+  try {
+    const [saltHex] = storedStr.split(':');
+    const { stored } = await nmHashPassword(password, saltHex);
+    return stored === storedStr;
+  } catch(e) {
+    console.warn('Password verify error', e);
+    return false;
+  }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -6530,7 +6555,7 @@ function bpSyncListingPreview(l) {
   chips.innerHTML = features.map(f => `<span class="bp-preview-chip">${f}</span>`).join('');
   const menuTags = document.getElementById('bpp-menu-tags');
   if(l.menu && l.menu.length) {
-    menuTags.innerHTML = l.menu.slice(0,4).map(m => `<span style="font-size:11px;padding:4px 12px;border:1px solid var(--border-soft);color:var(--white-dim);">${m.item} — ${m.price}</span>`).join('');
+    menuTags.innerHTML = l.menu.slice(0,4).map(m => `<span style="font-size:11px;padding:4px 12px;border:1px solid var(--border-soft);color:var(--white-dim);">${nmSafe(m.item||'')} — ${nmSafe(m.price||'')}</span>`).join('');
   }
 }
 
@@ -6542,13 +6567,13 @@ function bpRenderMyListing() {
   if(!el) return;
   if(myListing) {
     el.innerHTML = `
-      <div class="bp-section-label">Live listing — ${myListing.name}</div>
+      <div class="bp-section-label">Live listing — ${nmSafe(myListing.name)}</div>
       <div class="bp-listing-preview">
         <div class="bp-preview-hero">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
             <div style="font-size:40px;">${myListing.emoji||'🏪'}</div>
             <div>
-              <div class="bp-preview-biz-name">${myListing.name}</div>
+              <div class="bp-preview-biz-name">${nmSafe(myListing.name)}</div>
               <div class="bp-preview-tagline">${myListing.type||''} ${myListing.area ? '· '+myListing.area : ''}</div>
             </div>
           </div>
@@ -6560,8 +6585,8 @@ function bpRenderMyListing() {
           </div>
         </div>
         <div class="bp-preview-body">
-          <div class="bp-preview-desc">${bpData.enhancedDesc || myListing.desc || 'No description.'}</div>
-          ${myListing.menu && myListing.menu.length ? '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+myListing.menu.slice(0,5).map(m=>`<span style="font-size:11px;padding:4px 12px;border:1px solid var(--border-soft);color:var(--white-dim);">${m.item} — ${m.price}</span>`).join('')+'</div>' : ''}
+          <div class="bp-preview-desc">${nmSafe(bpData.enhancedDesc || myListing.desc || 'No description.')}</div>
+          ${myListing.menu && myListing.menu.length ? '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+myListing.menu.slice(0,5).map(m=>`<span style="font-size:11px;padding:4px 12px;border:1px solid var(--border-soft);color:var(--white-dim);">${nmSafe(m.item||'')} — ${nmSafe(m.price||'')}</span>`).join('')+'</div>' : ''}
         </div>
       </div>`;
   } else {
@@ -6607,16 +6632,16 @@ function bpRenderEnquiries(filter = 'all') {
   const avColors = ['background:rgba(59,130,246,.15);color:#60A5FA','background:rgba(34,197,94,.1);color:var(--green-fresh)','background:rgba(245,158,11,.15);color:#FBBF24','background:rgba(167,139,250,.15);color:#A78BFA','background:rgba(236,72,153,.15);color:#F472B6'];
   el.innerHTML = enqs.slice().reverse().map((e, i) => `
     <div class="bp-enq-item" id="bpe-${e.id}">
-      <div class="bp-enq-av" style="${avColors[i%5]}">${e.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
+      <div class="bp-enq-av" style="${avColors[i%5]}">${nmSafe(e.name).split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
       <div style="flex:1;">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <span class="bp-enq-name">${e.name}</span>
+          <span class="bp-enq-name">${nmSafe(e.name)}</span>
           <span class="bp-tag ${e.replied?'bp-tag-done':'bp-tag-new'}">${e.replied?'Replied':'New'}</span>
-          <span style="font-size:10px;color:var(--white-dim);margin-left:auto;">${e.time}</span>
+          <span style="font-size:10px;color:var(--white-dim);margin-left:auto;">${nmSafe(e.time)}</span>
         </div>
-        <div class="bp-enq-sub">${e.subject}</div>
-        <div class="bp-enq-msg">"${e.msg}"</div>
-        ${e.replied && e.replyText ? `<div style="background:rgba(22,101,52,.08);border:1px solid rgba(22,101,52,.15);padding:10px 12px;margin-top:8px;font-size:12px;color:var(--green-fresh);line-height:1.6;"><div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green-fresh);opacity:.6;margin-bottom:3px;">Your reply</div>${e.replyText}</div>` : ''}
+        <div class="bp-enq-sub">${nmSafe(e.subject)}</div>
+        <div class="bp-enq-msg">"${nmSafe(e.msg)}"</div>
+        ${e.replied && e.replyText ? `<div style="background:rgba(22,101,52,.08);border:1px solid rgba(22,101,52,.15);padding:10px 12px;margin-top:8px;font-size:12px;color:var(--green-fresh);line-height:1.6;"><div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green-fresh);opacity:.6;margin-bottom:3px;">Your reply</div>${nmSafe(e.replyText)}</div>` : ''}
         <div class="bp-enq-actions">
           ${!e.replied ? `<button class="bp-btn bp-btn-g" onclick="bpAIDraftReply(${e.id})" style="font-size:9px;">✦ AI draft reply</button><button class="bp-btn" onclick="bpToggleReply(${e.id})" style="font-size:9px;">Reply manually</button>` : ''}
           <button class="bp-btn bp-btn-danger" onclick="bpDeleteEnquiry(${e.id})" style="font-size:9px;">Delete</button>
@@ -6714,12 +6739,12 @@ function bpRenderReviews() {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
         <div style="display:flex;align-items:center;gap:10px;">
           <div class="bp-enq-av" style="background:rgba(59,130,246,.12);color:#60A5FA;">${r.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
-          <div><div style="font-size:13px;font-weight:700;color:var(--white);">${r.name}</div><div style="font-size:10px;color:var(--white-dim);">${r.date}</div></div>
+          <div><div style="font-size:13px;font-weight:700;color:var(--white);">${nmSafe(r.name)}</div><div style="font-size:10px;color:var(--white-dim);">${nmSafe(r.date)}</div></div>
         </div>
         <div class="bp-stars">${Array.from({length:5},(_,i)=>`<span class="${i<r.stars?'bp-star-on':'bp-star-off'}">${i<r.stars?'★':'☆'}</span>`).join('')}</div>
       </div>
-      <div style="font-size:13px;color:var(--white-dim);line-height:1.7;">"${r.text}"</div>
-      ${r.ownerReply ? `<div class="bp-review-reply"><div class="bp-review-reply-label">Your reply</div>${r.ownerReply}</div>` : ''}
+      <div style="font-size:13px;color:var(--white-dim);line-height:1.7;">"${nmSafe(r.text)}"</div>
+      ${r.ownerReply ? `<div class="bp-review-reply"><div class="bp-review-reply-label">Your reply</div>${nmSafe(r.ownerReply)}</div>` : ''}
       <div style="display:flex;gap:8px;margin-top:10px;">
         <button class="bp-btn bp-btn-g" onclick="bpAIReviewReply(${r.id})" style="font-size:9px;">✦ AI reply</button>
         <button class="bp-btn bp-btn-danger" onclick="bpDeleteReview(${r.id})" style="font-size:9px;">Delete</button>
