@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="NoaMark — Discover local businesses, explore opportunities, and grow your brand in South Africa.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NoaMark — Discover · Learn · Dominate</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -356,10 +357,13 @@
   .listing-img-bg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:56px;background:linear-gradient(160deg,#1a1f2c,#0d0f15);}
   /* Google Maps style photo gallery */
   .biz-gallery{width:100%;margin-bottom:28px;position:relative;}
-  .biz-gallery-main{width:100%;height:340px;object-fit:cover;display:block;background:var(--black-3);transition:opacity .2s;}
-  .biz-gallery-main:hover{opacity:.93;}
-  .biz-gallery-thumbs{display:flex;gap:6px;margin-top:6px;overflow-x:auto;padding-bottom:4px;}
+  .biz-gallery-main{width:100%;height:340px;object-fit:cover;display:block;background:var(--black-3);transition:opacity .2s;cursor:zoom-in;}
+  .biz-gallery-main:hover{opacity:.90;}
+  .biz-gallery-thumbs{display:flex;gap:6px;margin-top:6px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;}
   .biz-gallery-thumb{width:80px;height:60px;object-fit:cover;cursor:pointer;opacity:0.65;transition:opacity .2s,outline .2s;flex-shrink:0;outline:2px solid transparent;}
+  .biz-gallery-thumb.active{opacity:1;outline:2px solid var(--green-fresh);}
+  .biz-gallery-swipe-hint{position:absolute;bottom:10px;left:12px;background:rgba(0,0,0,.5);color:#fff;font-size:10px;font-weight:600;padding:4px 10px;border-radius:20px;pointer-events:none;letter-spacing:.5px;display:none;}
+  @media(max-width:768px){.biz-gallery-swipe-hint{display:block;}}
   .biz-gallery-thumb.active{opacity:1;outline:2px solid var(--gold);}
   .biz-gallery-emoji{width:100%;height:320px;display:flex;align-items:center;justify-content:center;font-size:100px;background:linear-gradient(160deg,#1a1f2c,#0d0f15);}
   @media(max-width:600px){
@@ -426,7 +430,6 @@
   .menu-item-photo-placeholder{width:90px;height:90px;border-radius:10px;background:linear-gradient(135deg,#f0fdf4,#e8f5e9);display:flex;align-items:center;justify-content:center;font-size:32px;flex-shrink:0;border:1px solid #d1fae5;}
   .menu-section-header{font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold-dim);padding:8px 0 4px;border-bottom:2px solid var(--gold-light,#fef9c3);margin-bottom:4px;margin-top:8px;}
   /* Gallery main — cursor pointer shows it's clickable */
-  .biz-gallery-main{cursor:zoom-in;}
   /* Lightbox */
   #nm-lightbox{display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.96);align-items:center;justify-content:center;flex-direction:column;animation:nmLbFadeIn .2s ease;}
   @keyframes nmLbFadeIn{from{opacity:0;}to{opacity:1;}}
@@ -1520,7 +1523,7 @@
       <div class="home-search-bar">
         <div class="home-search-field">
           <span class="si">🔍</span>
-          <input type="text" placeholder="Search for businesses, food, services..." />
+          <input type="text" id="home-search-business" placeholder="Search for businesses, food, services..." />
         </div>
         <div class="home-search-field" style="border-right:none; max-width:200px;">
           <span class="si">📍</span>
@@ -4054,7 +4057,42 @@ function showPage(id,cb){
   if(id==='marketplace'){showMktView('main');populateMarketplace();}
   if(id==='dashboard') renderDashboardStats();
   if(cb) setTimeout(cb,150);
+  // Push to browser history so phone back button navigates within the site
+  if(history.state && history.state.nmPage === id) return;
+  history.pushState({ nmPage: id, nmView: 'main' }, '', '#' + id);
 }
+
+// Handle phone/browser back button — navigate within the site instead of leaving
+window.addEventListener('popstate', function(e) {
+  // If lightbox is open, close it — don't navigate away
+  const lb = document.getElementById('nm-lightbox');
+  if(lb && lb.classList.contains('open')) {
+    nmLbClose();
+    return;
+  }
+  if(e.state && e.state.nmPage) {
+    const id = e.state.nmPage;
+    const view = e.state.nmView || 'main';
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const pageEl = document.getElementById('page-' + id);
+    if(pageEl) {
+      pageEl.classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if(id === 'marketplace') {
+        if(view === 'profile') {
+          showMktView('profile');
+        } else {
+          showMktView('main');
+          if(LISTINGS.length > 0) populateMarketplace();
+        }
+      }
+      if(id === 'dashboard') renderDashboardStats();
+    }
+  } else {
+    // No state = user went back before any pushState — go to home
+    showPage('home');
+  }
+});
 
 // ── REVEAL ANIMATION ──
 function initReveal(){
@@ -4352,6 +4390,10 @@ function showMktView(view){
   // Always re-render marketplace when returning to main view so sort/category buttons work
   if(view==='main' && LISTINGS.length > 0) populateMarketplace();
   window.scrollTo({top:300,behavior:'smooth'});
+  // Keep URL in sync when returning to marketplace main
+  if(view === 'main') {
+    history.replaceState({ nmPage: 'marketplace', nmView: 'main' }, '', '#marketplace');
+  }
 }
 
 
@@ -4370,10 +4412,13 @@ function buildGalleryHTML(biz) {
   return `<div class="biz-gallery">
     <img id="biz-gallery-main" src="${photos[0]}" class="biz-gallery-main" alt="${nmSafe(biz.name)}"
          onclick="nmLbOpen(window._currentGalleryPhotos, _lbIndex)"
+         ontouchstart="nmGalTouchStart(event)"
+         ontouchend="nmGalTouchEnd(event)"
          title="Click to view full size 🔍"
          style="cursor:zoom-in;">
     ${photos.length > 1 ? `<div class="biz-gallery-thumbs">${thumbs}</div>` : ''}
-    ${photos.length > 0 ? `<div style="position:absolute;bottom:10px;right:12px;background:rgba(0,0,0,.55);color:#fff;font-size:10px;font-weight:600;padding:4px 10px;border-radius:20px;pointer-events:none;letter-spacing:.5px;">🔍 Tap to expand</div>` : ''}
+    <div style="position:absolute;bottom:10px;right:12px;background:rgba(0,0,0,.55);color:#fff;font-size:10px;font-weight:600;padding:4px 10px;border-radius:20px;pointer-events:none;letter-spacing:.5px;">🔍 Tap to expand</div>
+    ${photos.length > 1 ? `<div class="biz-gallery-swipe-hint">← Swipe →</div>` : ''}
   </div>`;
 }
 
@@ -4393,14 +4438,21 @@ let _lbIndex  = 0;
 function nmLbOpen(photos, index) {
   if(!photos || photos.length === 0) return;
   _lbPhotos = photos;
-  _lbIndex  = Math.max(0, Math.min(index, photos.length - 1));
+  _lbIndex  = Math.max(0, Math.min(index || 0, photos.length - 1));
   const lb  = document.getElementById('nm-lightbox');
   if(!lb) return;
   lb.classList.add('open');
   nmLbShow();
-  // Remove any previous listener first to prevent accumulation
+  // Keyboard nav — remove first to prevent stacking
   document.removeEventListener('keydown', nmLbKey);
   document.addEventListener('keydown', nmLbKey);
+  // Touch swipe on lightbox
+  lb.removeEventListener('touchstart', nmLbTouchStart);
+  lb.removeEventListener('touchend',   nmLbTouchEnd);
+  lb.addEventListener('touchstart', nmLbTouchStart, { passive: true });
+  lb.addEventListener('touchend',   nmLbTouchEnd,   { passive: true });
+  // Push history so phone back button closes lightbox, not the page
+  history.pushState({ nmPage: 'marketplace', nmView: 'lightbox' }, '', '');
 }
 
 function nmLbShow() {
@@ -4429,10 +4481,48 @@ function nmLbClose() {
   document.removeEventListener('keydown', nmLbKey);
 }
 
+// ── TOUCH SWIPE for lightbox ──
+let _lbTouchX = null;
+function nmLbTouchStart(e) {
+  _lbTouchX = e.changedTouches[0].clientX;
+}
+function nmLbTouchEnd(e) {
+  if(_lbTouchX === null) return;
+  const dx = e.changedTouches[0].clientX - _lbTouchX;
+  _lbTouchX = null;
+  if(Math.abs(dx) < 40) return; // ignore tiny taps
+  if(dx < 0) nmLbNav(1);  // swipe left  → next
+  else        nmLbNav(-1); // swipe right → previous
+}
+
+// ── KEYBOARD NAV for lightbox ──
 function nmLbKey(e) {
   if(e.key === 'ArrowRight') nmLbNav(1);
   else if(e.key === 'ArrowLeft') nmLbNav(-1);
   else if(e.key === 'Escape') nmLbClose();
+}
+
+// ── TOUCH SWIPE for gallery main image ──
+let _galTouchX = null;
+function nmGalTouchStart(e) {
+  _galTouchX = e.changedTouches[0].clientX;
+}
+function nmGalTouchEnd(e) {
+  if(_galTouchX === null) return;
+  const dx = e.changedTouches[0].clientX - _galTouchX;
+  _galTouchX = null;
+  if(Math.abs(dx) < 40) return;
+  // Find current active thumb index
+  const thumbs = document.querySelectorAll('.biz-gallery-thumb');
+  if(thumbs.length < 2) return;
+  let activeIdx = 0;
+  thumbs.forEach((t, i) => { if(t.classList.contains('active')) activeIdx = i; });
+  let newIdx;
+  if(dx < 0) newIdx = (activeIdx + 1) % thumbs.length;        // swipe left → next
+  else        newIdx = (activeIdx - 1 + thumbs.length) % thumbs.length; // swipe right → previous
+  const newThumb = thumbs[newIdx];
+  const url = window._currentGalleryPhotos[newIdx];
+  if(url) switchGalleryPhoto(newThumb, url, newIdx);
 }
 
 // ── MENU BUILDER ──
@@ -4519,6 +4609,8 @@ function menuBuilderInit() {
 function showBizProfile(id){
   // Coerce both sides to string so UUID strings and numeric IDs both match
   const biz=LISTINGS.find(b=>String(b.id)===String(id));if(!biz)return;
+  // Push profile state so phone back button returns to marketplace listing
+  history.pushState({ nmPage: 'marketplace', nmView: 'profile', nmBizId: String(id) }, '', '#marketplace/profile/' + id);
   const fullAddress=encodeURIComponent([biz.address,biz.area,biz.city,biz.province].filter(Boolean).join(', ')||biz.area||biz.name);
   const googleMapsUrl=`https://www.google.com/maps/search/?api=1&query=${fullAddress}`;
   const boltUrl=`https://bolt.eu/en-za/ride/?destination=${fullAddress}`;
@@ -4535,6 +4627,8 @@ function showBizProfile(id){
   const menuPhotoUrls = (biz.menu && biz.menu.length > 0)
     ? biz.menu.filter(m => m.photo).map(m => m.photo)
     : [];
+  // Store on window so onclick handlers can access safely (avoids JSON in onclick attr)
+  window._menuLbPhotos = menuPhotoUrls;
   const menuHTML = (biz.menu && biz.menu.length > 0)
     ? priceHintHTML + biz.menu.map((m, idx) => {
         const itemName  = nmSafe(m.item || m.name || '');
@@ -4546,10 +4640,10 @@ function showBizProfile(id){
         const descEl = itemDesc
           ? `<div class="menu-item-desc">${itemDesc}</div>`
           : '';
-        // Build lightbox index relative to menu photos array
+        // Use window._menuLbPhotos to avoid JSON.stringify inside onclick attribute
         const lbIdx = m.photo ? menuPhotoUrls.indexOf(m.photo) : -1;
         const lbCall = m.photo
-          ? `onclick="nmLbOpen(${JSON.stringify(menuPhotoUrls)},${lbIdx >= 0 ? lbIdx : 0})"`
+          ? `onclick="nmLbOpen(window._menuLbPhotos,${lbIdx >= 0 ? lbIdx : 0})"`
           : '';
         const photoEl = m.photo
           ? `<img src="${m.photo}" class="menu-item-photo" alt="${itemName}" ${lbCall} title="Click to view full size">`
@@ -4645,7 +4739,7 @@ function applyStep5Labels() {
 
   // Section 1
   document.getElementById('section1-icon').textContent = labels.s1.icon;
-  document.getElementById('section1-label').innerHTML = labels.s1.icon + ' ' + labels.s1.label + ' <span style="font-size:10px;color:var(--white-dim);font-weight:400;" id="section1-sublabel">' + labels.s1.sub + '</span>';
+  document.getElementById('section1-label').innerHTML = labels.s1.icon + ' ' + labels.s1.label + ' <span style="font-size:10px;color:var(--white-dim);font-weight:400;">' + labels.s1.sub + '</span>';
   document.getElementById('section1-upload-label').textContent = labels.s1.upload;
 
   // Section 2
@@ -4908,6 +5002,11 @@ async function submitBusiness(){
       photo_urls: JSON.stringify(photoUrls),
       status: 'pending',
       email, whatsapp: wa, city, province,
+      address, landmark,
+      hours_weekday: hoursWD, hours_sat: hoursSat, hours_sun: hoursSun,
+      business_status: status, years,
+      payments, walkins,
+      facebook, instagram,
       menu: JSON.stringify(menuItems),
       price_hint: priceHint
     }).select());
@@ -5356,17 +5455,17 @@ function askNoah(q){
     } else if(type === 'business') {
       if(q2.includes('customer')||q2.includes('more people')||q2.includes('grow')){
         cAddBot('To get more customers: respond to enquiries quickly, keep your listing description clear and detailed, and ask happy customers to leave reviews. Consistent communication builds trust!');
-        cSetQuick(['View my portal'],r=>{ showPage('portal'); });
+        cSetQuick(['View my portal'],r=>{ showPage('dashboard'); });
       } else if(q2.includes('review')||q2.includes('rating')){
         cAddBot('Reviews build trust with new customers. Ask your regulars to leave a review on your NoaMark listing. Respond to every review — even negative ones — professionally.');
-        cSetQuick(['View my portal'],r=>{ showPage('portal'); });
+        cSetQuick(['View my portal'],r=>{ showPage('dashboard'); });
       } else if(q2.includes('market')||q2.includes('promote')||q2.includes('whatsapp')||q2.includes('advertise')){
         cAddBot('Share your NoaMark listing link on your WhatsApp status and community groups. A short message like "Find us on NoaMark — [your business name]" works really well!');
-        cSetQuick(['View my portal'],r=>{ showPage('portal'); });
+        cSetQuick(['View my portal'],r=>{ showPage('dashboard'); });
       } else {
         cAddBot('I can help with business tips, customer growth, reviews and marketing. What do you need help with?');
         cSetQuick(['Get more customers','Marketing tips','View my portal'],r=>{
-          if(r.includes('portal')) showPage('portal');
+          if(r.includes('portal')) showPage('dashboard');
           else askNoah(r);
         });
       }
@@ -5405,7 +5504,7 @@ function noahStart(){
         cAddBot("Welcome back, "+currentUser.name.split(' ')[0]+"! How can I help with your business today?");
         setTimeout(()=>{
           cSetQuick(["View my portal","Get business tips","How do I get more customers?"],r=>{
-            if(r.includes('portal')) showPage('portal');
+            if(r.includes('portal')) showPage('dashboard');
             else askNoah(r);
           });
         },600);
@@ -6505,7 +6604,7 @@ function trackUser(type, name, identifier) {
   });
   // Update admin stats dynamically
   updateAdminUserCount();
-  console.log('[NoaMark] Active user tracked:', type, name, '| Total sessions:', NM_ACTIVITY_LOG.length);
+  // Activity tracked silently
 }
 
 // ──────────────────────────────────────────────────
