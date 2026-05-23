@@ -3295,7 +3295,7 @@
                       <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);border-bottom:1px solid var(--border-soft);">Category</th>
                       <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);border-bottom:1px solid var(--border-soft);">Area</th>
                       <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);border-bottom:1px solid var(--border-soft);">Contact</th>
-                      <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);border-bottom:1px solid var(--border-soft);">Action</th>
+                      <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);border-bottom:1px solid var(--border-soft);">Review & Action</th>
                     </tr>
                   </thead>
                   <tbody id="admin-pending-tbody">
@@ -3975,6 +3975,62 @@
 </div>
 
 <!-- ── SUPPORT MODAL ── -->
+<!-- Admin Business Review Modal -->
+<div id="admin-review-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px;" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#0a0c10;border:1px solid rgba(212,175,55,.3);padding:0;max-width:680px;width:100%;position:relative;margin:auto;">
+    <div style="background:linear-gradient(135deg,rgba(212,175,55,.08),transparent);padding:24px 28px;border-bottom:1px solid rgba(212,175,55,.2);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:4px;">Admin Review</div>
+        <div id="arm-name" style="font-size:20px;font-weight:700;color:#fff;"></div>
+      </div>
+      <button onclick="document.getElementById('admin-review-modal').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:22px;cursor:pointer;">✕</button>
+    </div>
+    <div style="padding:28px;">
+      <!-- Photos -->
+      <div id="arm-photos" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;"></div>
+      <!-- Details grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+        <div style="background:#111318;border:1px solid #1a1f2c;padding:14px;">
+          <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Category</div>
+          <div id="arm-type" style="font-size:13px;color:#e5e7eb;"></div>
+        </div>
+        <div style="background:#111318;border:1px solid #1a1f2c;padding:14px;">
+          <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Location</div>
+          <div id="arm-location" style="font-size:13px;color:#e5e7eb;"></div>
+        </div>
+        <div style="background:#111318;border:1px solid #1a1f2c;padding:14px;">
+          <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Contact</div>
+          <div id="arm-contact" style="font-size:13px;color:#e5e7eb;"></div>
+        </div>
+        <div style="background:#111318;border:1px solid #1a1f2c;padding:14px;">
+          <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Payment Methods</div>
+          <div id="arm-payments" style="font-size:13px;color:#e5e7eb;"></div>
+        </div>
+      </div>
+      <!-- Description -->
+      <div style="background:#111318;border:1px solid #1a1f2c;padding:16px;margin-bottom:20px;">
+        <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:8px;">Description / What They Offer</div>
+        <div id="arm-desc" style="font-size:13px;color:#d1d5db;line-height:1.75;"></div>
+      </div>
+      <!-- Menu / Services -->
+      <div id="arm-menu-section" style="margin-bottom:20px;">
+        <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:10px;">Services / Menu Items</div>
+        <div id="arm-menu" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+      <!-- Price hint -->
+      <div id="arm-pricehint-wrap" style="margin-bottom:20px;display:none;">
+        <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Pricing Note</div>
+        <div id="arm-pricehint" style="font-size:13px;color:var(--gold);background:rgba(212,175,55,.06);border-left:3px solid var(--gold);padding:10px 14px;"></div>
+      </div>
+      <!-- Action buttons -->
+      <div id="arm-actions" style="display:flex;gap:12px;padding-top:12px;border-top:1px solid #1a1f2c;">
+        <button id="arm-approve-btn" class="admin-action-btn approve" style="flex:1;padding:14px;font-size:13px;font-weight:700;">✓ Approve Listing</button>
+        <button id="arm-reject-btn" class="admin-action-btn reject" style="flex:1;padding:14px;font-size:13px;font-weight:700;">✗ Reject Listing</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="support-modal" style="display:none;position:fixed;inset:0;background:rgba(255,255,255,.94);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
   <div style="background:#FFFFFF;border:1px solid rgba(212,175,55,.25);padding:64px 56px;max-width:480px;width:90%;text-align:center;position:relative;">
     <button onclick="document.getElementById('support-modal').style.display='none'" style="position:absolute;top:20px;right:20px;background:none;border:none;color:rgba(184,176,160,.5);font-size:22px;cursor:pointer;">✕</button>
@@ -5052,6 +5108,96 @@ function handleBoost(type,price,duration){
 }
 
 // ── ADMIN ACTIONS ──
+function adminReviewListing(id) {
+  const l = (window._pendingListingsMap || {})[id];
+  if (!l) { alert('Could not load listing details. Please refresh.'); return; }
+  const modal = document.getElementById('admin-review-modal');
+  if (!modal) return;
+
+  // Name
+  document.getElementById('arm-name').textContent = l.name || '—';
+
+  // Type / location / contact
+  document.getElementById('arm-type').textContent = l.type || '—';
+  document.getElementById('arm-location').innerHTML = [l.area, l.city, l.province].filter(Boolean).join(', ') || '—';
+  const contactParts = [];
+  if (l.phone) contactParts.push('📞 ' + nmSafe(l.phone));
+  if (l.whatsapp) contactParts.push('💬 WhatsApp: ' + nmSafe(l.whatsapp));
+  if (l.email) contactParts.push('✉ ' + nmSafe(l.email));
+  document.getElementById('arm-contact').innerHTML = contactParts.join('<br>') || '—';
+
+  // Payments
+  const payLabels = { pay_cash:'Cash', pay_eft:'EFT', pay_snapscan:'SnapScan', pay_ozow:'Ozow', pay_card:'Card' };
+  let pays = [];
+  try { pays = l.payments ? (Array.isArray(l.payments) ? l.payments : JSON.parse(l.payments)) : []; } catch(e) { pays = []; }
+  document.getElementById('arm-payments').textContent = pays.map(p => payLabels[p] || p).join(', ') || '—';
+
+  // Description
+  document.getElementById('arm-desc').textContent = l.description || l.desc || 'No description provided.';
+
+  // Price hint
+  const phWrap = document.getElementById('arm-pricehint-wrap');
+  const phEl = document.getElementById('arm-pricehint');
+  if (l.priceHint) { phEl.textContent = l.priceHint; phWrap.style.display = ''; }
+  else phWrap.style.display = 'none';
+
+  // Photos
+  const photosEl = document.getElementById('arm-photos');
+  photosEl.innerHTML = '';
+  let photoUrls = [];
+  try { photoUrls = l.photo_urls ? (Array.isArray(l.photo_urls) ? l.photo_urls : JSON.parse(l.photo_urls)) : []; } catch(e) {}
+  if (l.photo_url) photoUrls = [l.photo_url, ...photoUrls.filter(p => p !== l.photo_url)];
+  if (photoUrls.length) {
+    photoUrls.slice(0,8).forEach(url => {
+      const img = document.createElement('img');
+      img.src = url; img.alt = l.name;
+      img.style.cssText = 'width:100px;height:80px;object-fit:cover;border-radius:4px;border:1px solid #1a1f2c;';
+      photosEl.appendChild(img);
+    });
+  } else {
+    photosEl.innerHTML = '<div style="font-size:12px;color:#6b7280;padding:8px 0;">No photos uploaded.</div>';
+  }
+
+  // Menu / Services
+  const menuEl = document.getElementById('arm-menu');
+  const menuSec = document.getElementById('arm-menu-section');
+  menuEl.innerHTML = '';
+  let menuItems = [];
+  try { menuItems = l.menu ? (Array.isArray(l.menu) ? l.menu : JSON.parse(l.menu)) : []; } catch(e) {}
+  if (menuItems.length) {
+    menuSec.style.display = '';
+    menuItems.slice(0,10).forEach(item => {
+      const name = item.name || item.item || '';
+      const price = item.price || '';
+      const desc2 = item.desc || item.description || '';
+      const div = document.createElement('div');
+      div.style.cssText = 'background:#111318;border:1px solid #1a1f2c;padding:10px 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;';
+      div.innerHTML = `<div style="flex:1"><div style="font-size:13px;color:#e5e7eb;font-weight:600;">${nmSafe(name)}</div>${desc2 ? '<div style="font-size:11px;color:#9ca3af;margin-top:3px;">'+nmSafe(desc2)+'</div>' : ''}</div><div style="font-size:13px;color:var(--gold);font-weight:700;white-space:nowrap;">${nmSafe(price)}</div>`;
+      menuEl.appendChild(div);
+    });
+  } else {
+    menuSec.style.display = 'none';
+  }
+
+  // Action buttons
+  const approveBtn = document.getElementById('arm-approve-btn');
+  const rejectBtn = document.getElementById('arm-reject-btn');
+  approveBtn.onclick = async () => {
+    approveBtn.disabled = true; approveBtn.textContent = '...';
+    const { error } = await nmSupaQuery(() => _supa.from('listings').update({ status: 'approved' }).eq('id', l.id));
+    if (!error) { modal.style.display = 'none'; loadPendingListings(); loadListingsFromSupabase(); }
+    else { approveBtn.disabled = false; approveBtn.textContent = '✓ Approve Listing'; alert('Error approving. Try again.'); }
+  };
+  rejectBtn.onclick = async () => {
+    rejectBtn.disabled = true; rejectBtn.textContent = '...';
+    const { error } = await nmSupaQuery(() => _supa.from('listings').update({ status: 'rejected' }).eq('id', l.id));
+    if (!error) { modal.style.display = 'none'; loadPendingListings(); }
+    else { rejectBtn.disabled = false; rejectBtn.textContent = '✗ Reject Listing'; alert('Error rejecting. Try again.'); }
+  };
+
+  modal.style.display = 'flex';
+}
+
 async function adminAction(btn, action, listingId) {
   const row = btn.closest('tr');
   const bizName = row.cells[0].textContent;
@@ -5097,6 +5243,9 @@ async function loadPendingListings() {
     }
 
     document.getElementById('admin-pending-count').textContent = data.length;
+    // Store listings in a global map for safe reference by ID
+    window._pendingListingsMap = {};
+    data.forEach(l => { window._pendingListingsMap[l.id] = l; });
     tbody.innerHTML = data.map(l => `
       <tr>
         <td style="font-weight:600;">${l.name}</td>
@@ -5105,6 +5254,7 @@ async function loadPendingListings() {
         <td>${l.area || '—'}, ${l.city || '—'}</td>
         <td>${l.phone || '—'}<br><span style="font-size:11px;color:var(--white-dim);">${l.email || ''}</span></td>
         <td>
+          <button class="admin-action-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${l.id}')">👁 Review</button><br>
           <button class="admin-action-btn approve" onclick="adminAction(this,'approve','${l.id}')">✓ Approve</button>
           <button class="admin-action-btn reject" onclick="adminAction(this,'reject','${l.id}')">✗ Reject</button>
         </td>
@@ -7759,7 +7909,7 @@ bpLoad();
         <div class="adm-topbar">
           <div>
             <div class="adm-page-title">Revenue Overview</div>
-            <div class="adm-page-sub">Boost payments and subscription revenue</div>
+            <div class="adm-page-sub">Active boost tiers — revenue confirmed only after PayFast payment</div>
           </div>
           <button class="adm-btn-refresh" onclick="admLoadRevenue()">↻ Refresh</button>
         </div>
@@ -7790,9 +7940,9 @@ bpLoad();
             <div class="adm-stat-sub">R49.99/3 days each</div>
           </div>
           <div class="adm-stat">
-            <div class="adm-stat-label">Est. Revenue</div>
-            <div class="adm-stat-val green" id="adm-rev-total">R0</div>
-            <div class="adm-stat-sub">Based on active boosts</div>
+            <div class="adm-stat-label">Confirmed Revenue</div>
+            <div class="adm-stat-val green" id="adm-rev-total">R0.00</div>
+            <div class="adm-stat-sub" style="color:var(--danger);font-weight:600;">⚠ No payments confirmed yet</div>
           </div>
         </div>
         <div class="adm-card">
@@ -8051,7 +8201,7 @@ async function admLoadRevenue() {
     const dom = boosted.filter(l => l.boost_tier === 'dominance');
     const growth = boosted.filter(l => l.boost_tier === 'growth');
     const starter = boosted.filter(l => l.boost_tier === 'starter');
-    const estRevenue = (pro.length * 329.99) + (dom.length * 199.99) + (growth.length * 99.99) + (starter.length * 49.99);
+    const estRevenue = 0; // Revenue only counts once payment is confirmed via PayFast ITN callback
 
     const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
     set('adm-rev-boosted', boosted.length);
@@ -8059,7 +8209,7 @@ async function admLoadRevenue() {
     set('adm-rev-dom', dom.length);
     set('adm-rev-growth', growth.length);
     set('adm-rev-starter', starter.length);
-    set('adm-rev-total', 'R' + estRevenue.toFixed(2));
+    set('adm-rev-total', 'R0.00');
 
     const tbody = document.getElementById('adm-revenue-tbody');
     if(tbody) {
