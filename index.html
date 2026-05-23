@@ -355,8 +355,9 @@
   .listing-img{width:100%;height:180px;object-fit:cover;background:var(--black-3);display:flex;align-items:center;justify-content:center;font-size:48px;overflow:hidden;position:relative;}
   .listing-img-bg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:56px;background:linear-gradient(160deg,#1a1f2c,#0d0f15);}
   /* Google Maps style photo gallery */
-  .biz-gallery{width:100%;margin-bottom:28px;}
-  .biz-gallery-main{width:100%;height:320px;object-fit:cover;display:block;background:var(--black-3);}
+  .biz-gallery{width:100%;margin-bottom:28px;position:relative;}
+  .biz-gallery-main{width:100%;height:340px;object-fit:cover;display:block;background:var(--black-3);transition:opacity .2s;}
+  .biz-gallery-main:hover{opacity:.93;}
   .biz-gallery-thumbs{display:flex;gap:6px;margin-top:6px;overflow-x:auto;padding-bottom:4px;}
   .biz-gallery-thumb{width:80px;height:60px;object-fit:cover;cursor:pointer;opacity:0.65;transition:opacity .2s,outline .2s;flex-shrink:0;outline:2px solid transparent;}
   .biz-gallery-thumb.active{opacity:1;outline:2px solid var(--gold);}
@@ -397,11 +398,48 @@
   .biz-body-grid{display:grid;grid-template-columns:2fr 1fr;gap:40px;}
   .biz-section-title{font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border-soft);}
   .biz-description{font-size:14px;color:var(--white-dim);line-height:1.9;margin-bottom:40px;}
-  .menu-list{display:flex;flex-direction:column;gap:2px;margin-bottom:40px;}
-  .menu-item{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--black-2);border:1px solid var(--border-soft);transition:border-color .3s;}
-  .menu-item:hover{border-color:var(--gold-dim);}
-  .menu-item-name{font-size:14px;color:var(--white-soft);}
-  .menu-item-price{font-size:14px;color:var(--success);font-weight:600;}
+  /* ── Menu builder (form) ── */
+  .menu-builder{display:flex;flex-direction:column;gap:12px;margin-bottom:16px;}
+  .menu-builder-row{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;background:var(--black-3);border:1px solid var(--border-soft);padding:14px 16px;border-radius:4px;}
+  .menu-builder-row input[type=text]{background:var(--black-2);border:1px solid var(--border-soft);color:var(--white-soft);padding:10px 14px;font-size:13px;font-family:var(--font-body);outline:none;transition:border-color .2s;border-radius:2px;}
+  .menu-builder-row input[type=text]:focus{border-color:var(--gold);}
+  .menu-builder-row input[type=text].menu-name-input{flex:1;min-width:0;}
+  .menu-builder-row input[type=text].menu-price-input{width:110px;}
+  .menu-item-photo-label{display:flex;align-items:center;justify-content:center;width:64px;height:64px;background:var(--black-2);border:1px dashed var(--border-soft);cursor:pointer;font-size:22px;border-radius:4px;transition:border-color .2s;flex-shrink:0;overflow:hidden;position:relative;}
+  .menu-item-photo-label:hover{border-color:var(--gold);}
+  .menu-item-photo-label img{width:64px;height:64px;object-fit:cover;position:absolute;inset:0;}
+  .menu-item-photo-label input{display:none;}
+  .menu-row-del{background:transparent;border:none;color:var(--danger);cursor:pointer;font-size:18px;padding:4px 8px;line-height:1;flex-shrink:0;opacity:.7;transition:opacity .2s;}
+  .menu-row-del:hover{opacity:1;}
+  .menu-add-btn{background:transparent;border:1px dashed var(--border-soft);color:var(--gold);padding:12px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%;transition:all .2s;border-radius:4px;}
+  .menu-add-btn:hover{border-color:var(--gold);background:rgba(212,175,55,.05);}
+  /* ── Menu display (profile) ── */
+  .menu-list{display:flex;flex-direction:column;gap:12px;margin-bottom:40px;}
+  .menu-item{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.07);border:1px solid #f0f0f0;transition:box-shadow .2s,transform .15s;cursor:default;}
+  .menu-item:hover{box-shadow:0 6px 20px rgba(0,0,0,.12);transform:translateY(-1px);}
+  .menu-item-left{flex:1;min-width:0;}
+  .menu-item-name{font-size:15px;font-weight:700;color:#111827;margin-bottom:4px;line-height:1.3;}
+  .menu-item-desc{font-size:12px;color:#6b7280;line-height:1.5;margin-bottom:4px;}
+  .menu-item-price{font-size:15px;color:#166534;font-weight:800;}
+  .menu-item-photo{width:90px;height:90px;object-fit:cover;border-radius:10px;flex-shrink:0;cursor:zoom-in;transition:opacity .2s;box-shadow:0 2px 8px rgba(0,0,0,.12);}
+  .menu-item-photo:hover{opacity:.88;}
+  .menu-item-photo-placeholder{width:90px;height:90px;border-radius:10px;background:linear-gradient(135deg,#f0fdf4,#e8f5e9);display:flex;align-items:center;justify-content:center;font-size:32px;flex-shrink:0;border:1px solid #d1fae5;}
+  .menu-section-header{font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold-dim);padding:8px 0 4px;border-bottom:2px solid var(--gold-light,#fef9c3);margin-bottom:4px;margin-top:8px;}
+  /* Gallery main — cursor pointer shows it's clickable */
+  .biz-gallery-main{cursor:zoom-in;}
+  /* Lightbox */
+  #nm-lightbox{display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.96);align-items:center;justify-content:center;flex-direction:column;animation:nmLbFadeIn .2s ease;}
+  @keyframes nmLbFadeIn{from{opacity:0;}to{opacity:1;}}
+  #nm-lightbox.open{display:flex;}
+  #nm-lightbox img{max-width:92vw;max-height:82vh;object-fit:contain;border-radius:6px;box-shadow:0 24px 80px rgba(0,0,0,.9);transition:opacity .2s;}
+  #nm-lb-close{position:absolute;top:18px;right:20px;font-size:24px;color:#fff;cursor:pointer;background:rgba(255,255,255,.1);border:none;line-height:1;opacity:.9;transition:all .2s;z-index:9999;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+  #nm-lb-close:hover{opacity:1;background:rgba(255,255,255,.2);}
+  #nm-lb-prev,#nm-lb-next{position:absolute;top:50%;transform:translateY(-50%);font-size:32px;color:#fff;cursor:pointer;background:rgba(255,255,255,.1);border:none;padding:14px 20px;border-radius:8px;opacity:.8;transition:all .2s;z-index:9999;}
+  #nm-lb-prev:hover,#nm-lb-next:hover{opacity:1;background:rgba(255,255,255,.2);}
+  #nm-lb-prev{left:16px;}
+  #nm-lb-next{right:16px;}
+  #nm-lb-counter{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);font-size:12px;color:rgba(255,255,255,.6);letter-spacing:2px;background:rgba(0,0,0,.4);padding:5px 16px;border-radius:20px;}
+  #nm-lb-caption{position:absolute;bottom:56px;left:50%;transform:translateX(-50%);font-size:13px;color:rgba(255,255,255,.8);text-align:center;max-width:80vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .biz-contact-card{background:var(--black-2);border:1px solid var(--border-soft);padding:32px;margin-bottom:20px;}
   .contact-btn{display:flex;align-items:center;gap:12px;width:100%;padding:16px 20px;margin-bottom:12px;border:none;cursor:pointer;font-family:var(--font-body);font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;transition:all .3s;}
   .contact-btn.call{background:var(--success);color:var(--white);}
@@ -3042,14 +3080,22 @@
       <!-- STEP 4: PRICING -->
       <div class="onboard-form-panel" id="step-4">
         <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:48px;">
-          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:32px;">Step 4 — Menu & Pricing *</p>
-          <div class="form-group"><label class="form-label">Price Range Summary *</label><input type="text" class="form-input" id="biz_price_hint" placeholder="e.g. Meals from R30 · Cuts from R50 · Delivery from R20"></div>
+          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:8px;">Step 4 — Menu & Pricing *</p>
+          <p style="font-size:12px;color:var(--white-dim);margin-bottom:28px;">Add what you offer with a price and an optional photo for each item. Minimum 3 items, maximum 10.</p>
+
           <div class="form-group">
-            <label class="form-label">Menu / Services & Prices * <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(at least 3 items required)</span></label>
-            <p style="font-size:11px;color:var(--white-dim);margin-bottom:12px;">Each item on a new line in this format: Item Name - R Price</p>
-            <textarea class="form-input" id="biz_menu" rows="8" placeholder="Pap & Chicken - R45&#10;Pap & Beef Stew - R50&#10;Vetkoek & Mince - R25&#10;Cold Drink - R15" style="resize:vertical;"></textarea>
+            <label class="form-label">Price Range Summary * <span style="font-size:10px;color:var(--white-dim);font-weight:400;">Shown as a quick summary on your profile</span></label>
+            <input type="text" class="form-input" id="biz_price_hint" placeholder="e.g. Meals from R30 · Cuts from R50 · Delivery from R20">
           </div>
-          <div style="display:flex;gap:12px;">
+
+          <div class="form-group">
+            <label class="form-label">Menu / Services * <span style="font-size:10px;color:var(--white-dim);font-weight:400;">At least 3 items required — up to 10</span></label>
+            <div class="menu-builder" id="menu-builder-list"></div>
+            <button type="button" class="menu-add-btn" id="menu-add-btn" onclick="menuBuilderAdd()">+ Add Item</button>
+            <input type="hidden" id="biz_menu" value="">
+          </div>
+
+          <div style="display:flex;gap:12px;margin-top:8px;">
             <button class="btn-ghost" onclick="nextStep(3)" style="flex:1;padding:16px;">← Back</button>
             <button class="form-submit" onclick="nextStep(5)" style="flex:2;margin-top:0;">Continue →</button>
           </div>
@@ -4057,8 +4103,32 @@ async function loadListingsFromSupabase() {
         // Parse menu from Supabase — stored as JSON string or array
         let parsedMenu = [];
         if(l.menu) {
-          try { parsedMenu = typeof l.menu === 'string' ? JSON.parse(l.menu) : l.menu; }
-          catch(e){ parsedMenu = []; }
+          try {
+            const parsed = typeof l.menu === 'string' ? JSON.parse(l.menu) : l.menu;
+            // If it's an array of objects with item/name keys → structured format
+            if(Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object') {
+              parsedMenu = parsed;
+            } else if(Array.isArray(parsed)) {
+              // Array of strings fallback
+              parsedMenu = parsed.map(s => {
+                const str = String(s);
+                const dash = str.lastIndexOf(' - ');
+                return dash > 0
+                  ? { item: str.slice(0, dash).trim(), price: str.slice(dash + 3).trim(), photo: '' }
+                  : { item: str.trim(), price: '', photo: '' };
+              });
+            }
+          } catch(e) {
+            // Plain text fallback: "Item Name - R45\nOther Item - R30"
+            if(typeof l.menu === 'string' && l.menu.trim()) {
+              parsedMenu = l.menu.split('\n').filter(Boolean).map(line => {
+                const dash = line.lastIndexOf(' - ');
+                return dash > 0
+                  ? { item: line.slice(0, dash).trim(), price: line.slice(dash + 3).trim(), photo: '' }
+                  : { item: line.trim(), price: '', photo: '' };
+              });
+            }
+          }
         }
         // Parse photo_urls safely
         let parsedPhotos = [];
@@ -4291,19 +4361,159 @@ function buildGalleryHTML(biz) {
   if(photos.length === 0) {
     return `<div class="biz-gallery"><div class="biz-gallery-emoji">${biz.emoji}</div></div>`;
   }
+  // Store photos on window so lightbox nav can always access them
+  window._currentGalleryPhotos = photos;
   const thumbs = photos.map((url, i) =>
-    `<img src="${url}" class="biz-gallery-thumb${i===0?' active':''}" onclick="switchGalleryPhoto(this,'${url}')" alt="photo ${i+1}">`
+    `<img src="${url}" class="biz-gallery-thumb${i===0?' active':''}" onclick="switchGalleryPhoto(this,'${url}',${i})" alt="photo ${i+1}" title="Click to view full size">`
   ).join('');
+  const photosJSON = JSON.stringify(photos).replace(/"/g, '&quot;');
   return `<div class="biz-gallery">
-    <img id="biz-gallery-main" src="${photos[0]}" class="biz-gallery-main" alt="${biz.name}">
+    <img id="biz-gallery-main" src="${photos[0]}" class="biz-gallery-main" alt="${nmSafe(biz.name)}"
+         onclick="nmLbOpen(window._currentGalleryPhotos, _lbIndex)"
+         title="Click to view full size 🔍"
+         style="cursor:zoom-in;">
     ${photos.length > 1 ? `<div class="biz-gallery-thumbs">${thumbs}</div>` : ''}
+    ${photos.length > 0 ? `<div style="position:absolute;bottom:10px;right:12px;background:rgba(0,0,0,.55);color:#fff;font-size:10px;font-weight:600;padding:4px 10px;border-radius:20px;pointer-events:none;letter-spacing:.5px;">🔍 Tap to expand</div>` : ''}
   </div>`;
 }
 
-function switchGalleryPhoto(thumb, url) {
-  document.getElementById('biz-gallery-main').src = url;
+function switchGalleryPhoto(thumb, url, index) {
+  const main = document.getElementById('biz-gallery-main');
+  if(main) main.src = url;
   document.querySelectorAll('.biz-gallery-thumb').forEach(t => t.classList.remove('active'));
   thumb.classList.add('active');
+  // Keep lightbox index in sync so clicking main image opens the correct photo
+  _lbIndex = typeof index === 'number' ? index : 0;
+}
+
+// ── LIGHTBOX ──
+let _lbPhotos = [];
+let _lbIndex  = 0;
+
+function nmLbOpen(photos, index) {
+  if(!photos || photos.length === 0) return;
+  _lbPhotos = photos;
+  _lbIndex  = Math.max(0, Math.min(index, photos.length - 1));
+  const lb  = document.getElementById('nm-lightbox');
+  if(!lb) return;
+  lb.classList.add('open');
+  nmLbShow();
+  // Remove any previous listener first to prevent accumulation
+  document.removeEventListener('keydown', nmLbKey);
+  document.addEventListener('keydown', nmLbKey);
+}
+
+function nmLbShow() {
+  if(!_lbPhotos || _lbPhotos.length === 0) return;
+  const img     = document.getElementById('nm-lb-img');
+  const counter = document.getElementById('nm-lb-counter');
+  const prev    = document.getElementById('nm-lb-prev');
+  const next    = document.getElementById('nm-lb-next');
+  if(img)     img.src = _lbPhotos[_lbIndex];
+  if(counter) counter.textContent = (_lbIndex + 1) + ' / ' + _lbPhotos.length;
+  if(prev)    prev.style.display  = _lbPhotos.length > 1 ? 'block' : 'none';
+  if(next)    next.style.display  = _lbPhotos.length > 1 ? 'block' : 'none';
+}
+
+function nmLbNav(dir) {
+  _lbIndex = (_lbIndex + dir + _lbPhotos.length) % _lbPhotos.length;
+  nmLbShow();
+  // Sync thumbnail active state in gallery
+  const thumbs = document.querySelectorAll('.biz-gallery-thumb');
+  thumbs.forEach((t, i) => t.classList.toggle('active', i === _lbIndex));
+}
+
+function nmLbClose() {
+  const lb = document.getElementById('nm-lightbox');
+  if(lb) lb.classList.remove('open');
+  document.removeEventListener('keydown', nmLbKey);
+}
+
+function nmLbKey(e) {
+  if(e.key === 'ArrowRight') nmLbNav(1);
+  else if(e.key === 'ArrowLeft') nmLbNav(-1);
+  else if(e.key === 'Escape') nmLbClose();
+}
+
+// ── MENU BUILDER ──
+let _menuItems = []; // [{name, price, photoFile, photoUrl}]
+
+function menuBuilderAdd() {
+  if(_menuItems.length >= 10) {
+    bpToast('Maximum 10 menu items allowed.');
+    return;
+  }
+  const idx = _menuItems.length;
+  _menuItems.push({ name:'', price:'', photoFile:null, photoUrl:'' });
+  menuBuilderRender();
+  // Focus the new name input
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('.menu-name-input');
+    if(inputs[idx]) inputs[idx].focus();
+  }, 50);
+}
+
+function menuBuilderRemove(idx) {
+  _menuItems.splice(idx, 1);
+  menuBuilderRender();
+}
+
+function menuBuilderRender() {
+  const list = document.getElementById('menu-builder-list');
+  const addBtn = document.getElementById('menu-add-btn');
+  if(!list) return;
+
+  list.innerHTML = _menuItems.map((item, idx) => `
+    <div class="menu-builder-row" id="menu-row-${idx}">
+      <input type="text" class="menu-name-input form-input" placeholder="Item name (e.g. Grilled Chicken)"
+        value="${nmSafe(item.name)}"
+        oninput="_menuItems[${idx}].name=this.value;menuBuilderSync()"
+        style="flex:1;">
+      <input type="text" class="menu-price-input form-input" placeholder="Price (e.g. R45)"
+        value="${nmSafe(item.price)}"
+        oninput="_menuItems[${idx}].price=this.value;menuBuilderSync()"
+        style="width:110px;">
+      <label class="menu-item-photo-label" title="Add a photo for this item">
+        ${item.photoUrl
+          ? `<img src="${item.photoUrl}" alt="item photo">`
+          : `<span style="font-size:22px;color:var(--white-dim);">📷</span>`}
+        <input type="file" accept="image/jpeg,image/png,image/webp"
+          onchange="menuBuilderPhoto(this,${idx})">
+      </label>
+      <button class="menu-row-del" onclick="menuBuilderRemove(${idx})" title="Remove item">✕</button>
+    </div>`).join('');
+
+  if(addBtn) addBtn.style.display = _menuItems.length >= 10 ? 'none' : 'block';
+  menuBuilderSync();
+}
+
+function menuBuilderPhoto(input, idx) {
+  const file = input.files[0];
+  if(!file) return;
+  _menuItems[idx].photoFile = file;
+  _menuItems[idx].photoUrl = URL.createObjectURL(file);
+  menuBuilderRender();
+}
+
+function menuBuilderSync() {
+  // Keep the hidden biz_menu field updated as a proper JSON snapshot
+  const hidden = document.getElementById('biz_menu');
+  if(hidden) {
+    const data = _menuItems
+      .filter(m => m.name.trim())
+      .map(m => ({ item: m.name.trim(), price: m.price.trim(), photo: m.photoUrl || '' }));
+    hidden.value = JSON.stringify(data);
+  }
+}
+
+// Initialise with 3 blank rows when step 4 is first shown
+function menuBuilderInit() {
+  if(_menuItems.length === 0) {
+    _menuItems = [{name:'',price:'',photoFile:null,photoUrl:''},
+                  {name:'',price:'',photoFile:null,photoUrl:''},
+                  {name:'',price:'',photoFile:null,photoUrl:''}];
+    menuBuilderRender();
+  }
 }
 
 function showBizProfile(id){
@@ -4319,11 +4529,41 @@ function showBizProfile(id){
     : '';
   const boostBanner='';
   const priceHintHTML = biz.priceHint
-    ? `<div style="font-size:13px;color:var(--gold);font-weight:600;margin-bottom:16px;padding:10px 16px;background:rgba(212,175,55,.07);border-left:3px solid var(--gold);">${nmSafe(biz.priceHint)}</div>`
+    ? `<div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:18px;padding:12px 18px;background:rgba(212,175,55,.08);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;">${nmSafe(biz.priceHint)}</div>`
     : '';
+  // Collect all menu item photos for lightbox navigation
+  const menuPhotoUrls = (biz.menu && biz.menu.length > 0)
+    ? biz.menu.filter(m => m.photo).map(m => m.photo)
+    : [];
   const menuHTML = (biz.menu && biz.menu.length > 0)
-    ? priceHintHTML + biz.menu.map(m=>`<div class="menu-item"><span class="menu-item-name">${nmSafe(m.item||m.name||'')}</span><span class="menu-item-price">${nmSafe(m.price||'')}</span></div>`).join('')
-    : priceHintHTML || '<p style="font-size:13px;color:var(--white-dim);margin-top:8px;">Contact the business directly for pricing and menu details.</p>';
+    ? priceHintHTML + biz.menu.map((m, idx) => {
+        const itemName  = nmSafe(m.item || m.name || '');
+        const itemPrice = nmSafe(m.price || '');
+        const itemDesc  = nmSafe(m.desc || m.description || '');
+        const priceSpan = itemPrice
+          ? `<div class="menu-item-price">${itemPrice}</div>`
+          : `<div style="font-size:12px;color:#9ca3af;font-weight:500;">Contact for price</div>`;
+        const descEl = itemDesc
+          ? `<div class="menu-item-desc">${itemDesc}</div>`
+          : '';
+        // Build lightbox index relative to menu photos array
+        const lbIdx = m.photo ? menuPhotoUrls.indexOf(m.photo) : -1;
+        const lbCall = m.photo
+          ? `onclick="nmLbOpen(${JSON.stringify(menuPhotoUrls)},${lbIdx >= 0 ? lbIdx : 0})"`
+          : '';
+        const photoEl = m.photo
+          ? `<img src="${m.photo}" class="menu-item-photo" alt="${itemName}" ${lbCall} title="Click to view full size">`
+          : `<div class="menu-item-photo-placeholder">🍽️</div>`;
+        return `<div class="menu-item">
+          <div class="menu-item-left">
+            <div class="menu-item-name">${itemName}</div>
+            ${descEl}
+            ${priceSpan}
+          </div>
+          ${photoEl}
+        </div>`;
+      }).join('')
+    : priceHintHTML || `<div style="display:flex;align-items:center;gap:14px;padding:20px;background:#f9fafb;border-radius:10px;border:1px dashed #e5e7eb;"><span style="font-size:28px;">📋</span><p style="font-size:13px;color:#6b7280;margin:0;">This business hasn't listed their menu yet. Contact them directly for pricing details.</p></div>`;
   const sc=biz.status==='open'?'var(--success)':'var(--danger)';
   const st=biz.status==='open'?'● Open Now':'● Currently Closed';
   document.getElementById('mkt-profile-content').innerHTML=`
@@ -4342,7 +4582,7 @@ function showBizProfile(id){
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:10px;flex-shrink:0;">
-          <a href="tel:${biz.phone}" class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;">📞 Call Now</a>
+          ${biz.phone ? `<a href="tel:${biz.phone}" class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;">📞 Call Now</a>` : `<span class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;opacity:.4;cursor:not-allowed;">📞 No Number</span>`}
           ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#25D366;color:#25D366;">💬 WhatsApp</a>` : `<span class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;opacity:.4;cursor:not-allowed;">💬 No WhatsApp</span>`}
           <a href="${googleMapsUrl}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#4285F4;color:#4285F4;">📍 Google Maps</a>
           <a href="${boltUrl}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#34E0A1;color:#34E0A1;">🚗 Order Bolt</a>
@@ -4359,7 +4599,7 @@ function showBizProfile(id){
           <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:28px;margin-bottom:16px;">
             <div class="biz-section-title">Contact</div>
             <div style="display:flex;flex-direction:column;gap:10px;">
-              <a href="tel:${biz.phone}" style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--white-soft);text-decoration:none;padding:12px 16px;background:var(--black-3);border:1px solid var(--border-soft);transition:border-color .3s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)'">📞 ${nmSafe(biz.phone)}</a>
+              ${biz.phone ? `<a href="tel:${biz.phone}" style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--white-soft);text-decoration:none;padding:12px 16px;background:var(--black-3);border:1px solid var(--border-soft);transition:border-color .3s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)'">📞 ${nmSafe(biz.phone)}</a>` : ''}
               ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#25D366;text-decoration:none;padding:12px 16px;background:rgba(37,211,102,.05);border:1px solid rgba(37,211,102,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#25D366'" onmouseout="this.style.borderColor='rgba(37,211,102,.2)'">💬 WhatsApp</a>` : ''}
             </div>
           </div>
@@ -4492,6 +4732,7 @@ function previewMedia(input, previewId, type, maxFiles){
 }
 
 function nextStep(n){
+  if(n === 4) { setTimeout(menuBuilderInit, 50); }
   if(n === 5) { setTimeout(applyStep5Labels, 50); }
   // Validate before moving forward
   const validations={
@@ -4633,16 +4874,29 @@ async function submitBusiness(){
   }
   const photoUrl = photoUrls[0] || '';
 
-  // Parse menu textarea into structured [{item, price}] array for Supabase
-  const menuItems = menu.split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 0)
-    .map(line => {
-      // Supports formats: "Pap & Chicken - R45" or "Pap & Chicken R45" or "Pap & Chicken: R45"
-      const match = line.match(/^(.+?)[-–:]+\s*(R?\d[\d.,]*.*)$/i);
-      if(match) return { item: match[1].trim(), price: match[2].trim() };
-      return { item: line, price: '' };
-    });
+  // Use the structured _menuItems from the menu builder (name, price, photoFile)
+  // Upload any item photos and collect URLs
+  const menuItems = [];
+  for(let i = 0; i < _menuItems.length; i++) {
+    const m = _menuItems[i];
+    if(!m.name.trim()) continue; // skip blank rows
+    let itemPhotoUrl = '';
+    if(m.photoFile) {
+      try {
+        const compressed = await nmCompressImage(m.photoFile, 800, 400);
+        const ext = '.jpg';
+        const fileName = 'menu_' + Date.now() + '_' + i + ext;
+        const result = await nmSupaQuery(() =>
+          _supa.storage.from('business-photos').upload(fileName, compressed, { upsert: true })
+        );
+        if(!result.error) {
+          const { data: urlData } = _supa.storage.from('business-photos').getPublicUrl(fileName);
+          itemPhotoUrl = urlData.publicUrl;
+        }
+      } catch(e){ console.warn('Menu item photo upload failed', e); }
+    }
+    menuItems.push({ item: m.name.trim(), price: m.price.trim(), photo: itemPhotoUrl });
+  }
 
   // Save listing to Supabase with pending status
   if(submitBtn) submitBtn.textContent = '⏳ Saving your listing...';
@@ -7795,5 +8049,14 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
+  <!-- LIGHTBOX -->
+  <div id="nm-lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer" onclick="if(event.target===this)nmLbClose()">
+    <button id="nm-lb-close" onclick="nmLbClose()" aria-label="Close">✕</button>
+    <button id="nm-lb-prev" onclick="nmLbNav(-1)" aria-label="Previous">&#8249;</button>
+    <img id="nm-lb-img" src="" alt="Full size photo">
+    <button id="nm-lb-next" onclick="nmLbNav(1)" aria-label="Next">&#8250;</button>
+    <div id="nm-lb-counter"></div>
+  </div>
+
 </body>
 </html>
