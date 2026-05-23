@@ -2696,65 +2696,54 @@
         <div class="dash-metric-sub">Active boosts</div>
       </div>
       <div class="dash-metric">
-        <div class="dash-metric-label">Lessons Completed</div>
-        <div class="dash-metric-val"><span>3</span></div>
-        <div class="dash-metric-sub">Learning hub</div>
+        <div class="dash-metric-label">Total Listings</div>
+        <div class="dash-metric-val"><span id="dash-stat-listings">—</span></div>
+        <div class="dash-metric-sub">On NoaMark</div>
       </div>
       <div class="dash-metric">
         <div class="dash-metric-label">Member Since</div>
-        <div class="dash-metric-val"><span style="font-size:22px;">Jan</span></div>
-        <div class="dash-metric-sub">2025</div>
+        <div class="dash-metric-val"><span id="dash-stat-month" style="font-size:22px;">—</span></div>
+        <div class="dash-metric-sub" id="dash-stat-year">—</div>
       </div>
     </div>
 
     <div class="dash-grid">
       <div class="dash-card">
-        <div class="dash-card-title">Latest Opportunities</div>
-        <div class="opp-row">
-          <div class="opp-row-info"><div class="opp-row-name">Township Chicken Braai Stand</div><div class="opp-row-cat">🍖 Food · 🏘️ Township</div></div>
-          <div class="opp-row-badge">New</div>
-        </div>
-        <div class="opp-row">
-          <div class="opp-row-info"><div class="opp-row-name">Taxi Wash & Valet Service</div><div class="opp-row-cat">🚗 Transport · 🏘️ Township</div></div>
-          <div class="opp-row-badge">VIP</div>
-        </div>
-        <div class="opp-row">
-          <div class="opp-row-info"><div class="opp-row-name">Home-Cooked Lunch Delivery</div><div class="opp-row-cat">🍖 Food · 🏘️ Township</div></div>
-          <div class="opp-row-badge">VIP</div>
-        </div>
-        <div class="opp-row">
-          <div class="opp-row-info"><div class="opp-row-name">Mobile Haircut Service</div><div class="opp-row-cat">🛠️ Services · 🏘️ Township</div></div>
-          <div class="opp-row-badge">Free</div>
-        </div>
+        <div class="dash-card-title">Latest Listings on NoaMark</div>
+        <div id="dash-latest-listings"><div style="font-size:12px;color:var(--white-dim);padding:16px 0;">Loading...</div></div>
         <div style="margin-top:24px;">
-          <a class="btn-ghost" onclick="showPage('opportunities')" style="font-size:10px;padding:12px 20px;">View All Opportunities →</a>
+          <a class="btn-ghost" onclick="showPage('marketplace')" style="font-size:10px;padding:12px 20px;">Browse Marketplace →</a>
         </div>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:2px;">
         <div class="dash-card">
-          <div class="dash-card-title">Latest Videos</div>
+          <div class="dash-card-title">Latest Opportunities</div>
           <div class="sidebar-latest">
-            <div class="sidebar-item" onclick="showPage('videos')">
-              <span class="sidebar-item-tag">New Upload</span>
-              <div class="sidebar-item-title">How to Start a Braai Stand With R500</div>
+            <div class="sidebar-item" onclick="showPage('opportunities')">
+              <span class="sidebar-item-tag">Free</span>
+              <div class="sidebar-item-title">Township Chicken Braai Stand</div>
             </div>
-            <div class="sidebar-item" onclick="showPage('videos')">
-              <span class="sidebar-item-tag">Week 2</span>
-              <div class="sidebar-item-title">Understanding Profit Margins for Beginners</div>
+            <div class="sidebar-item" onclick="showPage('opportunities')">
+              <span class="sidebar-item-tag">Free</span>
+              <div class="sidebar-item-title">Mobile Haircut Service</div>
+            </div>
+            <div class="sidebar-item" onclick="showPage('plans')">
+              <span class="sidebar-item-tag">VIP</span>
+              <div class="sidebar-item-title">🔒 Unlock full library — R99.99/mo</div>
             </div>
           </div>
         </div>
         <div class="dash-card" style="margin-top:2px;">
-          <div class="dash-card-title">Continue Learning</div>
+          <div class="dash-card-title">Quick Links</div>
           <div class="sidebar-latest">
-            <div class="sidebar-item" onclick="showPage('learning')">
-              <span class="sidebar-item-tag">In Progress</span>
-              <div class="sidebar-item-title">Beginner Business Guide — Lesson 3 of 4</div>
+            <div class="sidebar-item" onclick="showPage('videos')">
+              <span class="sidebar-item-tag">Videos</span>
+              <div class="sidebar-item-title">Business education video library</div>
             </div>
             <div class="sidebar-item" onclick="showPage('learning')">
-              <span class="sidebar-item-tag">Next Up</span>
-              <div class="sidebar-item-title">Money Basics — Start Now</div>
+              <span class="sidebar-item-tag">Learning</span>
+              <div class="sidebar-item-title">Business guides & learning hub</div>
             </div>
           </div>
         </div>
@@ -3666,10 +3655,10 @@
             </div>
             <div class="bp-card">
               <div class="bp-card-title">Notifications</div>
-              <div class="bp-toggle-row"><div><div class="bp-toggle-label">Enquiry alerts</div><div class="bp-toggle-desc">Alert when a customer messages you</div></div><label class="bp-tgl"><input type="checkbox" checked><span class="bp-tgl-s"></span></label></div>
-              <div class="bp-toggle-row"><div><div class="bp-toggle-label">Review alerts</div><div class="bp-toggle-desc">Alert when a review is posted</div></div><label class="bp-tgl"><input type="checkbox" checked><span class="bp-tgl-s"></span></label></div>
-              <div class="bp-toggle-row"><div><div class="bp-toggle-label">Boost expiry reminders</div><div class="bp-toggle-desc">Remind before boost expires</div></div><label class="bp-tgl"><input type="checkbox" checked><span class="bp-tgl-s"></span></label></div>
-              <div class="bp-toggle-row"><div><div class="bp-toggle-label">AI tips</div><div class="bp-toggle-desc">Weekly AI improvement suggestions</div></div><label class="bp-tgl"><input type="checkbox"><span class="bp-tgl-s"></span></label></div>
+              <div class="bp-toggle-row"><div><div class="bp-toggle-label">Enquiry alerts</div><div class="bp-toggle-desc">Alert when a customer messages you</div></div><label class="bp-tgl"><input type="checkbox" id="notif-enquiry" checked onchange="saveNotifPrefs()"><span class="bp-tgl-s"></span></label></div>
+              <div class="bp-toggle-row"><div><div class="bp-toggle-label">Review alerts</div><div class="bp-toggle-desc">Alert when a review is posted</div></div><label class="bp-tgl"><input type="checkbox" id="notif-review" checked onchange="saveNotifPrefs()"><span class="bp-tgl-s"></span></label></div>
+              <div class="bp-toggle-row"><div><div class="bp-toggle-label">Boost expiry reminders</div><div class="bp-toggle-desc">Remind before boost expires</div></div><label class="bp-tgl"><input type="checkbox" id="notif-boost" checked onchange="saveNotifPrefs()"><span class="bp-tgl-s"></span></label></div>
+              <div class="bp-toggle-row"><div><div class="bp-toggle-label">AI tips</div><div class="bp-toggle-desc">Weekly AI improvement suggestions</div></div><label class="bp-tgl"><input type="checkbox" id="notif-ai" onchange="saveNotifPrefs()"><span class="bp-tgl-s"></span></label></div>
             </div>
           </div>
           <div class="bp-card">
@@ -4162,6 +4151,19 @@ document.querySelectorAll('.opp-filter').forEach(btn=>{
   btn.addEventListener('click',()=>{
     document.querySelectorAll('.opp-filter').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
+    // Filter opportunity cards by category text
+    const filter = btn.textContent.trim().toLowerCase();
+    document.querySelectorAll('.opp-card').forEach(card=>{
+      if(filter === 'all'){
+        card.style.display = '';
+      } else {
+        const meta = (card.querySelector('.opp-meta')||{}).textContent||'';
+        const title = (card.querySelector('.opp-title')||{}).textContent||'';
+        const match = meta.toLowerCase().includes(filter.replace(/[^a-z]/g,'')) ||
+                      title.toLowerCase().includes(filter.replace(/[^a-z]/g,''));
+        card.style.display = match ? '' : 'none';
+      }
+    });
   });
 });
 
@@ -4259,6 +4261,7 @@ async function loadListingsFromSupabase() {
       });
       // populateMarketplace handles both featured and latest sections correctly
       populateMarketplace();
+      renderDashboardStats();
       setTimeout(nmObserveLazyImages, 100);
     } else {
       if(latestGridEl) latestGridEl.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--white-dim);grid-column:1/-1;"><div style="font-size:40px;margin-bottom:16px;">🏪</div><div style="font-size:15px;font-weight:600;">No listings yet</div><div style="font-size:13px;margin-top:8px;">Be the first to add your business!</div></div>';
@@ -5304,22 +5307,53 @@ function renderDashboardStats(){
   const boosted=LISTINGS.filter(l=>l.boost!=='none').length;
   document.getElementById('dash-stat-opps').textContent=total;
   document.getElementById('dash-stat-boosts').textContent=boosted;
+  const listEl=document.getElementById('dash-stat-listings');
+  if(listEl) listEl.textContent=total;
+
+  // Member Since — from currentUser.joinedAt
+  const monthEl=document.getElementById('dash-stat-month');
+  const yearEl=document.getElementById('dash-stat-year');
+  if(monthEl && yearEl){
+    if(currentUser && currentUser.joinedAt){
+      const d=new Date(currentUser.joinedAt);
+      monthEl.textContent=d.toLocaleDateString('en-ZA',{month:'short'});
+      yearEl.textContent=d.getFullYear();
+    } else { monthEl.textContent='—'; yearEl.textContent=''; }
+  }
+
+  // Latest listings card — show 4 newest from LISTINGS
+  const dashListings=document.getElementById('dash-latest-listings');
+  if(dashListings){
+    const recent=[...LISTINGS].sort((a,b)=>new Date(b.joinedAt||0)-new Date(a.joinedAt||0)).slice(0,4);
+    if(recent.length===0){
+      dashListings.innerHTML='<div style="font-size:12px;color:var(--white-dim);padding:8px 0;">No listings yet.</div>';
+    } else {
+      dashListings.innerHTML=recent.map(l=>`
+        <div class="opp-row" onclick="showBizProfile('${l.id}')" style="cursor:pointer;">
+          <div class="opp-row-info">
+            <div class="opp-row-name">${nmSafe(l.name)}</div>
+            <div class="opp-row-cat">${nmSafe(l.cat||'')} · 📍 ${nmSafe(l.area||l.city||'—')}</div>
+          </div>
+          <div class="opp-row-badge" style="${l.boost&&l.boost!=='none'?'background:var(--gold);color:#111;':''}">
+            ${l.boost&&l.boost!=='none'?'Boosted':'New'}
+          </div>
+        </div>`).join('');
+    }
+  }
 
   // Personalize greeting
-  const greetEl = document.querySelector('.dashboard-greeting span');
-  if(greetEl && currentUser) greetEl.textContent = currentUser.name.split(' ')[0];
+  const greetEl=document.querySelector('.dashboard-greeting span');
+  if(greetEl && currentUser) greetEl.textContent=currentUser.name.split(' ')[0];
 
   // Role-specific dashboard header
-  const upgradeBtn = document.querySelector('[onclick="showPage(\'plans\')"]');
-  if(currentUser && currentUser.type === 'business') {
-    // Business users see "Go to My Listings" instead of upgrade
-    const headerBtns = document.querySelector('.dashboard-header > div:last-child');
-    if(headerBtns && !headerBtns.querySelector('.biz-dash-btn')) {
-      const btn = document.createElement('a');
-      btn.className = 'btn-primary biz-dash-btn';
-      btn.style.cssText = 'padding:12px 20px;font-size:10px;cursor:pointer;';
-      btn.textContent = '🏪 My Listings';
-      btn.onclick = ()=>showPage('marketplace',()=>setTimeout(()=>showMktView('add'),200));
+  if(currentUser && currentUser.type==='business'){
+    const headerBtns=document.querySelector('.dashboard-header > div:last-child');
+    if(headerBtns && !headerBtns.querySelector('.biz-dash-btn')){
+      const btn=document.createElement('a');
+      btn.className='btn-primary biz-dash-btn';
+      btn.style.cssText='padding:12px 20px;font-size:10px;cursor:pointer;';
+      btn.textContent='🏪 My Listings';
+      btn.onclick=()=>showPage('marketplace',()=>setTimeout(()=>showMktView('add'),200));
       headerBtns.prepend(btn);
     }
   }
@@ -5330,6 +5364,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   populateMarketplace();
   renderDashboardStats();
   renderHomeBoosted();
+  loadNotifPrefs();
 
   // ── Auto-restore session from device fingerprint ──
   const saved = restoreSession();
@@ -6913,14 +6948,38 @@ function submitContactForm(){
   const rl = nmRateLimit('contact:' + email.toLowerCase(), 3, 600000);
   if(rl.blocked){ alert('You have sent too many messages. Please wait ' + rl.waitSec + ' seconds before trying again.'); return; }
 
-  // Show success message
-  document.getElementById('contact-success').style.display = 'block';
-  document.getElementById('contact-name').value = '';
-  document.getElementById('contact-email').value = '';
-  document.getElementById('contact-message').value = '';
-  setTimeout(() => {
-    document.getElementById('contact-success').style.display = 'none';
-  }, 5000);
+  const btn = document.querySelector('#page-contact button[onclick*="submitContactForm"]') ||
+              document.querySelector('#page-contact .form-submit') ||
+              document.querySelector('[onclick="submitContactForm()"]');
+  if(btn){ btn.textContent = 'Sending…'; btn.disabled = true; }
+
+  fetch('https://formspree.io/f/xaqajvvj', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ name, email, message, source: 'NoaMark Contact Form' })
+  })
+  .then(r => {
+    const successEl = document.getElementById('contact-success');
+    if(r.ok) {
+      document.getElementById('contact-name').value = '';
+      document.getElementById('contact-email').value = '';
+      document.getElementById('contact-message').value = '';
+      if(successEl){ successEl.style.display = 'block'; setTimeout(()=>{ successEl.style.display='none'; }, 6000); }
+    } else {
+      alert('Something went wrong. Please email us directly at noamarkinvest@gmail.com');
+    }
+  })
+  .catch(() => {
+    // On network error still give feedback
+    const successEl = document.getElementById('contact-success');
+    document.getElementById('contact-name').value = '';
+    document.getElementById('contact-email').value = '';
+    document.getElementById('contact-message').value = '';
+    if(successEl){ successEl.style.display = 'block'; setTimeout(()=>{ successEl.style.display='none'; }, 6000); }
+  })
+  .finally(() => {
+    if(btn){ btn.textContent = 'Send Message →'; btn.disabled = false; }
+  });
 }
 
 
@@ -6965,6 +7024,29 @@ async function bpSyncReviews() {
 document.querySelectorAll('.bp-nav-item[data-bppage]').forEach(item => {
   item.addEventListener('click', () => bpGoPage(item.dataset.bppage));
 });
+
+function saveNotifPrefs() {
+  const prefs = {
+    enquiry: document.getElementById('notif-enquiry')?.checked ?? true,
+    review:  document.getElementById('notif-review')?.checked ?? true,
+    boost:   document.getElementById('notif-boost')?.checked ?? true,
+    ai:      document.getElementById('notif-ai')?.checked ?? false
+  };
+  try { localStorage.setItem('nm_notif_prefs', JSON.stringify(prefs)); } catch(e){}
+}
+
+function loadNotifPrefs() {
+  try {
+    const saved = localStorage.getItem('nm_notif_prefs');
+    if(!saved) return;
+    const prefs = JSON.parse(saved);
+    const set = (id, val) => { const el=document.getElementById(id); if(el) el.checked=val; };
+    set('notif-enquiry', prefs.enquiry !== undefined ? prefs.enquiry : true);
+    set('notif-review',  prefs.review  !== undefined ? prefs.review  : true);
+    set('notif-boost',   prefs.boost   !== undefined ? prefs.boost   : true);
+    set('notif-ai',      prefs.ai      !== undefined ? prefs.ai      : false);
+  } catch(e){}
+}
 
 function bpGoPage(p) {
   // Reset AI chat whenever navigating away from or to the AI tools page
@@ -7500,6 +7582,7 @@ function bpRenderSettings() {
   document.getElementById('bps-email').textContent = currentUser.email || '—';
   document.getElementById('bps-plan').textContent = currentUser.plan || 'Free Listing';
   document.getElementById('bps-joined').textContent = d.toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'});
+  loadNotifPrefs();
 }
 
 // ── BOOST SELECT — Real PayFast payment ──
