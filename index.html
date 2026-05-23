@@ -1527,9 +1527,9 @@
         </div>
         <div class="home-search-field" style="border-right:none; max-width:200px;">
           <span class="si">📍</span>
-          <input type="text" placeholder="Enter your area (e.g. Soweto, Alex)" />
+          <input type="text" id="home-search-area" placeholder="Enter your area (e.g. Soweto, Alex)" />
         </div>
-        <button class="home-search-btn" onclick="showPage('marketplace')">Search</button>
+        <button class="home-search-btn" onclick="homeSearchGo()">Search</button>
       </div>
       <div class="home-hero-actions">
         <button class="home-btn-explore" onclick="showPage('marketplace')">Explore Marketplace</button>
@@ -4312,7 +4312,7 @@ function renderCard(biz){
   </div>`;
 }
 
-let currentCat='all', currentSearch='', currentSort='ranking', currentTransportSub='all';
+let currentCat='all', currentSearch='', currentSort='ranking', currentTransportSub='all', currentLocation='';
 
 function setSort(mode, btn){
   currentSort = mode;
@@ -4376,6 +4376,14 @@ function populateMarketplace(){
       (l.owner||'').toLowerCase().includes(q)
     );
   });
+  if(currentLocation) list=list.filter(l=>{
+    const loc = currentLocation;
+    return (
+      (l.area||'').toLowerCase().includes(loc) ||
+      (l.city||'').toLowerCase().includes(loc) ||
+      (l.province||'').toLowerCase().includes(loc)
+    );
+  });
   const sorted = currentSort==='ranking' ? getSortedListings(list) : getSortedByMode(list);
   const featured = currentSort==='ranking'
     ? sorted.filter(l=>l.boost==='dominance'||l.boost==='growth')
@@ -4414,6 +4422,7 @@ function populateMarketplace(){
 
 function filterListings(){
   currentSearch=(document.getElementById('mkt-search').value||'').toLowerCase().trim();
+  currentLocation=(document.getElementById('mkt-location').value||'').toLowerCase().trim();
   populateMarketplace();
 }
 
@@ -5126,19 +5135,17 @@ function adminReviewListing(id) {
   if (l.email) contactParts.push('✉ ' + nmSafe(l.email));
   document.getElementById('arm-contact').innerHTML = contactParts.join('<br>') || '—';
 
-  // Payments
-  const payLabels = { pay_cash:'Cash', pay_eft:'EFT', pay_snapscan:'SnapScan', pay_ozow:'Ozow', pay_card:'Card' };
-  let pays = [];
-  try { pays = l.payments ? (Array.isArray(l.payments) ? l.payments : JSON.parse(l.payments)) : []; } catch(e) { pays = []; }
-  document.getElementById('arm-payments').textContent = pays.map(p => payLabels[p] || p).join(', ') || '—';
+  // Payments — stored as comma-separated string e.g. "Cash, EFT, SnapScan"
+  document.getElementById('arm-payments').textContent = (l.payments && l.payments.trim()) ? l.payments : '—';
 
   // Description
   document.getElementById('arm-desc').textContent = l.description || l.desc || 'No description provided.';
 
-  // Price hint
+  // Price hint — raw Supabase row uses 'price_hint'
   const phWrap = document.getElementById('arm-pricehint-wrap');
   const phEl = document.getElementById('arm-pricehint');
-  if (l.priceHint) { phEl.textContent = l.priceHint; phWrap.style.display = ''; }
+  const priceHintVal = l.price_hint || l.priceHint || '';
+  if (priceHintVal) { phEl.textContent = priceHintVal; phWrap.style.display = ''; }
   else phWrap.style.display = 'none';
 
   // Photos
@@ -6825,11 +6832,25 @@ window.updateAdminUserCount = function() {
   }
 };
 
-// ──────────────────────────────────────────────────
 // HOME SEARCH — gate on Enter / search button
 // If an unauthenticated user types a business name
 // and presses Enter, prompt them to sign in/up
 // ──────────────────────────────────────────────────
+function homeSearchGo() {
+  const bizVal = (document.getElementById('home-search-business')||{}).value || '';
+  const areaVal = (document.getElementById('home-search-area')||{}).value || '';
+  if ((bizVal.trim() || areaVal.trim()) && !currentUser) { openAuth('guest'); return; }
+  showPage('marketplace', ()=>{
+    setTimeout(()=>{
+      const mktSearch = document.getElementById('mkt-search');
+      const mktLoc = document.getElementById('mkt-location');
+      if(mktSearch && bizVal.trim()) mktSearch.value = bizVal.trim();
+      if(mktLoc && areaVal.trim()) mktLoc.value = areaVal.trim();
+      if(bizVal.trim() || areaVal.trim()) filterListings();
+    }, 200);
+  });
+}
+
 (function patchHomeSearch(){
   const searchInput = document.getElementById('home-search-business');
   if(!searchInput) return;
@@ -6854,12 +6875,8 @@ window.updateAdminUserCount = function() {
 })();
 
 // Also gate the home search button
-const _origHomeSearch = window.homeSearch;
 window.homeSearch = function() {
-  const val = (document.getElementById('home-search-business')||{}).value || '';
-  if(val.trim() && !currentUser) { openAuth('guest'); return; }
-  if(_origHomeSearch) _origHomeSearch();
-  else showPage('marketplace');
+  homeSearchGo();
 };
 
 
