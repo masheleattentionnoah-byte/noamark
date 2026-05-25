@@ -2858,13 +2858,13 @@
   <div class="mkt-body" id="mkt-main-view">
 
     <!-- FEATURED (BOOSTED) -->
-    <div id="mkt-featured-section">
+    <div id="mkt-featured-section" style="display:none;">
       <div class="mkt-section-label">⭐ Featured Listings</div>
       <div class="mkt-grid" id="mkt-featured-grid"></div>
     </div>
 
     <!-- LATEST -->
-    <div id="mkt-latest-section">
+    <div id="mkt-latest-section" style="display:none;">
       <div class="mkt-section-label">🆕 Latest Listings</div>
       <div class="mkt-grid" id="mkt-latest-grid"></div>
     </div>
@@ -4514,14 +4514,20 @@ function showMktView(view){
     setTimeout(()=>{ loadPendingListings(); loadApprovedListings(); }, 300);
   }
   const map={main:'mkt-main-view',profile:'mkt-profile-view',boost:'mkt-boost-view',add:'mkt-add-view',admin:'mkt-admin-view'};
-  Object.values(map).forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
-  const target=map[view];
-  if(target){document.getElementById(target).style.display='block';}
+  // Hide all views first
+  Object.values(map).forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.style.display='none';
+  });
+  // Show target view
+  const targetId = map[view];
+  if(targetId){
+    const el = document.getElementById(targetId);
+    if(el) el.style.display = 'block';
+  }
   if(view==='admin') populateBizDashboard();
-  // Always re-render marketplace when returning to main view so sort/category buttons work
   if(view==='main' && LISTINGS.length > 0) populateMarketplace();
-  window.scrollTo({top:300,behavior:'smooth'});
-  // Keep URL in sync when returning to marketplace main
+  window.scrollTo({top:0,behavior:'smooth'});
   if(view === 'main') {
     history.replaceState({ nmPage: 'marketplace', nmView: 'main' }, '', '#marketplace');
   }
@@ -5566,6 +5572,15 @@ function renderDashboardStats(){
 
 // ── INIT MARKETPLACE ON LOAD ──
 document.addEventListener('DOMContentLoaded',()=>{
+  // Always reset to main marketplace view — never restore a profile from URL hash
+  if(window.location.hash && window.location.hash.includes('profile')) {
+    history.replaceState({ nmPage: 'marketplace', nmView: 'main' }, '', '#marketplace');
+  }
+  // Ensure profile/boost/add views are hidden on load
+  ['mkt-profile-view','mkt-boost-view','mkt-add-view','mkt-admin-view'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  });
   populateMarketplace();
   renderDashboardStats();
   renderHomeBoosted();
