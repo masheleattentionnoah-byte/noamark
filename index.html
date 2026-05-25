@@ -6761,6 +6761,13 @@ function loginAs(user) {
 
   // Update active-user count in admin panel
   updateAdminUserCount();
+
+  // If user logged in after hitting the auth gate for a listing, open it now
+  if(pendingBizId) {
+    const id = pendingBizId;
+    closeGate();
+    setTimeout(() => { showPage('marketplace'); _originalShowBizProfile(id); }, 200);
+  }
 }
 
 // ──────────────────────────────────────────────────
