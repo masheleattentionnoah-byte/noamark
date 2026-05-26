@@ -42,6 +42,24 @@
     --font-display:'Poppins',sans-serif;
     --font-body:'Poppins',sans-serif;
   }
+  .pub-rev-enq-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;}
+  @media(max-width:768px){
+    .pub-rev-enq-grid{grid-template-columns:1fr!important;gap:24px!important;}
+    /* Fix ALL large horizontal paddings sitewide on mobile */
+    section[style*="padding:160px 60px"],
+    section[style*="padding:80px 60px"],
+    section[style*="padding:100px 60px"]{padding-left:20px!important;padding-right:20px!important;}
+    div[style*="padding:120px 60px"]{padding:80px 20px 40px!important;}
+    div[style*="padding:160px 60px"]{padding:100px 20px 40px!important;}
+    div[style*="padding:80px 60px"]{padding:48px 20px!important;}
+    div[style*="padding:60px 40px"]{padding:32px 20px!important;}
+    div[style*="padding:20px 60px"]{padding:16px 20px!important;}
+    div[style*="padding:60px;"]{padding:32px 20px!important;}
+    #mkt-main-view > div[style*="padding:60px"]{padding:32px 20px!important;}
+    #mkt-boost-view{padding:48px 20px!important;}
+    #mkt-add-view{padding:48px 20px!important;}
+  }
+
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{width:100%;max-width:100%;overflow-x:hidden;}
   html{scroll-behavior:smooth;}
@@ -2879,7 +2897,7 @@
     </div>
 
     <!-- ADD BUSINESS CTA BANNER -->
-    <div style="margin-top:40px;padding:60px;background:linear-gradient(135deg,var(--black-2),#111520);border:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:24px;">
+    <div style="margin-top:40px;padding:60px 20px;background:linear-gradient(135deg,var(--black-2),#111520);border:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:24px;">
       <div>
         <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;">Own a Business?</p>
         <h3 style="font-family:var(--font-display);font-size:36px;font-weight:300;color:var(--white);">Get discovered by <em style="color:var(--gold);">your community</em></h3>
@@ -2894,7 +2912,7 @@
 
   <!-- BUSINESS PROFILE VIEW -->
   <div id="mkt-profile-view" style="display:none;padding:80px 0;">
-    <div style="padding:0 60px;max-width:1100px;margin:0 auto;">
+    <div class="biz-profile-body" style="max-width:1100px;margin:0 auto;">
       <button onclick="showMktView('main');populateMarketplace();" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);background:transparent;border:1px solid var(--border-soft);padding:10px 20px;cursor:pointer;margin-bottom:40px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.color='var(--white-dim)'">← Back to Marketplace</button>
       <div id="mkt-profile-content"></div>
     </div>
@@ -4851,7 +4869,7 @@ function showBizProfile(id){
 
       <!-- ── CUSTOMER REVIEWS & ENQUIRY ── -->
       <div style="margin-top:48px;border-top:1px solid var(--border-soft);padding-top:48px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;">
+        <div class="pub-rev-enq-grid">
 
           <!-- Leave a Review -->
           <div>
@@ -6871,7 +6889,7 @@ function applyRoleHomePage(user) {
     if(roleBanner) {
       roleBanner.style.display = 'block';
       roleBanner.innerHTML = `
-        <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-bottom:2px solid #166534;padding:20px 60px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+        <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-bottom:2px solid #166534;padding:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
           <div style="display:flex;align-items:center;gap:14px;">
             <div style="width:48px;height:48px;background:#166534;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;flex-shrink:0;font-weight:700;">${firstName.charAt(0).toUpperCase()}</div>
             <div>
@@ -6895,7 +6913,7 @@ function applyRoleHomePage(user) {
       const planLabel = user.plan || 'Free';
       const isPaid = planLabel !== 'Free';
       roleBanner.innerHTML = `
-        <div style="background:linear-gradient(135deg,#fefce8,#fef3c7);border-bottom:2px solid #d97706;padding:20px 60px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+        <div style="background:linear-gradient(135deg,#fefce8,#fef3c7);border-bottom:2px solid #d97706;padding:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
           <div style="display:flex;align-items:center;gap:14px;">
             <div style="width:48px;height:48px;background:#d97706;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;flex-shrink:0;font-weight:700;">${firstName.charAt(0).toUpperCase()}</div>
             <div>
@@ -6917,7 +6935,7 @@ function applyRoleHomePage(user) {
     if(roleBanner) {
       roleBanner.style.display = 'block';
       roleBanner.innerHTML = `
-        <div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border-bottom:2px solid #3b82f6;padding:20px 60px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+        <div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border-bottom:2px solid #3b82f6;padding:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
           <div style="display:flex;align-items:center;gap:14px;">
             <div style="width:48px;height:48px;background:#3b82f6;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;flex-shrink:0;font-weight:700;">${firstName.charAt(0).toUpperCase()}</div>
             <div>
