@@ -43,21 +43,37 @@
     --font-body:'Poppins',sans-serif;
   }
   .pub-rev-enq-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;}
+  .nm-2col-grid{display:grid;grid-template-columns:1fr 1fr;}
+  .nm-3col-grid{display:grid;grid-template-columns:repeat(3,1fr);}
+  .nm-page-wrap{padding:120px 60px 80px;}
+  .nm-section-wrap{padding:80px 60px;}
   @media(max-width:768px){
+    /* Two-column and three-column grids → single column */
     .pub-rev-enq-grid{grid-template-columns:1fr!important;gap:24px!important;}
-    /* Fix ALL large horizontal paddings sitewide on mobile */
-    section[style*="padding:160px 60px"],
-    section[style*="padding:80px 60px"],
-    section[style*="padding:100px 60px"]{padding-left:20px!important;padding-right:20px!important;}
-    div[style*="padding:120px 60px"]{padding:80px 20px 40px!important;}
-    div[style*="padding:160px 60px"]{padding:100px 20px 40px!important;}
-    div[style*="padding:80px 60px"]{padding:48px 20px!important;}
-    div[style*="padding:60px 40px"]{padding:32px 20px!important;}
-    div[style*="padding:20px 60px"]{padding:16px 20px!important;}
-    div[style*="padding:60px;"]{padding:32px 20px!important;}
-    #mkt-main-view > div[style*="padding:60px"]{padding:32px 20px!important;}
-    #mkt-boost-view{padding:48px 20px!important;}
-    #mkt-add-view{padding:48px 20px!important;}
+    .nm-2col-grid{grid-template-columns:1fr!important;}
+    .nm-3col-grid{grid-template-columns:1fr!important;}
+    /* Page and section wrappers */
+    .nm-page-wrap{padding:90px 20px 48px!important;}
+    .nm-section-wrap{padding:48px 20px!important;}
+    /* All sections */
+    section{padding:80px 20px!important;}
+    /* Marketplace views */
+    #mkt-boost-view,#mkt-add-view{padding:48px 20px!important;}
+    /* Dashboard */
+    .dashboard-section{padding:90px 20px 48px!important;}
+    /* Subscribe */
+    .subscribe-section{padding:80px 20px!important;}
+    .subscribe-left,.subscribe-right{padding:40px 20px!important;}
+    /* Footer */
+    footer{padding:48px 20px 32px!important;}
+    /* Community section */
+    .community-section{padding:48px 20px!important;}
+    /* Static pages */
+    #page-about > div,
+    #page-contact > div,
+    #page-terms > div,
+    #page-privacy > div,
+    #page-faqs > div{padding:90px 20px 48px!important;}
   }
 
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -124,7 +140,7 @@
   .section-title{font-family:'Poppins',sans-serif;font-size:clamp(30px,4vw,52px);font-weight:700;line-height:1.15;margin-bottom:20px;color:var(--green-dark);}
   .section-title em{font-style:normal;color:var(--gold-dim);}
 
-  .trust-strip{background:var(--green-dark);border-top:none;border-bottom:none;padding:28px 60px;display:flex;align-items:center;justify-content:space-around;flex-wrap:wrap;gap:20px;}
+  .trust-strip{background:var(--green-dark);border-top:none;border-bottom:none;padding:28px 20px;display:flex;align-items:center;justify-content:space-around;flex-wrap:wrap;gap:20px;}
   .trust-item{display:flex;align-items:center;gap:10px;font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.9);}
   .trust-icon{width:28px;height:28px;background:rgba(244,196,48,0.2);border:1px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;}
 
@@ -274,8 +290,8 @@
   /* ── SUBSCRIBE SECTION ── */
   .subscribe-section{min-height:80vh;display:flex;align-items:center;justify-content:center;padding:120px 40px;background:var(--black);}
   .subscribe-container{width:100%;max-width:1100px;display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border);}
-  .subscribe-left{background:var(--black-2);padding:80px 60px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;}
-  .subscribe-right{padding:80px 60px;background:var(--black);}
+  .subscribe-left{background:var(--black-2);padding:80px 40px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;}
+  .subscribe-right{padding:80px 40px;background:var(--black);}
   .form-title{font-family:var(--font-display);font-size:48px;font-weight:300;line-height:1.1;margin-bottom:24px;}
   .form-description{font-size:13px;line-height:1.8;color:var(--white-dim);margin-bottom:40px;}
   .form-benefit{display:flex;align-items:flex-start;gap:14px;margin-bottom:20px;}
@@ -351,7 +367,7 @@
   .mkt-search-btn:hover{background:var(--gold-light);}
 
   /* ── CATEGORY NAV ── */
-  .mkt-cats{display:flex;gap:8px;overflow-x:auto;padding:28px 60px;background:var(--black-2);border-bottom:1px solid var(--border-soft);scrollbar-width:none;}
+  .mkt-cats{display:flex;gap:8px;overflow-x:auto;padding:20px;background:var(--black-2);border-bottom:1px solid var(--border-soft);scrollbar-width:none;}
   .mkt-cats::-webkit-scrollbar{display:none;}
   .mkt-cat-btn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 24px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;white-space:nowrap;min-width:96px;}
   .mkt-cat-btn:hover,.mkt-cat-btn.active{border-color:var(--gold);background:rgba(212,175,55,.06);color:var(--gold);}
@@ -359,7 +375,7 @@
   .mkt-cat-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;}
 
   /* ── MARKETPLACE BODY ── */
-  .mkt-body{padding:60px;background:var(--black);}
+  .mkt-body{padding:40px;background:var(--black);}
   .mkt-section-label{font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:28px;display:flex;align-items:center;gap:16px;}
   .mkt-section-label::after{content:'';flex:1;height:1px;background:var(--border-soft);}
 
@@ -411,7 +427,7 @@
   .biz-profile.active{display:block;}
   .biz-cover{width:100%;height:320px;background:linear-gradient(160deg,#111520,#0B0D10);display:flex;align-items:center;justify-content:center;font-size:80px;position:relative;overflow:hidden;}
   .biz-cover::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,#0B0D10 100%);}
-  .biz-profile-body{padding:0 60px;max-width:1200px;margin:0 auto;}
+  .biz-profile-body{padding:0 40px;max-width:1200px;margin:0 auto;}
   .biz-header{display:flex;align-items:flex-start;gap:40px;margin-bottom:60px;padding-bottom:40px;border-bottom:1px solid var(--border-soft);}
   .biz-avatar{width:88px;height:88px;background:var(--black-3);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:40px;flex-shrink:0;margin-top:-40px;position:relative;z-index:1;}
   .biz-header-info{flex:1;}
@@ -423,11 +439,18 @@
   .biz-description{font-size:14px;color:var(--white-dim);line-height:1.9;margin-bottom:40px;}
   /* ── Menu builder (form) ── */
   .menu-builder{display:flex;flex-direction:column;gap:12px;margin-bottom:16px;}
-  .menu-builder-row{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;background:var(--black-3);border:1px solid var(--border-soft);padding:14px 16px;border-radius:4px;}
-  .menu-builder-row input[type=text]{background:var(--black-2);border:1px solid var(--border-soft);color:var(--white-soft);padding:10px 14px;font-size:13px;font-family:var(--font-body);outline:none;transition:border-color .2s;border-radius:2px;}
+  .menu-builder-row{display:grid;grid-template-columns:1fr 110px auto auto;gap:8px;align-items:center;background:var(--black-3);border:1px solid var(--border-soft);padding:12px 14px;border-radius:4px;}
+  .menu-builder-row input[type=text]{background:var(--black-2);border:1px solid var(--border-soft);color:var(--white-soft);padding:10px 14px;font-size:13px;font-family:var(--font-body);outline:none;transition:border-color .2s;border-radius:2px;width:100%;}
   .menu-builder-row input[type=text]:focus{border-color:var(--gold);}
   .menu-builder-row input[type=text].menu-name-input{flex:1;min-width:0;}
-  .menu-builder-row input[type=text].menu-price-input{width:110px;}
+  .menu-builder-row input[type=text].menu-price-input{width:100%;}
+  @media(max-width:600px){
+    .menu-builder-row{grid-template-columns:1fr auto auto;grid-template-rows:auto auto;gap:8px;}
+    .menu-builder-row .menu-name-input{grid-column:1/2;grid-row:1;}
+    .menu-builder-row .menu-price-input{grid-column:1/2;grid-row:2;width:100%!important;}
+    .menu-builder-row .menu-item-photo-label{grid-column:2/3;grid-row:1/3;align-self:center;}
+    .menu-builder-row .menu-row-del{grid-column:3/4;grid-row:1/3;align-self:center;}
+  }
   .menu-item-photo-label{display:flex;align-items:center;justify-content:center;width:64px;height:64px;background:var(--black-2);border:1px dashed var(--border-soft);cursor:pointer;font-size:22px;border-radius:4px;transition:border-color .2s;flex-shrink:0;overflow:hidden;position:relative;}
   .menu-item-photo-label:hover{border-color:var(--gold);}
   .menu-item-photo-label img{width:64px;height:64px;object-fit:cover;position:absolute;inset:0;}
@@ -1637,7 +1660,7 @@
   </div>
 
   <!-- WHAT WE DO -->
-  <section style="background:var(--black);padding:80px 60px;">
+  <section style="background:var(--black);padding:80px 20px;" class="nm-section-wrap">
     <div style="text-align:center;max-width:700px;margin:0 auto 60px;">
       <span class="section-tag">What We Do</span>
       <h2 class="section-title">Built for the <em>Next Generation</em><br>of African Entrepreneurs</h2>
@@ -1852,7 +1875,7 @@
      PAGE: ABOUT US
 ════════════════════════════════════ -->
 <div id="page-about" class="page">
-  <div style="padding:120px 60px 80px;background:#f8fef9;min-height:100vh;">
+  <div style="padding:90px 20px 48px;background:#f8fef9;min-height:100vh;" class="nm-page-wrap">
     <div style="max-width:760px;margin:0 auto;">
       <p style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#16a34a;margin-bottom:12px;">WHO WE ARE</p>
       <h1 style="font-size:clamp(32px,5vw,52px);font-weight:800;color:#111827;line-height:1.15;margin-bottom:32px;">About <span style="color:#16a34a;">NoaMark</span></h1>
@@ -1869,7 +1892,7 @@
       </p>
 
       <!-- 3 value cards -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-bottom:56px;">
+      <div style="display:grid;gap:24px;margin-bottom:56px;" class="nm-3col-grid">
         <div style="background:#fff;border-radius:16px;padding:32px 24px;border:1px solid #e2e8f0;text-align:center;">
           <div style="font-size:36px;margin-bottom:16px;">📍</div>
           <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:8px;">Discover Local</div>
@@ -1899,14 +1922,14 @@
      PAGE: CONTACT US
 ════════════════════════════════════ -->
 <div id="page-contact" class="page">
-  <div style="padding:120px 60px 80px;background:#f8fef9;min-height:100vh;">
+  <div style="padding:90px 20px 48px;background:#f8fef9;min-height:100vh;" class="nm-page-wrap">
     <div style="max-width:860px;margin:0 auto;">
       <p style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#16a34a;margin-bottom:12px;">GET IN TOUCH</p>
       <h1 style="font-size:clamp(32px,5vw,52px);font-weight:800;color:#111827;line-height:1.15;margin-bottom:16px;">Contact <span style="color:#16a34a;">Us</span></h1>
       <p style="font-size:15px;color:#4b5563;margin-bottom:32px;">Have questions or need support? We're here to help.</p>
       <div style="width:56px;height:4px;background:#16a34a;border-radius:2px;margin-bottom:48px;"></div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start;">
+      <div style="display:grid;gap:40px;align-items:start;" class="nm-2col-grid">
 
         <!-- Contact Details -->
         <div>
@@ -1965,7 +1988,7 @@
      PAGE: TERMS & CONDITIONS
 ════════════════════════════════════ -->
 <div id="page-terms" class="page">
-  <div style="padding:120px 60px 80px;background:#f8fef9;min-height:100vh;">
+  <div style="padding:90px 20px 48px;background:#f8fef9;min-height:100vh;" class="nm-page-wrap">
     <div style="max-width:760px;margin:0 auto;">
       <p style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#16a34a;margin-bottom:12px;">LEGAL</p>
       <h1 style="font-size:clamp(32px,5vw,48px);font-weight:800;color:#111827;line-height:1.15;margin-bottom:16px;">Terms &amp; <span style="color:#16a34a;">Conditions</span></h1>
@@ -2015,7 +2038,7 @@
      PAGE: PRIVACY POLICY
 ════════════════════════════════════ -->
 <div id="page-privacy" class="page">
-  <div style="padding:120px 60px 80px;background:#f8fef9;min-height:100vh;">
+  <div style="padding:90px 20px 48px;background:#f8fef9;min-height:100vh;" class="nm-page-wrap">
     <div style="max-width:760px;margin:0 auto;">
       <p style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#16a34a;margin-bottom:12px;">LEGAL</p>
       <h1 style="font-size:clamp(32px,5vw,48px);font-weight:800;color:#111827;line-height:1.15;margin-bottom:16px;">Privacy <span style="color:#16a34a;">Policy</span></h1>
@@ -2058,7 +2081,7 @@
      PAGE: FAQs
 ════════════════════════════════════ -->
 <div id="page-faqs" class="page">
-  <div style="padding:120px 60px 80px;background:#f8fef9;min-height:100vh;">
+  <div style="padding:90px 20px 48px;background:#f8fef9;min-height:100vh;" class="nm-page-wrap">
     <div style="max-width:760px;margin:0 auto;">
       <p style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#16a34a;margin-bottom:12px;">HELP CENTER</p>
       <h1 style="font-size:clamp(32px,5vw,48px);font-weight:800;color:#111827;line-height:1.15;margin-bottom:16px;">Frequently Asked <span style="color:#16a34a;">Questions</span></h1>
@@ -2195,7 +2218,7 @@
      PAGE: OPPORTUNITIES
 ════════════════════════════════════ -->
 <div id="page-opportunities" class="page">
-  <section style="padding:160px 60px 80px;background:var(--black);">
+  <section style="padding:100px 20px 60px;background:var(--black);" class="nm-section-wrap">
     <div class="reveal" style="text-align:center;">
       <span class="section-tag">Business Opportunities</span>
       <h2 class="section-title">Where <em>Money</em> Is Moving</h2>
@@ -2298,7 +2321,7 @@
     </div>
   </section>
 
-  <div style="text-align:center;padding:60px 40px;background:var(--black-2);border-top:1px solid var(--border);">
+  <div style="text-align:center;padding:32px 20px;background:var(--black-2);border-top:1px solid var(--border);">
     <h3 style="font-family:var(--font-display);font-size:42px;font-weight:300;margin-bottom:20px;">Unlock <em style="color:var(--gold);">200+ Opportunities</em></h3>
     <p style="color:var(--white-dim);font-size:14px;margin-bottom:32px;">VIP and Premium members get full access to our growing library of business breakdowns.</p>
     <a class="btn-primary" onclick="showPage('plans')">See Membership Plans</a>
@@ -2309,7 +2332,7 @@
      PAGE: VIDEO HUB
 ════════════════════════════════════ -->
 <div id="page-videos" class="page">
-  <section style="padding:160px 60px 80px;background:var(--black);">
+  <section style="padding:100px 20px 60px;background:var(--black);" class="nm-section-wrap">
     <div class="reveal" style="text-align:center;">
       <span class="section-tag">Video Hub</span>
       <h2 class="section-title">Watch. <em>Learn.</em> Build.</h2>
@@ -2325,7 +2348,7 @@
       </div>
       <div class="video-grid" id="vid-free-grid">
         <!-- Empty state -->
-        <div style="grid-column:1/-1;border:2px dashed var(--border-soft);border-radius:8px;padding:60px 40px;text-align:center;background:var(--black-2);">
+        <div style="grid-column:1/-1;border:2px dashed var(--border-soft);border-radius:8px;padding:32px 20px;text-align:center;background:var(--black-2);">
           <div style="font-size:40px;margin-bottom:16px;">🎬</div>
           <h3 style="font-size:16px;font-weight:600;color:var(--white);margin-bottom:8px;">No free videos yet</h3>
           <p style="font-size:13px;color:var(--white-dim);max-width:400px;margin:0 auto;">Free videos will appear here as soon as they are uploaded. Check back soon.</p>
@@ -2340,7 +2363,7 @@
         <span style="font-size:11px;color:var(--white-dim);">VIP members only · R99/mo</span>
       </div>
       <div class="video-grid" id="vid-vip-grid">
-        <div style="grid-column:1/-1;border:2px dashed rgba(212,175,55,.25);border-radius:8px;padding:60px 40px;text-align:center;background:rgba(212,175,55,.03);">
+        <div style="grid-column:1/-1;border:2px dashed rgba(212,175,55,.25);border-radius:8px;padding:32px 20px;text-align:center;background:rgba(212,175,55,.03);">
           <div style="font-size:40px;margin-bottom:16px;">🔒</div>
           <h3 style="font-size:16px;font-weight:600;color:var(--white);margin-bottom:8px;">VIP videos coming soon</h3>
           <p style="font-size:13px;color:var(--white-dim);max-width:400px;margin:0 auto 24px;">Deep-dive business breakdowns will be uploaded here for VIP members. Upgrade to be ready when they drop.</p>
@@ -2356,7 +2379,7 @@
         <span style="font-size:11px;color:var(--white-dim);">Premium members only · R199/mo</span>
       </div>
       <div class="video-grid" id="vid-premium-grid">
-        <div style="grid-column:1/-1;border:2px dashed rgba(212,175,55,.15);border-radius:8px;padding:60px 40px;text-align:center;background:linear-gradient(160deg,var(--black-2),var(--black-3));">
+        <div style="grid-column:1/-1;border:2px dashed rgba(212,175,55,.15);border-radius:8px;padding:32px 20px;text-align:center;background:linear-gradient(160deg,var(--black-2),var(--black-3));">
           <div style="font-size:40px;margin-bottom:16px;">👑</div>
           <h3 style="font-size:16px;font-weight:600;color:var(--white);margin-bottom:8px;">Premium content coming soon</h3>
           <p style="font-size:13px;color:var(--white-dim);max-width:400px;margin:0 auto 24px;">Exclusive interviews, market reports, and advanced strategy sessions will be available here for Premium members.</p>
@@ -2382,7 +2405,7 @@
      PAGE: LEARNING HUB
 ════════════════════════════════════ -->
 <div id="page-learning" class="page">
-  <section style="padding:160px 60px 80px;background:var(--black);">
+  <section style="padding:100px 20px 60px;background:var(--black);" class="nm-section-wrap">
     <div class="reveal" style="text-align:center;">
       <span class="section-tag">Learning Hub</span>
       <h2 class="section-title">Knowledge That <em>Pays</em></h2>
@@ -2535,7 +2558,7 @@
      PAGE: MEMBERSHIP PLANS
 ════════════════════════════════════ -->
 <div id="page-plans" class="page">
-  <section style="padding:160px 60px 80px;background:var(--black);">
+  <section style="padding:100px 20px 60px;background:var(--black);" class="nm-section-wrap">
     <div class="reveal" style="text-align:center;">
       <span class="section-tag">Membership Plans</span>
       <h2 class="section-title">Choose Your <em>Level</em></h2>
@@ -2617,7 +2640,7 @@
   </section>
 
   <!-- COMPARISON TABLE -->
-  <section style="background:var(--black-2);padding:80px 60px;">
+  <section style="background:var(--black-2);padding:80px 20px;" class="nm-section-wrap">
     <div class="reveal" style="text-align:center;margin-bottom:60px;">
       <span class="section-tag">Full Comparison</span>
       <h2 class="section-title">What You <em>Get</em></h2>
@@ -2855,7 +2878,7 @@
   </div>
 
   <!-- TRANSPORT SUB-OPTIONS -->
-  <div id="transport-sub-nav" style="display:none;background:var(--black-3);border-bottom:1px solid var(--border-soft);padding:14px 60px;overflow-x:auto;scrollbar-width:none;">
+  <div id="transport-sub-nav" style="display:none;background:var(--black-3);border-bottom:1px solid var(--border-soft);padding:14px 20px;overflow-x:auto;scrollbar-width:none;">
     <div style="display:flex;gap:8px;min-width:max-content;">
       <button class="transport-sub-btn active" onclick="setTransportSub('all',this)" style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:8px 16px;border:1px solid var(--gold);background:var(--gold);color:#111827;cursor:pointer;white-space:nowrap;transition:all .3s;">All Transport</button>
       <button class="transport-sub-btn" onclick="setTransportSub('ride',this)" style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:8px 16px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;white-space:nowrap;transition:all .3s;">🚗 Bolt-Style Ride</button>
@@ -2919,7 +2942,7 @@
   </div>
 
   <!-- BOOST PLANS VIEW -->
-  <div id="mkt-boost-view" style="display:none;padding:80px 60px;">
+  <div id="mkt-boost-view" style="display:none;padding:48px 20px;">
     <button onclick="showMktView('main');populateMarketplace();" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);background:transparent;border:1px solid var(--border-soft);padding:10px 20px;cursor:pointer;margin-bottom:48px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.color='var(--white-dim)'">← Back to Marketplace</button>
     <div style="text-align:center;max-width:700px;margin:0 auto 80px;">
       <span class="section-tag">NoaMark Boost</span>
@@ -3039,7 +3062,7 @@
   </div>
 
   <!-- ADD BUSINESS VIEW -->
-  <div id="mkt-add-view" style="display:none;padding:80px 60px;">
+  <div id="mkt-add-view" style="display:none;padding:48px 20px;">
     <button onclick="showMktView('main');populateMarketplace();" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);background:transparent;border:1px solid var(--border-soft);padding:10px 20px;cursor:pointer;margin-bottom:48px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.color='var(--white-dim)'">← Back to Marketplace</button>
     <div style="max-width:800px;margin:0 auto;">
       <div style="text-align:center;margin-bottom:60px;">
@@ -4050,7 +4073,7 @@
       <!-- Photos -->
       <div id="arm-photos" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;"></div>
       <!-- Details grid -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+      <div style="display:grid;gap:12px;margin-bottom:20px;" class="nm-2col-grid" class="nm-2col-grid">
         <div style="background:#111318;border:1px solid #1a1f2c;padding:14px;">
           <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Category</div>
           <div id="arm-type" style="font-size:13px;color:#e5e7eb;"></div>
@@ -4711,14 +4734,12 @@ function menuBuilderRender() {
 
   list.innerHTML = _menuItems.map((item, idx) => `
     <div class="menu-builder-row" id="menu-row-${idx}">
-      <input type="text" class="menu-name-input form-input" placeholder="Item name (e.g. Grilled Chicken)"
+      <input type="text" class="menu-name-input form-input" placeholder="Item / service name (e.g. Grilled Chicken)"
         value="${nmSafe(item.name)}"
-        oninput="_menuItems[${idx}].name=this.value;menuBuilderSync()"
-        style="flex:1;">
+        oninput="_menuItems[${idx}].name=this.value;menuBuilderSync()">
       <input type="text" class="menu-price-input form-input" placeholder="Price (e.g. R45)"
         value="${nmSafe(item.price)}"
-        oninput="_menuItems[${idx}].price=this.value;menuBuilderSync()"
-        style="width:110px;">
+        oninput="_menuItems[${idx}].price=this.value;menuBuilderSync()">
       <label class="menu-item-photo-label" title="Add a photo for this item">
         ${item.photoUrl
           ? `<img src="${item.photoUrl}" alt="item photo">`
@@ -5171,10 +5192,11 @@ function nextStep(n){
     // Goes to step 5 — leaving step 4 (Menu & Pricing)
     5:()=>{
       const hint=document.getElementById('biz_price_hint').value.trim();
-      const menu=document.getElementById('biz_menu').value.trim();
+      const menuRaw=document.getElementById('biz_menu').value.trim();
       if(!hint){alert('Please enter a Price Range Summary.');return false;}
-      const items=menu.split('\n').filter(l=>l.trim().length>0);
-      if(items.length<3){alert('Please add at least 3 menu / service items.');return false;}
+      let items=[];
+      try{ items=JSON.parse(menuRaw).filter(m=>m.item&&m.item.trim()); }catch(e){ items=[]; }
+      if(items.length<1){alert('Please add at least 1 menu / service item.');return false;}
       return true;
     },
     // Goes to step 6 — leaving step 5 (Photos — handled by validateAndContinueStep5)
@@ -8405,7 +8427,7 @@ bpLoad();
           </div>
           <button class="adm-btn-refresh" onclick="admLoadUsers()">↻ Refresh</button>
         </div>
-        <div class="adm-stats" style="grid-template-columns:repeat(3,1fr);">
+        <div class="adm-stats" style="display:grid;" class="nm-3col-grid">
           <div class="adm-stat">
             <div class="adm-stat-label">Business Owners</div>
             <div class="adm-stat-val gold" id="adm-users-biz">—</div>
@@ -8466,11 +8488,11 @@ bpLoad();
         </div>
         <div class="adm-card">
           <div class="adm-card-title">Listings by Category</div>
-          <div id="adm-category-breakdown" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;"></div>
+          <div id="adm-category-breakdown" style="display:grid;gap:16px;" class="nm-3col-grid"></div>
         </div>
         <div class="adm-card">
           <div class="adm-card-title">Listings by Province</div>
-          <div id="adm-province-breakdown" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;"></div>
+          <div id="adm-province-breakdown" style="display:grid;gap:16px;" class="nm-3col-grid"></div>
         </div>
       </div>
 
@@ -8487,7 +8509,7 @@ bpLoad();
         <!-- Add Video Form -->
         <div class="adm-card" style="margin-bottom:24px;">
           <div class="adm-card-title" style="margin-bottom:20px;">➕ Add New Video</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+          <div style="display:grid;gap:16px;margin-bottom:16px;" class="nm-2col-grid">
             <div>
               <label style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:6px;">Title *</label>
               <input id="adm-vid-title" placeholder="e.g. How to Start a Braai Stand With R500" style="width:100%;background:#0a0c10;border:1px solid #1a1f2c;color:#e5e7eb;padding:10px 14px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" />
