@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="description" content="NoaMark — Discover local businesses, explore opportunities, and grow your brand in South Africa.">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>NoaMark — Discover · Learn · Dominate</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -43,8 +43,9 @@
     --font-body:'Poppins',sans-serif;
   }
   *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100%;max-width:100%;overflow-x:hidden;}
   html{scroll-behavior:smooth;}
-  body{background:var(--black);color:var(--white-soft);font-family:'Poppins',sans-serif;font-weight:400;overflow-x:hidden;}
+  body{background:var(--black);color:var(--white-soft);font-family:'Poppins',sans-serif;font-weight:400;}
   body::before{display:none;}
   
   /* ── SYSTEM SIGNAL BADGES ── */
@@ -2846,7 +2847,7 @@
   </div>
 
   <!-- SORT BAR -->
-  <div id="mkt-sort-bar" style="display:flex;align-items:center;gap:12px;padding:14px 60px;background:var(--black-2);border-bottom:1px solid var(--border-soft);flex-wrap:wrap;overflow-x:auto;">
+  <div id="mkt-sort-bar" style="display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--black-2);border-bottom:1px solid var(--border-soft);flex-wrap:wrap;overflow-x:auto;width:100%;box-sizing:border-box;">
     <span style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);white-space:nowrap;">Sort by:</span>
     <button class="sort-btn active" onclick="setSort('ranking',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--gold);background:var(--gold);color:#111827;cursor:pointer;transition:all .3s;">🏆 Ranking</button>
     <button class="sort-btn" onclick="setSort('distance',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;">📍 Distance</button>
