@@ -6628,7 +6628,7 @@ async function handleBizSignup() {
   showAuthError('biz-signup-error', 'Creating your account…');
   await saveUserToSupabase({ name, email, password:pass, role:'business' });
   trackUser('business', name, email);
-  loginAs({ type:'business', name:biz.name, owner:owner, email:biz.email, plan:'Free Listing', id:biz.id });
+  loginAs({ type:'business', name:biz.name, owner:owner, email:biz.email, plan:'Free Listing', id:biz.id, joinedAt:biz.joinedAt });
   showAuthSuccess('biz-signup-success', '✓ Account created! Welcome, '+name+'. Redirecting to add your listing…');
   setTimeout(()=>{ closeAuth(); showPage('marketplace',()=>setTimeout(()=>showMktView('add'),200)); }, 1400);
 }
@@ -6664,7 +6664,7 @@ async function handleBizLogin() {
     if(bizByName.email.toLowerCase() !== email.toLowerCase()) { showAuthError('biz-login-error','\u274C That email does not match. Please check your email.'); return; }
     const pwOk = await nmVerifyPassword(pass, bizByName.password);
     if(!pwOk) { showAuthError('biz-login-error','\u274C Incorrect password. Please try again.'); return; }
-    loginAs({ type:'business', name:bizByName.name, owner:bizByName.name, email:bizByName.email, plan:'Business', id:bizByName.id });
+    loginAs({ type:'business', name:bizByName.name, owner:bizByName.name, email:bizByName.email, plan:'Business', id:bizByName.id, joinedAt:bizByName.joinedAt || bizByName.created_at });
     showAuthSuccess('biz-login-success', '\u2713 Welcome back, '+bizByName.name+'!');
     setTimeout(closeAuth, 900);
   } catch(e) { showAuthError('biz-login-error', navigator.onLine ? 'Connection error. Please try again.' : 'You appear to be offline. Check your connection.'); }
@@ -7584,7 +7584,13 @@ function populateBizDashboard() {
     document.getElementById('bp-sb-bizsub').textContent = 'Add your listing';
   }
 
-  // Overview metrics
+  // Sync enquiries and reviews from Supabase immediately on portal open
+  setTimeout(() => {
+    bpSyncEnquiriesFromSupabase();
+    bpSyncReviewsFromSupabase();
+  }, 500);
+
+  // Member Since
   const joinedEl = document.getElementById('bpm-joined');
   if(joinedEl && currentUser.joinedAt) {
     const d = new Date(currentUser.joinedAt);
@@ -8380,6 +8386,7 @@ bpLoad();
         <div class="adm-nav-sec">Platform</div>
         <div class="adm-nav-item" onclick="admGoPage('users')"><span class="adm-nav-icon">👥</span><span class="adm-nav-label">Users</span></div>
         <div class="adm-nav-item" onclick="admGoPage('analytics')"><span class="adm-nav-icon">📈</span><span class="adm-nav-label">Analytics</span></div>
+        <div class="adm-nav-item" onclick="admGoPage('enquiries')"><span class="adm-nav-icon">📩</span><span class="adm-nav-label">Enquiries</span><span class="adm-nav-badge" id="adm-enq-badge" style="display:none;">0</span></div>
         <div class="adm-nav-item" onclick="admGoPage('videos')"><span class="adm-nav-icon">🎬</span><span class="adm-nav-label">Videos</span></div>
         <div class="adm-signout">
           <div class="adm-signout-btn" onclick="handleLogout()">🚪 Sign Out of Admin</div>
@@ -8633,6 +8640,21 @@ bpLoad();
         </div>
       </div>
 
+      <!-- ══ ENQUIRIES ══ -->
+      <div class="adm-page" id="adm-page-enquiries">
+        <div class="adm-topbar">
+          <div>
+            <div class="adm-page-title">All Enquiries</div>
+            <div class="adm-page-sub">All customer messages sent to businesses on NoaMark</div>
+          </div>
+        </div>
+        <div class="adm-card">
+          <div id="adm-enq-list" style="display:flex;flex-direction:column;gap:0;">
+            <div class="adm-empty">Loading enquiries...</div>
+          </div>
+        </div>
+      </div>
+
       <!-- ══ VIDEOS ══ -->
       <div class="adm-page" id="adm-page-videos">
         <div class="adm-topbar">
@@ -8720,6 +8742,7 @@ function admGoPage(page) {
   if(page === 'revenue')    admLoadRevenue();
   if(page === 'users')      admLoadUsers();
   if(page === 'analytics')  admLoadAnalytics();
+  if(page === 'enquiries')  admLoadEnquiries();
   if(page === 'videos')     admLoadVideos();
 }
 
@@ -8886,6 +8909,44 @@ async function admLoadUsers() {
 }
 
 // ── ADMIN VIDEO MANAGEMENT ──
+async function admLoadEnquiries() {
+  const el = document.getElementById('adm-enq-list');
+  if(!el) return;
+  el.innerHTML = '<div class="adm-empty">Loading...</div>';
+  try {
+    const result = await nmSupaQuery(() =>
+      _supa.from('enquiries')
+        .select('*, listings(name)')
+        .order('created_at', { ascending: false })
+    );
+    const data = result?.data || [];
+    // Update badge
+    const unread = data.filter(e => !e.replied).length;
+    const badge = document.getElementById('adm-enq-badge');
+    if(badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'inline' : 'none'; }
+    if(!data.length) { el.innerHTML = '<div class="adm-empty">No enquiries yet.</div>'; return; }
+    el.innerHTML = data.map(e => {
+      const d = new Date(e.created_at);
+      const time = d.toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'}) + ' ' + d.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'});
+      const bizName = e.listings?.name || 'Unknown business';
+      return `<div style="padding:16px 0;border-bottom:1px solid var(--border-soft,#1e2633);">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
+          <span style="font-size:13px;font-weight:700;color:#e5e7eb;">${nmSafe(e.name||'Anonymous')}</span>
+          <span style="font-size:10px;padding:2px 8px;border-radius:3px;font-weight:700;letter-spacing:1px;${e.replied?'background:rgba(34,197,94,.1);color:#4ade80;':'background:rgba(245,158,11,.15);color:#fbbf24;'}">${e.replied?'REPLIED':'NEW'}</span>
+          <span style="font-size:10px;color:#6b7280;margin-left:auto;">${time}</span>
+        </div>
+        <div style="font-size:11px;color:#9ca3af;margin-bottom:4px;">To: <strong style="color:#d1d5db;">${nmSafe(bizName)}</strong> · ${nmSafe(e.subject||'Customer Enquiry')}</div>
+        ${e.phone ? `<div style="font-size:11px;color:#9ca3af;margin-bottom:4px;">📞 ${nmSafe(e.phone)}</div>` : ''}
+        <div style="font-size:13px;color:#d1d5db;line-height:1.6;background:rgba(255,255,255,.03);padding:10px 12px;border-radius:4px;margin-top:6px;">"${nmSafe(e.msg||'')}"</div>
+        ${e.reply ? `<div style="font-size:12px;color:#4ade80;background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.15);padding:10px 12px;border-radius:4px;margin-top:8px;"><span style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.6;display:block;margin-bottom:3px;">Business replied</span>${nmSafe(e.reply)}</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch(err) {
+    el.innerHTML = '<div class="adm-empty">Failed to load enquiries.</div>';
+    console.warn('admLoadEnquiries error:', err);
+  }
+}
+
 async function admLoadVideos() {
   const listEl = document.getElementById('adm-videos-list');
   if (listEl) listEl.innerHTML = '<div class="adm-empty">Loading…</div>';
