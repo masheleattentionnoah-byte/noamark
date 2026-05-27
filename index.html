@@ -4194,7 +4194,7 @@ function showPage(id,cb){
   closeNav();
   if(id==='home') setTimeout(()=>{ if(typeof applyRoleHomePage==='function') applyRoleHomePage(currentUser); },50);
   setTimeout(initReveal,100);
-  if(id==='marketplace'){showMktView('main');populateMarketplace();}
+  if(id==='marketplace'){ showMktView('main'); if(cb) setTimeout(cb,150); return; }
   if(id==='dashboard') renderDashboardStats();
   if(id==='videos') { nmSupaQuery(()=>_supa.from('videos').select('*').order('created_at',{ascending:false})).then(r=>{ if(r&&r.data) loadVideosPage(r.data); }); }
   if(cb) setTimeout(cb,150);
@@ -4205,34 +4205,46 @@ function showPage(id,cb){
 
 // Handle phone/browser back button — navigate within the site instead of leaving
 window.addEventListener('popstate', function(e) {
-  // If lightbox is open, close it — don't navigate away
+  // If lightbox is open, close it first
   const lb = document.getElementById('nm-lightbox');
-  if(lb && lb.classList.contains('open')) {
-    nmLbClose();
-    return;
-  }
+  if(lb && lb.classList.contains('open')) { nmLbClose(); return; }
+
   if(e.state && e.state.nmPage) {
     const id = e.state.nmPage;
     const view = e.state.nmView || 'main';
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const pageEl = document.getElementById('page-' + id);
-    if(pageEl) {
-      pageEl.classList.add('active');
+
+    if(id === 'marketplace') {
+      // Make sure marketplace page is active
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      const mktPage = document.getElementById('page-marketplace');
+      if(mktPage) mktPage.classList.add('active');
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      if(id === 'marketplace') {
-        if(view === 'profile') {
-          showMktView('profile');
-        } else {
-          showMktView('main');
-          if(LISTINGS.length > 0) populateMarketplace();
-        }
+
+      // Show the correct sub-view — but DON'T push new state (we're going back)
+      const viewMap = {main:'mkt-main-view',profile:'mkt-profile-view',boost:'mkt-boost-view',add:'mkt-add-view',admin:'mkt-admin-view'};
+      Object.values(viewMap).forEach(vid=>{ const el=document.getElementById(vid); if(el) el.style.display='none'; });
+      const targetId = viewMap[view];
+      if(targetId) { const el=document.getElementById(targetId); if(el) el.style.display='block'; }
+      if(view === 'main' && LISTINGS.length > 0) populateMarketplace();
+      if(view === 'admin') populateBizDashboard();
+    } else {
+      // Other pages — show them normally
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      const pageEl = document.getElementById('page-' + id);
+      if(pageEl) {
+        pageEl.classList.add('active');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if(id === 'dashboard') renderDashboardStats();
+        if(id === 'home') setTimeout(()=>{ if(typeof applyRoleHomePage==='function') applyRoleHomePage(currentUser); },50);
       }
-      if(id === 'dashboard') renderDashboardStats();
     }
   } else {
-    // No state — push home state and show home page
+    // No state — go to home, stay in app
     history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.href.split('#')[0]);
-    showPage('home');
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const home = document.getElementById('page-home');
+    if(home) home.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 });
 
@@ -4558,8 +4570,8 @@ function showMktView(view){
   }
   const map={main:'mkt-main-view',profile:'mkt-profile-view',boost:'mkt-boost-view',add:'mkt-add-view',admin:'mkt-admin-view'};
   // Hide all views first
-  Object.values(map).forEach(id=>{
-    const el=document.getElementById(id);
+  Object.values(map).forEach(vid=>{
+    const el=document.getElementById(vid);
     if(el) el.style.display='none';
   });
   // Show target view
@@ -4571,8 +4583,17 @@ function showMktView(view){
   if(view==='admin') populateBizDashboard();
   if(view==='main' && LISTINGS.length > 0) populateMarketplace();
   window.scrollTo({top:0,behavior:'smooth'});
+  // Push history state for every view so phone back button navigates correctly
   if(view === 'main') {
     history.replaceState({ nmPage: 'marketplace', nmView: 'main' }, '', '#marketplace');
+  } else if(view === 'profile') {
+    history.pushState({ nmPage: 'marketplace', nmView: 'profile' }, '', '#marketplace/profile');
+  } else if(view === 'boost') {
+    history.pushState({ nmPage: 'marketplace', nmView: 'boost' }, '', '#marketplace/boost');
+  } else if(view === 'add') {
+    history.pushState({ nmPage: 'marketplace', nmView: 'add' }, '', '#marketplace/edit');
+  } else if(view === 'admin') {
+    history.pushState({ nmPage: 'marketplace', nmView: 'admin' }, '', '#marketplace/portal');
   }
 }
 
@@ -5274,18 +5295,26 @@ async function submitBusiness(){
     ...Array.from(productInput?.files || []).slice(0, 5)
   ].slice(0, 10);
 
-  for(const file of allPhotoFiles) {
-    try {
-      // ⑦ Compress image before upload: max 800px wide, target <200KB
-      const compressed = await nmCompressImage(file, 800, 400);
-      const ext = compressed.name.endsWith('.jpg') ? '.jpg' : ('.' + (file.name.split('.').pop() || 'jpg'));
-      const fileName = Date.now() + '_' + Math.random().toString(36).slice(2) + ext;
-      const result = await nmSupaQuery(() => _supa.storage.from('business-photos').upload(fileName, compressed, { upsert: true }));
-      if(!result.error) {
-        const { data: urlData } = _supa.storage.from('business-photos').getPublicUrl(fileName);
-        photoUrls.push(urlData.publicUrl);
-      }
-    } catch(e){ console.warn('Photo upload failed', e); }
+  if(allPhotoFiles.length > 0) {
+    // User uploaded new photos — upload them
+    for(const file of allPhotoFiles) {
+      try {
+        const compressed = await nmCompressImage(file, 800, 400);
+        const ext = compressed.name.endsWith('.jpg') ? '.jpg' : ('.' + (file.name.split('.').pop() || 'jpg'));
+        const fileName = Date.now() + '_' + Math.random().toString(36).slice(2) + ext;
+        const result = await nmSupaQuery(() => _supa.storage.from('business-photos').upload(fileName, compressed, { upsert: true }));
+        if(!result.error) {
+          const { data: urlData } = _supa.storage.from('business-photos').getPublicUrl(fileName);
+          photoUrls.push(urlData.publicUrl);
+        }
+      } catch(e){ console.warn('Photo upload failed', e); }
+    }
+  } else if(window._editingListingId) {
+    // No new photos uploaded — keep existing ones from the listing
+    const existing = LISTINGS.find(l => l.id === window._editingListingId);
+    if(existing) {
+      photoUrls = existing.photos || (existing.photo ? [existing.photo] : []);
+    }
   }
   const photoUrl = photoUrls[0] || '';
 
@@ -5295,8 +5324,9 @@ async function submitBusiness(){
   for(let i = 0; i < _menuItems.length; i++) {
     const m = _menuItems[i];
     if(!m.name.trim()) continue; // skip blank rows
-    let itemPhotoUrl = '';
+    let itemPhotoUrl = m.photoUrl || ''; // keep existing photo URL by default
     if(m.photoFile) {
+      // Only upload if user selected a new photo file
       try {
         const compressed = await nmCompressImage(m.photoFile, 800, 400);
         const ext = '.jpg';
@@ -7466,6 +7496,7 @@ function bpEditListing() {
     const setVal = (id, val) => { const el = document.getElementById(id); if(el && val) el.value = val; };
     setVal('biz_name',          myListing.name);
     setVal('biz_cat',           myListing.cat);
+    setVal('biz_type',          myListing.type || myListing.cat);
     setVal('biz_desc',          myListing.desc);
     setVal('biz_area',          myListing.area);
     setVal('biz_city',          myListing.city);
@@ -7497,11 +7528,34 @@ function bpEditListing() {
       if(typeof menuBuilderRender === 'function') menuBuilderRender();
     }
 
+    // Show existing photos in preview so user knows they are already uploaded
+    if(myListing.photos && myListing.photos.length > 0) {
+      const previewEl = document.getElementById('place-photo-preview');
+      if(previewEl) {
+        previewEl.innerHTML = myListing.photos.map(url =>
+          `<div style="position:relative;display:inline-block;margin:4px;">
+            <img src="${url}" style="width:80px;height:80px;object-fit:cover;border-radius:4px;border:1px solid var(--border-soft);">
+            <div style="font-size:9px;color:var(--white-dim);text-align:center;margin-top:2px;">Saved</div>
+          </div>`
+        ).join('');
+      }
+    }
+
+    // Pre-fill payment checkboxes
+    if(myListing.payments) {
+      const payMap = { 'Cash':'pay_cash','EFT':'pay_eft','SnapScan':'pay_snapscan','Ozow':'pay_ozow','Card':'pay_card' };
+      const activePays = myListing.payments.split(',').map(p => p.trim());
+      Object.entries(payMap).forEach(([label, id]) => {
+        const el = document.getElementById(id);
+        if(el) el.checked = activePays.includes(label);
+      });
+    }
+
     // Store listing ID so submitBusiness does UPDATE not INSERT
     window._editingListingId = myListing.id;
 
     // Show a notice
-    if(typeof bpToast === 'function') bpToast('Listing loaded — make your changes and submit.');
+    if(typeof bpToast === 'function') bpToast('✅ Listing loaded — only change what you want to update.');
   }, 300);
 }
 function populateBizDashboard() {
