@@ -3,7 +3,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (!process.env.GEMINI_API_KEY) {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.Gemini_API_Key;
+
+  if (!apiKey) {
     return res.status(500).json({ error: 'API key not configured on server.' });
   }
 
@@ -22,7 +24,7 @@ export default async function handler(req, res) {
 
     const geminiUrl =
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' +
-      process.env.GEMINI_API_KEY;
+      apiKey;
 
     const response = await fetch(geminiUrl, {
       method: 'POST',
