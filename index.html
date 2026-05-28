@@ -5370,7 +5370,12 @@ async function submitBusiness(){
       if(listingData && listingData[0]) listingId = listingData[0].id;
     }
   } catch(e){ console.warn('Supabase listing save failed', e); }
-  // Clear editing ID after save
+  // Store the listing ID in the current session for reliable lookup
+  if(listingId && currentUser) {
+    currentUser.listingId = listingId;
+    saveSession(currentUser);
+  }
+  // Clear editing mode
   window._editingListingId = null;
 
   if(submitBtn) submitBtn.textContent = '⏳ Sending notification...';
@@ -7348,7 +7353,7 @@ function bpLoad() { try { const d = localStorage.getItem('nm_bp_data'); if(d) bp
 async function bpSyncEnquiries() {
   if(!currentUser) return;
   try {
-    const myListing = LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser.owner||currentUser.name).toLowerCase());
+    const myListing = getMyListing();
     if(!myListing) return;
     const { data } = (await nmSupaQuery(() => _supa.from('enquiries').select('*').eq('listing_id', myListing.id))) || {};
     if(data && data.length > 0) {
@@ -7362,13 +7367,14 @@ async function bpSyncEnquiries() {
 async function bpSyncReviews() {
   if(!currentUser) return;
   try {
-    const myListing = LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser.owner||currentUser.name).toLowerCase());
+    const myListing = getMyListing();
     if(!myListing) return;
     const { data } = (await nmSupaQuery(() => _supa.from('reviews').select('*').eq('listing_id', myListing.id))) || {};
     if(data && data.length > 0) {
-      const supaRevs = data.map(r => ({ id: r.id, name: r.name, rating: r.rating, comment: r.text, time: r.created_at }));
+      const supaRevs = data.map(r => ({ id: r.id, name: r.name, stars: r.rating || 5, text: r.text, time: r.created_at, reply: r.reply || '', ownerReply: r.reply || '', replyOpen: false }));
       bpData.reviews = [...supaRevs, ...bpData.reviews.filter(r => !supaRevs.find(s => s.id === r.id))];
       bpSave();
+      bpRenderReviews();
     }
   } catch(e){ console.warn('Could not sync reviews', e); }
 }
@@ -7403,7 +7409,11 @@ function loadNotifPrefs() {
 
 async function bpSyncEnquiriesFromSupabase() {
   if (!currentUser) return;
-  const myListing = LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser.owner || currentUser.name).toLowerCase());
+  // Find listing by id first, then by owner name, then by email
+  const myListing = LISTINGS.find(l => l.id === currentUser.listingId) ||
+    LISTINGS.find(l => l.owner && currentUser.owner && l.owner.toLowerCase() === currentUser.owner.toLowerCase()) ||
+    LISTINGS.find(l => l.email && currentUser.email && l.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+    LISTINGS.find(l => l.name && currentUser.name && l.name.toLowerCase() === currentUser.name.toLowerCase());
   if (!myListing) return;
   try {
     const { data, error } = await nmSupaQuery(() =>
@@ -7431,7 +7441,10 @@ async function bpSyncEnquiriesFromSupabase() {
 
 async function bpSyncReviewsFromSupabase() {
   if (!currentUser) return;
-  const myListing = LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser.owner || currentUser.name).toLowerCase());
+  const myListing = LISTINGS.find(l => l.id === currentUser.listingId) ||
+    LISTINGS.find(l => l.owner && currentUser.owner && l.owner.toLowerCase() === currentUser.owner.toLowerCase()) ||
+    LISTINGS.find(l => l.email && currentUser.email && l.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+    LISTINGS.find(l => l.name && currentUser.name && l.name.toLowerCase() === currentUser.name.toLowerCase());
   if (!myListing) return;
   try {
     const { data, error } = await nmSupaQuery(() =>
@@ -7450,6 +7463,16 @@ async function bpSyncReviewsFromSupabase() {
     bpSave();
     bpRenderReviews();
   } catch(e) { console.warn('Reviews sync failed', e); }
+}
+
+// ── Helper: find current user's listing reliably ──
+function getMyListing() {
+  if (!currentUser || typeof LISTINGS === 'undefined') return null;
+  return LISTINGS.find(l => l.id === currentUser.listingId) ||
+    LISTINGS.find(l => l.email && currentUser.email && l.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+    LISTINGS.find(l => l.owner && currentUser.owner && l.owner.toLowerCase() === currentUser.owner.toLowerCase()) ||
+    LISTINGS.find(l => l.name && currentUser.name && l.name.toLowerCase() === currentUser.name.toLowerCase()) ||
+    null;
 }
 
 function bpGoPage(p) {
@@ -7483,7 +7506,7 @@ function bpGoPage(p) {
 // ── EDIT LISTING — pre-fill form with existing data ──
 function bpEditListing() {
   const myListing = typeof LISTINGS !== 'undefined'
-    ? LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser?.owner||currentUser?.name||'').toLowerCase())
+    ? getMyListing()
     : null;
 
   // Open the add/edit view
@@ -7569,7 +7592,7 @@ function populateBizDashboard() {
 
   // Find listing
   const myListing = typeof LISTINGS !== 'undefined'
-    ? LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser.owner||currentUser.name).toLowerCase())
+    ? getMyListing()
     : null;
 
   // Live pill
@@ -7652,7 +7675,7 @@ function bpSyncListingPreview(l) {
 
 function bpRenderMyListing() {
   const myListing = typeof LISTINGS !== 'undefined'
-    ? LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser?.owner||currentUser?.name||'').toLowerCase())
+    ? getMyListing()
     : null;
   const el = document.getElementById('bp-listing-full-preview');
   if(!el) return;
@@ -7734,14 +7757,14 @@ function bpRenderEnquiries(filter = 'all') {
         <div class="bp-enq-msg">"${nmSafe(e.msg)}"</div>
         ${e.replied && e.replyText ? `<div style="background:rgba(22,101,52,.08);border:1px solid rgba(22,101,52,.15);padding:10px 12px;margin-top:8px;font-size:12px;color:var(--green-fresh);line-height:1.6;"><div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green-fresh);opacity:.6;margin-bottom:3px;">Your reply</div>${nmSafe(e.replyText)}</div>` : ''}
         <div class="bp-enq-actions">
-          ${!e.replied ? `<button class="bp-btn bp-btn-g" onclick="bpAIDraftReply(${e.id})" style="font-size:9px;">✦ AI draft reply</button><button class="bp-btn" onclick="bpToggleReply(${e.id})" style="font-size:9px;">Reply manually</button>` : ''}
-          <button class="bp-btn bp-btn-danger" onclick="bpDeleteEnquiry(${e.id})" style="font-size:9px;">Delete</button>
+          ${!e.replied ? `<button class="bp-btn bp-btn-g" onclick="bpAIDraftReply('${e.id}')" style="font-size:9px;">✦ AI draft reply</button><button class="bp-btn" onclick="bpToggleReply('${e.id}')" style="font-size:9px;">Reply manually</button>` : ''}
+          <button class="bp-btn bp-btn-danger" onclick="bpDeleteEnquiry('${e.id}')" style="font-size:9px;">Delete</button>
         </div>
         <div class="bp-reply-box" id="bprb-${e.id}">
           <textarea id="bprt-${e.id}" placeholder="Write your reply..."></textarea>
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
-            <button class="bp-btn" onclick="bpToggleReply(${e.id})" style="font-size:9px;">Cancel</button>
-            <button class="bp-btn bp-btn-g" onclick="bpSendReply(${e.id})" style="font-size:9px;">Send reply</button>
+            <button class="bp-btn" onclick="bpToggleReply('${e.id}')" style="font-size:9px;">Cancel</button>
+            <button class="bp-btn bp-btn-g" onclick="bpSendReply('${e.id}')" style="font-size:9px;">Send reply</button>
           </div>
         </div>
       </div>
@@ -7756,7 +7779,7 @@ async function bpSendReply(id) {
   const ta = document.getElementById('bprt-'+id);
   const text = ta?.value.trim();
   if(!text) return;
-  const idx = bpData.enquiries.findIndex(e => e.id === id);
+  const idx = bpData.enquiries.findIndex(e => String(e.id) === String(id));
   if(idx < 0) return;
   bpData.enquiries[idx].replied = true;
   bpData.enquiries[idx].replyText = text;
@@ -7773,12 +7796,12 @@ async function bpSendReply(id) {
 }
 async function bpAIDraftReply(id) {
   if(!currentUser) return;
-  const enq = bpData.enquiries.find(e => e.id === id);
+  const enq = bpData.enquiries.find(e => String(e.id) === String(id));
   if(!enq) return;
   bpToggleReply(id);
   const ta = document.getElementById('bprt-'+id);
   ta.value = '✦ AI is drafting your reply...'; ta.disabled = true;
-  const myListing = typeof LISTINGS !== 'undefined' ? LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser.owner||currentUser.name).toLowerCase()) : null;
+  const myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
   const prompt = `You are the owner of "${currentUser.name}", a business in ${myListing?.area||'South Africa'} (${myListing?.type||'general services'}).
 
 A customer named ${enq.name} sent this enquiry:
@@ -7794,7 +7817,7 @@ Write a professional, friendly reply in under 80 words. Include a call to action
   ta.disabled = false;
 }
 async function bpDeleteEnquiry(id) {
-  bpData.enquiries = bpData.enquiries.filter(e => e.id !== id);
+  bpData.enquiries = bpData.enquiries.filter(e => String(e.id) !== String(id));
   bpSave(); bpRenderEnquiries(); bpToast('Deleted.');
   try {
     await nmSupaQuery(() => _supa.from('enquiries').delete().eq('id', id));
@@ -7843,14 +7866,14 @@ function bpRenderReviews() {
       <div style="font-size:13px;color:var(--white-dim);line-height:1.7;">"${nmSafe(r.text)}"</div>
       ${r.ownerReply ? `<div class="bp-review-reply"><div class="bp-review-reply-label">Your reply</div>${nmSafe(r.ownerReply)}</div>` : ''}
       <div style="display:flex;gap:8px;margin-top:10px;">
-        <button class="bp-btn bp-btn-g" onclick="bpAIReviewReply(${r.id})" style="font-size:9px;">✦ AI reply</button>
-        <button class="bp-btn bp-btn-danger" onclick="bpDeleteReview(${r.id})" style="font-size:9px;">Delete</button>
+        <button class="bp-btn bp-btn-g" onclick="bpAIReviewReply('${r.id}')" style="font-size:9px;">✦ AI reply</button>
+        <button class="bp-btn bp-btn-danger" onclick="bpDeleteReview('${r.id}')" style="font-size:9px;">Delete</button>
       </div>
       <div class="bp-reply-box" id="bprrb-${r.id}">
         <textarea id="bprrt-${r.id}" placeholder="Write your reply to this review..."></textarea>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
           <button class="bp-btn" onclick="document.getElementById('bprrb-${r.id}').style.display='none'" style="font-size:9px;">Cancel</button>
-          <button class="bp-btn bp-btn-g" onclick="bpPostReviewReply(${r.id})" style="font-size:9px;">Post reply</button>
+          <button class="bp-btn bp-btn-g" onclick="bpPostReviewReply('${r.id}')" style="font-size:9px;">Post reply</button>
         </div>
       </div>
     </div>`).join('');
@@ -7874,7 +7897,7 @@ function bpRenderRatingOverview() {
     </div>`;
 }
 async function bpAIReviewReply(id) {
-  const rev = bpData.reviews.find(r => r.id === id);
+  const rev = bpData.reviews.find(r => String(r.id) === String(id));
   if(!rev) return;
   document.getElementById('bprrb-'+id).style.display = 'block';
   const ta = document.getElementById('bprrt-'+id);
@@ -7891,7 +7914,7 @@ async function bpPostReviewReply(id) {
   const ta = document.getElementById('bprrt-'+id);
   const text = ta?.value.trim();
   if(!text) return;
-  const idx = bpData.reviews.findIndex(r => r.id === id);
+  const idx = bpData.reviews.findIndex(r => String(r.id) === String(id));
   if(idx < 0) return;
   bpData.reviews[idx].ownerReply = text;
   bpData.reviews[idx].reply = text;
@@ -7902,7 +7925,7 @@ async function bpPostReviewReply(id) {
   } catch(e) { console.warn('Reply sync to Supabase failed', e); }
 }
 async function bpDeleteReview(id) {
-  bpData.reviews = bpData.reviews.filter(r => r.id !== id);
+  bpData.reviews = bpData.reviews.filter(r => String(r.id) !== String(id));
   bpSave(); bpRenderReviews(); bpRenderAnalytics(); bpToast('Deleted.');
   try {
     await nmSupaQuery(() => _supa.from('reviews').delete().eq('id', id));
@@ -7914,7 +7937,7 @@ async function bpGetInsights() {
   if(!currentUser) return;
   const el = document.getElementById('bp-insights-out');
   el.innerHTML = `<div class="bp-thinking"><div class="bp-dots"><span></span><span></span><span></span></div> Analysing your listing...</div>`;
-  const myListing = typeof LISTINGS !== 'undefined' ? LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser.owner||currentUser.name).toLowerCase()) : null;
+  const myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
   const revs = bpData.reviews; const avg = revs.length ? (revs.reduce((a,r)=>a+r.stars,0)/revs.length).toFixed(1) : null;
   const prompt = `You are a South African small business coach. Analyse this NoaMark listing and give 3 specific, actionable improvements.
 
@@ -7938,7 +7961,7 @@ Give numbered tips (1–3). Be direct. Each tip max 2 sentences. Focus on what's
 async function bpEnhanceDesc() {
   if(!currentUser) return;
   const prompt_extra = document.getElementById('bp-enhance-prompt').value.trim();
-  const myListing = typeof LISTINGS !== 'undefined' ? LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser.owner||currentUser.name).toLowerCase()) : null;
+  const myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
   if(!myListing?.desc && !prompt_extra) { bpToast('Add your listing first.'); return; }
   const outEl = document.getElementById('bp-enhance-out');
   const textEl = document.getElementById('bp-enhance-text');
@@ -7966,7 +7989,7 @@ async function bpGetPerfAnalysis() {
   const el = document.getElementById('ban-ai-analysis');
   el.innerHTML = `<div class="bp-thinking"><div class="bp-dots"><span></span><span></span><span></span></div> Analysing performance...</div>`;
   const revs = bpData.reviews; const avg = revs.length ? (revs.reduce((a,r)=>a+r.stars,0)/revs.length).toFixed(1) : null;
-  const myListing = typeof LISTINGS !== 'undefined' ? LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser.owner||currentUser.name).toLowerCase()) : null;
+  const myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
   const prompt = `Brief performance assessment for this NoaMark business (max 100 words, 2 improvement tips):
 ${currentUser.name} | ${myListing?.cat||'unlisted'} | ${myListing?.area||'SA'} | Boost: ${myListing?.boost||'none'} | Enquiries: ${bpData.enquiries.length} | Reviews: ${revs.length} | Avg: ${avg||'none'}`;
   try {
@@ -7982,7 +8005,7 @@ async function bpGetBoostAdvice() {
   const textEl = document.getElementById('bp-boost-advice-text');
   el.style.display = 'block';
   textEl.innerHTML = `<div class="bp-thinking"><div class="bp-dots"><span></span><span></span><span></span></div> Thinking...</div>`;
-  const myListing = typeof LISTINGS !== 'undefined' ? LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser.owner||currentUser.name).toLowerCase()) : null;
+  const myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
   const prompt = `Recommend a NoaMark boost plan for this business in 60 words or less:
 Business: ${currentUser.name} | ${myListing?.cat||'general'} | ${myListing?.area||'South Africa'} | Enquiries: ${bpData.enquiries.length} | Reviews: ${bpData.reviews.length} | Current boost: ${myListing?.boost||'none'}
 Plans: Starter (R49.99), Growth (R149.99), Dominance (R299.99). Be direct.`;
@@ -8009,7 +8032,7 @@ function bpResetAIChat() {
 function getRoleSystemPrompt() {
   const type = currentUser?.type || 'guest';
   if(type === 'business') {
-    const myListing = typeof LISTINGS !== 'undefined' ? LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser?.owner||currentUser?.name||'').toLowerCase()) : null;
+    const myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
     return `You are a helpful business advisor for NoaMark, a South African township business platform. You are speaking with a business owner named "${currentUser?.name||'the owner'}" who runs a ${myListing?.cat||'business'} in ${myListing?.area||'South Africa'}. ${myListing?.desc ? 'Their business: '+myListing.desc+'.' : ''} Help them with business advice, customer engagement, marketing, and improving their listing. Do NOT suggest they sign up, list a business, or upgrade plans — they are already a business owner. Keep responses under 120 words.`;
   }
   if(type === 'subscriber') {
@@ -8106,7 +8129,7 @@ function bpSelectBoost(plan, price) {
 
   // Find the current user's listing ID for the ITN callback
   const myListing = typeof LISTINGS !== 'undefined'
-    ? LISTINGS.find(l => l.owner && l.owner.toLowerCase() === (currentUser.owner||currentUser.name).toLowerCase())
+    ? getMyListing()
     : null;
   const listingId = myListing ? myListing.id : '';
 
