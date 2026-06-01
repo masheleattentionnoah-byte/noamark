@@ -8802,11 +8802,14 @@ async function admLoadOverview() {
 
     const pendingRes = await nmSupaQuery(() => _supa.from('listings').select('*').eq('status','pending').order('created_at',{ascending:false}).limit(5));
     const pendingData = pendingRes.data || [];
+    // Build map so adminReviewListing works from overview
+    window._pendingListingsMap = window._pendingListingsMap || {};
+    pendingData.forEach(l => { window._pendingListingsMap[l.id] = l; });
     const tbody = document.getElementById('adm-recent-pending');
     if(tbody) {
       tbody.innerHTML = pendingData.length === 0
         ? '<tr><td colspan="5" class="adm-empty">✅ No pending listings!</td></tr>'
-        : pendingData.map(l => `<tr><td style="font-weight:600;color:#fff;">${l.name}</td><td>${l.owner||'—'}</td><td>${l.type||'—'}</td><td>${l.area||'—'}</td><td><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${l.id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${l.id}',this)">✗ Reject</button></td></tr>`).join('');
+        : pendingData.map(l => `<tr><td style="font-weight:600;color:#fff;">${nmSafe(l.name)}</td><td>${nmSafe(l.owner||'—')}</td><td>${nmSafe(l.type||'—')}</td><td>${nmSafe(l.area||'—')}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${l.id}')">👁 Review</button><br><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${l.id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${l.id}',this)">✗ Reject</button></td></tr>`).join('');
     }
   } catch(e) { console.warn('Overview load failed', e); }
 }
@@ -8824,6 +8827,10 @@ async function admLoadApprovals() {
     const cl = document.getElementById('adm-pending-count-label');
     if(cl) cl.textContent = pending.length;
 
+    // Build global map so adminReviewListing() can find listings by ID
+    window._pendingListingsMap = window._pendingListingsMap || {};
+    all.forEach(l => { window._pendingListingsMap[l.id] = l; });
+
     // XSS-safe admin table render
     const renderRow = (l, type) => {
       const id   = nmSafe(l.id);
@@ -8835,8 +8842,8 @@ async function admLoadApprovals() {
       const ph   = nmSafe(l.phone||'—');
       const em   = nmSafe(l.email||'—');
       const bt   = nmSafe(l.boost_tier||'free');
-      if(type === 'pending') return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${own}</td><td>${tp}</td><td>${ar}, ${ci}</td><td>${ph}</td><td style="font-size:11px;">${em}</td><td>${bt}</td><td><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">✗ Reject</button></td></tr>`;
-      if(type === 'approved') return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${bt}</td><td>${own}</td><td><button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">Remove</button></td></tr>`;
+      if(type === 'pending') return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${own}</td><td>${tp}</td><td>${ar}, ${ci}</td><td>${ph}</td><td style="font-size:11px;">${em}</td><td>${bt}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')">👁 Review</button><br><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">✗ Reject</button></td></tr>`;
+      if(type === 'approved') return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${bt}</td><td>${own}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')">👁 View</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">Remove</button></td></tr>`;
       return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${own}</td><td><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)">Re-approve</button></td></tr>`;
     };
 
