@@ -4061,53 +4061,83 @@
 <!-- ── SUPPORT MODAL ── -->
 <!-- Admin Business Review Modal -->
 <div id="admin-review-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px;" onclick="if(event.target===this)this.style.display='none'">
-  <div style="background:#0a0c10;border:1px solid rgba(212,175,55,.3);padding:0;max-width:680px;width:100%;position:relative;margin:auto;">
+  <div style="background:#0a0c10;border:1px solid rgba(212,175,55,.3);padding:0;max-width:720px;width:100%;position:relative;margin:auto;">
     <div style="background:linear-gradient(135deg,rgba(212,175,55,.08),transparent);padding:24px 28px;border-bottom:1px solid rgba(212,175,55,.2);display:flex;align-items:center;justify-content:space-between;">
       <div>
         <div style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:4px;">Admin Review</div>
         <div id="arm-name" style="font-size:20px;font-weight:700;color:#fff;"></div>
+        <div id="arm-owner" style="font-size:12px;color:#9ca3af;margin-top:3px;"></div>
       </div>
       <button onclick="document.getElementById('admin-review-modal').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:22px;cursor:pointer;">✕</button>
     </div>
     <div style="padding:28px;">
-      <!-- Photos -->
-      <div id="arm-photos" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;"></div>
-      <!-- Details grid -->
-      <div style="display:grid;gap:12px;margin-bottom:20px;" class="nm-2col-grid" class="nm-2col-grid">
+
+      <!-- Business Photos -->
+      <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:10px;">Business Photos</div>
+      <div id="arm-photos" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;"></div>
+
+      <!-- Core Details Grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
         <div style="background:#111318;border:1px solid #1a1f2c;padding:14px;">
           <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Category</div>
           <div id="arm-type" style="font-size:13px;color:#e5e7eb;"></div>
+        </div>
+        <div style="background:#111318;border:1px solid #1a1f2c;padding:14px;">
+          <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Status</div>
+          <div id="arm-status" style="font-size:13px;color:#4ade80;"></div>
         </div>
         <div style="background:#111318;border:1px solid #1a1f2c;padding:14px;">
           <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Location</div>
           <div id="arm-location" style="font-size:13px;color:#e5e7eb;"></div>
         </div>
         <div style="background:#111318;border:1px solid #1a1f2c;padding:14px;">
-          <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Contact</div>
-          <div id="arm-contact" style="font-size:13px;color:#e5e7eb;"></div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Address</div>
+          <div id="arm-address" style="font-size:13px;color:#e5e7eb;"></div>
         </div>
         <div style="background:#111318;border:1px solid #1a1f2c;padding:14px;">
-          <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Payment Methods</div>
-          <div id="arm-payments" style="font-size:13px;color:#e5e7eb;"></div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Contact</div>
+          <div id="arm-contact" style="font-size:13px;color:#e5e7eb;line-height:1.8;"></div>
+        </div>
+        <div style="background:#111318;border:1px solid #1a1f2c;padding:14px;">
+          <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Social Media</div>
+          <div id="arm-social" style="font-size:13px;color:#e5e7eb;line-height:1.8;"></div>
+        </div>
+        <div style="background:#111318;border:1px solid #1a1f2c;padding:14px;">
+          <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Trading Hours</div>
+          <div id="arm-hours" style="font-size:12px;color:#e5e7eb;line-height:1.8;"></div>
+        </div>
+        <div style="background:#111318;border:1px solid #1a1f2c;padding:14px;">
+          <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Extra Info</div>
+          <div id="arm-extra" style="font-size:12px;color:#e5e7eb;line-height:1.8;"></div>
         </div>
       </div>
+
+      <!-- Payment Methods -->
+      <div style="background:#111318;border:1px solid #1a1f2c;padding:14px;margin-bottom:16px;">
+        <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Payment Methods</div>
+        <div id="arm-payments" style="font-size:13px;color:#e5e7eb;"></div>
+      </div>
+
       <!-- Description -->
-      <div style="background:#111318;border:1px solid #1a1f2c;padding:16px;margin-bottom:20px;">
+      <div style="background:#111318;border:1px solid #1a1f2c;padding:16px;margin-bottom:16px;">
         <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:8px;">Description / What They Offer</div>
         <div id="arm-desc" style="font-size:13px;color:#d1d5db;line-height:1.75;"></div>
       </div>
-      <!-- Menu / Services -->
-      <div id="arm-menu-section" style="margin-bottom:20px;">
-        <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:10px;">Services / Menu Items</div>
-        <div id="arm-menu" style="display:flex;flex-direction:column;gap:8px;"></div>
-      </div>
-      <!-- Price hint -->
-      <div id="arm-pricehint-wrap" style="margin-bottom:20px;display:none;">
-        <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Pricing Note</div>
+
+      <!-- Price Hint -->
+      <div id="arm-pricehint-wrap" style="margin-bottom:16px;display:none;">
+        <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Pricing Summary</div>
         <div id="arm-pricehint" style="font-size:13px;color:var(--gold);background:rgba(212,175,55,.06);border-left:3px solid var(--gold);padding:10px 14px;"></div>
       </div>
+
+      <!-- Menu / Services with photos -->
+      <div id="arm-menu-section" style="margin-bottom:20px;">
+        <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:10px;">Services / Menu Items & Pricing</div>
+        <div id="arm-menu" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+
       <!-- Action buttons -->
-      <div id="arm-actions" style="display:flex;gap:12px;padding-top:12px;border-top:1px solid #1a1f2c;">
+      <div id="arm-actions" style="display:flex;gap:12px;padding-top:16px;border-top:1px solid #1a1f2c;">
         <button id="arm-approve-btn" class="admin-action-btn approve" style="flex:1;padding:14px;font-size:13px;font-weight:700;">✓ Approve Listing</button>
         <button id="arm-reject-btn" class="admin-action-btn reject" style="flex:1;padding:14px;font-size:13px;font-weight:700;">✗ Reject Listing</button>
       </div>
@@ -5423,49 +5453,78 @@ function adminReviewListing(id) {
   const modal = document.getElementById('admin-review-modal');
   if (!modal) return;
 
-  // Name
+  // Name and owner
   document.getElementById('arm-name').textContent = l.name || '—';
+  document.getElementById('arm-owner').textContent = l.owner ? 'Owner: ' + l.owner : '';
 
-  // Type / location / contact
-  document.getElementById('arm-type').textContent = l.type || '—';
-  document.getElementById('arm-location').innerHTML = [l.area, l.city, l.province].filter(Boolean).join(', ') || '—';
+  // Category and status
+  document.getElementById('arm-type').textContent = (l.type || '—') + (l.years ? ' · ' + l.years + ' yrs in business' : '');
+  document.getElementById('arm-status').textContent = l.business_status || 'open';
+
+  // Location
+  document.getElementById('arm-location').innerHTML =
+    [l.area, l.city, l.province].filter(Boolean).join(', ') || '—';
+  document.getElementById('arm-address').innerHTML =
+    [l.address, l.landmark ? '📍 Near: ' + l.landmark : ''].filter(Boolean).join('<br>') || '—';
+
+  // Contact
   const contactParts = [];
   if (l.phone) contactParts.push('📞 ' + nmSafe(l.phone));
-  if (l.whatsapp) contactParts.push('💬 WhatsApp: ' + nmSafe(l.whatsapp));
+  if (l.whatsapp) contactParts.push('💬 ' + nmSafe(l.whatsapp));
   if (l.email) contactParts.push('✉ ' + nmSafe(l.email));
   document.getElementById('arm-contact').innerHTML = contactParts.join('<br>') || '—';
 
-  // Payments — stored as comma-separated string e.g. "Cash, EFT, SnapScan"
+  // Social media
+  const socialParts = [];
+  if (l.facebook) socialParts.push('Facebook: ' + nmSafe(l.facebook));
+  if (l.instagram) socialParts.push('Instagram: ' + nmSafe(l.instagram));
+  document.getElementById('arm-social').innerHTML = socialParts.join('<br>') || '—';
+
+  // Hours
+  const hoursParts = [];
+  if (l.hours_weekday) hoursParts.push('Mon–Fri: ' + nmSafe(l.hours_weekday));
+  if (l.hours_sat) hoursParts.push('Saturday: ' + nmSafe(l.hours_sat));
+  if (l.hours_sun) hoursParts.push('Sunday: ' + nmSafe(l.hours_sun));
+  document.getElementById('arm-hours').innerHTML = hoursParts.join('<br>') || '—';
+
+  // Extra info
+  const extraParts = [];
+  if (l.walkins) extraParts.push('Walk-ins: ' + nmSafe(l.walkins));
+  if (l.payments) extraParts.push('Payments: ' + nmSafe(l.payments));
+  document.getElementById('arm-extra').innerHTML = extraParts.join('<br>') || '—';
+
+  // Payments
   document.getElementById('arm-payments').textContent = (l.payments && l.payments.trim()) ? l.payments : '—';
 
   // Description
   document.getElementById('arm-desc').textContent = l.description || l.desc || 'No description provided.';
 
-  // Price hint — raw Supabase row uses 'price_hint'
+  // Price hint
   const phWrap = document.getElementById('arm-pricehint-wrap');
   const phEl = document.getElementById('arm-pricehint');
   const priceHintVal = l.price_hint || l.priceHint || '';
   if (priceHintVal) { phEl.textContent = priceHintVal; phWrap.style.display = ''; }
   else phWrap.style.display = 'none';
 
-  // Photos
+  // Business Photos
   const photosEl = document.getElementById('arm-photos');
   photosEl.innerHTML = '';
   let photoUrls = [];
   try { photoUrls = l.photo_urls ? (Array.isArray(l.photo_urls) ? l.photo_urls : JSON.parse(l.photo_urls)) : []; } catch(e) {}
   if (l.photo_url) photoUrls = [l.photo_url, ...photoUrls.filter(p => p !== l.photo_url)];
   if (photoUrls.length) {
-    photoUrls.slice(0,8).forEach(url => {
+    photoUrls.slice(0, 10).forEach(url => {
       const img = document.createElement('img');
       img.src = url; img.alt = l.name;
-      img.style.cssText = 'width:100px;height:80px;object-fit:cover;border-radius:4px;border:1px solid #1a1f2c;';
+      img.style.cssText = 'width:120px;height:90px;object-fit:cover;border-radius:4px;border:1px solid #1a1f2c;cursor:pointer;';
+      img.onclick = () => window.open(url, '_blank');
       photosEl.appendChild(img);
     });
   } else {
     photosEl.innerHTML = '<div style="font-size:12px;color:#6b7280;padding:8px 0;">No photos uploaded.</div>';
   }
 
-  // Menu / Services
+  // Menu / Services with photos
   const menuEl = document.getElementById('arm-menu');
   const menuSec = document.getElementById('arm-menu-section');
   menuEl.innerHTML = '';
@@ -5473,33 +5532,57 @@ function adminReviewListing(id) {
   try { menuItems = l.menu ? (Array.isArray(l.menu) ? l.menu : JSON.parse(l.menu)) : []; } catch(e) {}
   if (menuItems.length) {
     menuSec.style.display = '';
-    menuItems.slice(0,10).forEach(item => {
-      const name = item.name || item.item || '';
-      const price = item.price || '';
-      const desc2 = item.desc || item.description || '';
+    menuItems.forEach(item => {
+      const itemName = nmSafe(item.name || item.item || '—');
+      const itemPrice = nmSafe(item.price || '');
+      const itemPhoto = item.photo || '';
       const div = document.createElement('div');
-      div.style.cssText = 'background:#111318;border:1px solid #1a1f2c;padding:10px 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;';
-      div.innerHTML = `<div style="flex:1"><div style="font-size:13px;color:#e5e7eb;font-weight:600;">${nmSafe(name)}</div>${desc2 ? '<div style="font-size:11px;color:#9ca3af;margin-top:3px;">'+nmSafe(desc2)+'</div>' : ''}</div><div style="font-size:13px;color:var(--gold);font-weight:700;white-space:nowrap;">${nmSafe(price)}</div>`;
+      div.style.cssText = 'background:#111318;border:1px solid #1a1f2c;padding:12px 14px;display:flex;align-items:center;gap:14px;';
+      div.innerHTML = `
+        ${itemPhoto ? `<img src="${nmSafe(itemPhoto)}" style="width:72px;height:72px;object-fit:cover;border-radius:4px;border:1px solid #1a1f2c;flex-shrink:0;cursor:pointer;" onclick="window.open('${nmSafe(itemPhoto)}','_blank')">` : '<div style="width:72px;height:72px;background:#0a0c10;border:1px solid #1a1f2c;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">📦</div>'}
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;color:#e5e7eb;font-weight:600;">${itemName}</div>
+          ${itemPrice ? `<div style="font-size:14px;color:var(--gold);font-weight:700;margin-top:4px;">${itemPrice}</div>` : ''}
+        </div>`;
       menuEl.appendChild(div);
     });
   } else {
     menuSec.style.display = 'none';
   }
 
-  // Action buttons
+  // Approve / Reject buttons
   const approveBtn = document.getElementById('arm-approve-btn');
   const rejectBtn = document.getElementById('arm-reject-btn');
+  approveBtn.textContent = '✓ Approve Listing';
+  approveBtn.disabled = false;
+  rejectBtn.textContent = '✗ Reject Listing';
+  rejectBtn.disabled = false;
   approveBtn.onclick = async () => {
-    approveBtn.disabled = true; approveBtn.textContent = '...';
+    approveBtn.disabled = true; approveBtn.textContent = '⏳ Approving...';
     const { error } = await nmSupaQuery(() => _supa.from('listings').update({ status: 'approved' }).eq('id', l.id));
-    if (!error) { modal.style.display = 'none'; loadPendingListings(); loadListingsFromSupabase(); }
-    else { approveBtn.disabled = false; approveBtn.textContent = '✓ Approve Listing'; alert('Error approving. Try again.'); }
+    if (!error) {
+      modal.style.display = 'none';
+      admLoadApprovals();
+      admLoadOverview();
+      loadListingsFromSupabase();
+    } else {
+      approveBtn.disabled = false;
+      approveBtn.textContent = '✓ Approve Listing';
+      alert('Error approving. Try again.');
+    }
   };
   rejectBtn.onclick = async () => {
-    rejectBtn.disabled = true; rejectBtn.textContent = '...';
+    rejectBtn.disabled = true; rejectBtn.textContent = '⏳ Rejecting...';
     const { error } = await nmSupaQuery(() => _supa.from('listings').update({ status: 'rejected' }).eq('id', l.id));
-    if (!error) { modal.style.display = 'none'; loadPendingListings(); }
-    else { rejectBtn.disabled = false; rejectBtn.textContent = '✗ Reject Listing'; alert('Error rejecting. Try again.'); }
+    if (!error) {
+      modal.style.display = 'none';
+      admLoadApprovals();
+      admLoadOverview();
+    } else {
+      rejectBtn.disabled = false;
+      rejectBtn.textContent = '✗ Reject Listing';
+      alert('Error rejecting. Try again.');
+    }
   };
 
   modal.style.display = 'flex';
@@ -8844,7 +8927,7 @@ async function admLoadApprovals() {
       const bt   = nmSafe(l.boost_tier||'free');
       if(type === 'pending') return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${own}</td><td>${tp}</td><td>${ar}, ${ci}</td><td>${ph}</td><td style="font-size:11px;">${em}</td><td>${bt}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')">👁 Review</button><br><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">✗ Reject</button></td></tr>`;
       if(type === 'approved') return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${bt}</td><td>${own}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')">👁 View</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">Remove</button></td></tr>`;
-      return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${own}</td><td><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)">Re-approve</button></td></tr>`;
+      return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${own}</td><td><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)" style="margin-bottom:4px;">Re-approve</button><br><button class="adm-btn adm-btn-reject" onclick="admDeleteListing('${id}',this)" style="background:rgba(220,38,38,.2);color:#f87171;border-color:rgba(220,38,38,.4);">🗑 Delete Permanently</button></td></tr>`;
     };
 
     const tables = {
@@ -8888,6 +8971,25 @@ async function admRejectListing(id, btn) {
     console.error('Reject error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
     alert('Error rejecting. Check your Supabase connection and try again.');
+  }
+}
+
+async function admDeleteListing(id, btn) {
+  if(!confirm('Permanently delete this listing? This cannot be undone.')) return;
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Deleting...'; btn.style.opacity = '.6';
+  try {
+    const { error } = await nmSupaQuery(() => _supa.from('listings').delete().eq('id', id));
+    if(error) throw error;
+    // Remove the row from the table immediately
+    const row = btn.closest('tr');
+    if(row) { row.style.opacity = '0'; row.style.transition = 'opacity .4s'; setTimeout(()=>row.remove(), 400); }
+    admLoadOverview();
+    loadListingsFromSupabase();
+  } catch(e) {
+    console.error('Delete error:', e);
+    btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
+    alert('Error deleting. Check your Supabase connection and try again.');
   }
 }
 
