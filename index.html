@@ -2,9 +2,65 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="description" content="NoaMark — Discover local businesses, explore opportunities, and grow your brand in South Africa.">
+<meta name="description" content="NoaMark — South Africa's local business discovery platform. Find trusted businesses, trading services, and opportunities in Limpopo, Mpumalanga, Gauteng and beyond.">
+<meta name="keywords" content="NoaMark, South Africa local businesses, Limpopo businesses, Giyani businesses, Polokwane businesses, South Africa marketplace, local services South Africa, business directory SA">
+<meta name="author" content="NoaMark">
+<meta name="robots" content="index, follow">
+<meta name="googlebot" content="index, follow">
+<link rel="canonical" href="https://noamark.com/">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>NoaMark — Discover · Learn · Dominate</title>
+<title>NoaMark — Discover Local Businesses in South Africa | Limpopo · Mpumalanga · Gauteng</title>
+
+<!-- Open Graph (Facebook, WhatsApp preview) -->
+<meta property="og:title" content="NoaMark — Discover Local Businesses in South Africa">
+<meta property="og:description" content="Find trusted local businesses, services, and opportunities across South Africa. Join NoaMark — the platform built for South African entrepreneurs.">
+<meta property="og:url" content="https://noamark.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="NoaMark">
+<meta property="og:locale" content="en_ZA">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="NoaMark — Discover Local Businesses in South Africa">
+<meta name="twitter:description" content="Find trusted local businesses, services, and opportunities across South Africa.">
+<meta name="twitter:site" content="@noamark">
+
+<!-- Structured Data: Organization (helps Google understand the site) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "NoaMark",
+  "url": "https://noamark.com",
+  "description": "South Africa local business discovery and marketplace platform",
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "telephone": "+27634189749",
+    "contactType": "customer service",
+    "areaServed": "ZA",
+    "availableLanguage": "English"
+  },
+  "sameAs": [
+    "https://www.facebook.com/Gingirikanamu",
+    "https://www.instagram.com/Jnr_.noah"
+  ]
+}
+</script>
+<!-- Structured Data: WebSite with search -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "NoaMark",
+  "url": "https://noamark.com",
+  "description": "Discover and list local businesses in South Africa",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://noamark.com/#marketplace?search={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -4060,9 +4116,21 @@
 
 <!-- ── SUPPORT MODAL ── -->
 <!-- Admin Business Review Modal -->
+<style>
+  #admin-review-modal .arm-inner { background:#0a0c10; border:1px solid rgba(212,175,55,.3); padding:0; max-width:720px; width:100%; position:relative; margin:auto; }
+  #admin-review-modal .arm-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  @media(max-width:600px){
+    #admin-review-modal { padding:16px 8px !important; }
+    #admin-review-modal .arm-inner { width:100% !important; }
+    #admin-review-modal .arm-grid { grid-template-columns:1fr !important; gap:8px !important; }
+    #admin-review-modal .arm-header { padding:18px 16px !important; }
+    #admin-review-modal .arm-body { padding:16px !important; }
+    #admin-review-modal #arm-actions { flex-direction:column !important; }
+  }
+</style>
 <div id="admin-review-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px;" onclick="if(event.target===this)this.style.display='none'">
-  <div style="background:#0a0c10;border:1px solid rgba(212,175,55,.3);padding:0;max-width:720px;width:100%;position:relative;margin:auto;">
-    <div style="background:linear-gradient(135deg,rgba(212,175,55,.08),transparent);padding:24px 28px;border-bottom:1px solid rgba(212,175,55,.2);display:flex;align-items:center;justify-content:space-between;">
+  <div class="arm-inner">
+    <div class="arm-header" style="background:linear-gradient(135deg,rgba(212,175,55,.08),transparent);padding:24px 28px;border-bottom:1px solid rgba(212,175,55,.2);display:flex;align-items:center;justify-content:space-between;">
       <div>
         <div style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:4px;">Admin Review</div>
         <div id="arm-name" style="font-size:20px;font-weight:700;color:#fff;"></div>
@@ -4070,14 +4138,14 @@
       </div>
       <button onclick="document.getElementById('admin-review-modal').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:22px;cursor:pointer;">✕</button>
     </div>
-    <div style="padding:28px;">
+    <div class="arm-body" style="padding:28px;">
 
       <!-- Business Photos -->
       <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:10px;">Business Photos</div>
       <div id="arm-photos" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;"></div>
 
       <!-- Core Details Grid -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      <div class="arm-grid">
         <div style="background:#111318;border:1px solid #1a1f2c;padding:14px;">
           <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Category</div>
           <div id="arm-type" style="font-size:13px;color:#e5e7eb;"></div>
@@ -6729,16 +6797,16 @@ async function handleBizLogin() {
   const email     = document.getElementById('biz-login-email').value.trim();
   const pass      = document.getElementById('biz-login-password').value;
 
-  if(!loginName||!email||!pass) { showAuthError('biz-login-error','Please fill in all fields before continuing.'); return; }
-  if(!validateEmail(email))     { showAuthError('biz-login-error','Please enter a valid email address.'); return; }
-
-  // ── ADMIN LOGIN CHECK ──
-  if(email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && pass === ADMIN_PASSWORD) {
+  // ── ADMIN LOGIN CHECK (runs FIRST — before name field validation) ──
+  if(email && pass && email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && pass === ADMIN_PASSWORD) {
     loginAs({ type:'admin', name:'NoaMark Admin', owner:'NoaMark', email:ADMIN_EMAIL, plan:'Admin', id:'admin-001' });
     showAuthSuccess('biz-login-success', '✓ Welcome back, Admin!');
     setTimeout(()=>{ closeAuth(); showAdminDashboard(); }, 900);
     return;
   }
+
+  if(!loginName||!email||!pass) { showAuthError('biz-login-error','Please fill in all fields before continuing.'); return; }
+  if(!validateEmail(email))     { showAuthError('biz-login-error','Please enter a valid email address.'); return; }
 
   // Rate limiting: max 5 attempts per 2 minutes
   const rl = nmRateLimit('biz-login:' + email.toLowerCase(), 5, 120000);
@@ -8349,6 +8417,7 @@ bpLoad();
 
     /* ── TABLE ── */
     .adm-table { width:100%; border-collapse:collapse; }
+    .adm-table-wrap { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
     .adm-table th {
       padding:11px 14px; text-align:left;
       font-size:9px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;
@@ -8467,7 +8536,8 @@ bpLoad();
       .adm-stats { grid-template-columns:1fr 1fr; gap:10px; }
       .adm-stat { padding:16px 14px; }
       .adm-stat-val { font-size:26px; }
-      .adm-card { padding:18px 14px; }
+      .adm-card { padding:18px 14px; overflow-x:auto; }
+      .adm-table { min-width:480px; }
     }
   </style>
 
