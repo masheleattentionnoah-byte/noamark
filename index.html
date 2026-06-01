@@ -4117,15 +4117,70 @@
 <!-- ── SUPPORT MODAL ── -->
 <!-- Admin Business Review Modal -->
 <style>
-  #admin-review-modal .arm-inner { background:#0a0c10; border:1px solid rgba(212,175,55,.3); padding:0; max-width:720px; width:100%; position:relative; margin:auto; }
-  #admin-review-modal .arm-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
-  @media(max-width:600px){
-    #admin-review-modal { padding:16px 8px !important; }
-    #admin-review-modal .arm-inner { width:100% !important; }
+  #admin-review-modal .arm-inner {
+    background:#0a0c10;
+    border:1px solid rgba(212,175,55,.3);
+    padding:0;
+    max-width:720px;
+    width:100%;
+    position:relative;
+    margin:auto;
+    box-sizing:border-box;
+    overflow:hidden;
+  }
+  #admin-review-modal .arm-grid {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:16px;
+  }
+  #admin-review-modal .arm-grid > div,
+  #admin-review-modal #arm-payments,
+  #admin-review-modal #arm-desc,
+  #admin-review-modal #arm-pricehint {
+    word-break:break-word;
+    overflow-wrap:break-word;
+  }
+  #admin-review-modal .arm-body * {
+    max-width:100%;
+    box-sizing:border-box;
+  }
+  #admin-review-modal #arm-photos img {
+    max-width:120px;
+    height:90px;
+    object-fit:cover;
+  }
+  #admin-review-modal .arm-menu-item {
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    background:#111318;
+    border:1px solid #1a1f2c;
+    padding:12px;
+    box-sizing:border-box;
+    width:100%;
+  }
+  #admin-review-modal .arm-menu-item img {
+    width:72px;
+    height:72px;
+    object-fit:cover;
+    border-radius:4px;
+    flex-shrink:0;
+  }
+  #admin-review-modal .arm-menu-item .arm-item-info {
+    flex:1;
+    min-width:0;
+    word-break:break-word;
+  }
+  @media(max-width:700px){
+    #admin-review-modal { padding:10px 6px !important; align-items:flex-start !important; }
+    #admin-review-modal .arm-inner { width:100% !important; border-radius:0; }
     #admin-review-modal .arm-grid { grid-template-columns:1fr !important; gap:8px !important; }
-    #admin-review-modal .arm-header { padding:18px 16px !important; }
-    #admin-review-modal .arm-body { padding:16px !important; }
-    #admin-review-modal #arm-actions { flex-direction:column !important; }
+    #admin-review-modal .arm-header { padding:16px 14px !important; }
+    #admin-review-modal .arm-body { padding:14px !important; }
+    #admin-review-modal #arm-actions { flex-direction:column !important; gap:8px !important; }
+    #admin-review-modal #arm-photos img { max-width:80px !important; height:70px !important; }
+    #admin-review-modal .arm-menu-item img { width:56px !important; height:56px !important; }
   }
 </style>
 <div id="admin-review-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px;" onclick="if(event.target===this)this.style.display='none'">
@@ -4205,7 +4260,7 @@
       </div>
 
       <!-- Action buttons -->
-      <div id="arm-actions" style="display:flex;gap:12px;padding-top:16px;border-top:1px solid #1a1f2c;">
+      <div id="arm-actions" style="display:flex;gap:12px;padding-top:16px;border-top:1px solid #1a1f2c;flex-wrap:wrap;">
         <button id="arm-approve-btn" class="admin-action-btn approve" style="flex:1;padding:14px;font-size:13px;font-weight:700;">✓ Approve Listing</button>
         <button id="arm-reject-btn" class="admin-action-btn reject" style="flex:1;padding:14px;font-size:13px;font-weight:700;">✗ Reject Listing</button>
       </div>
@@ -5605,10 +5660,12 @@ function adminReviewListing(id) {
       const itemPrice = nmSafe(item.price || '');
       const itemPhoto = item.photo || '';
       const div = document.createElement('div');
-      div.style.cssText = 'background:#111318;border:1px solid #1a1f2c;padding:12px 14px;display:flex;align-items:center;gap:14px;';
+      div.className = 'arm-menu-item';
       div.innerHTML = `
-        ${itemPhoto ? `<img src="${nmSafe(itemPhoto)}" style="width:72px;height:72px;object-fit:cover;border-radius:4px;border:1px solid #1a1f2c;flex-shrink:0;cursor:pointer;" onclick="window.open('${nmSafe(itemPhoto)}','_blank')">` : '<div style="width:72px;height:72px;background:#0a0c10;border:1px solid #1a1f2c;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">📦</div>'}
-        <div style="flex:1;min-width:0;">
+        ${itemPhoto
+          ? `<img src="${nmSafe(itemPhoto)}" alt="${itemName}" onclick="window.open('${nmSafe(itemPhoto)}','_blank')" style="cursor:pointer;">`
+          : `<div style="width:72px;height:72px;background:#0a0c10;border:1px solid #1a1f2c;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">📦</div>`}
+        <div class="arm-item-info">
           <div style="font-size:13px;color:#e5e7eb;font-weight:600;">${itemName}</div>
           ${itemPrice ? `<div style="font-size:14px;color:var(--gold);font-weight:700;margin-top:4px;">${itemPrice}</div>` : ''}
         </div>`;
