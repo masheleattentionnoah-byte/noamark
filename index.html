@@ -2806,7 +2806,6 @@
             <option value="free">Free Plan — R0/month</option>
             <option value="vip">VIP Plan — R99.99/month</option>
             <option value="premium">Premium Plan — R199.99/month</option>
-            <option value="pro">Pro (Business) — R329.99/month</option>
           </select>
         </div>
         <div class="form-group">
@@ -4183,8 +4182,9 @@
     #admin-review-modal .arm-inner { width:100% !important; border-radius:0; }
     #admin-review-modal .arm-grid { grid-template-columns:1fr !important; gap:8px !important; }
     #admin-review-modal .arm-header { padding:16px 14px !important; }
-    #admin-review-modal .arm-body { padding:14px !important; }
-    #admin-review-modal #arm-actions { flex-direction:column !important; gap:8px !important; }
+    #admin-review-modal .arm-body { padding:14px !important; padding-bottom:90px !important; }
+    #admin-review-modal #arm-actions { flex-direction:row !important; gap:8px !important; position:fixed !important; bottom:0 !important; left:0 !important; right:0 !important; background:#0a0c10 !important; border-top:1px solid rgba(212,175,55,.3) !important; padding:12px 16px !important; z-index:10001 !important; margin:0 !important; }
+    #admin-review-modal #arm-actions button { flex:1 !important; padding:14px 8px !important; font-size:13px !important; }
     #admin-review-modal #arm-photos img { max-width:80px !important; height:70px !important; }
     #admin-review-modal .arm-menu-item img { width:56px !important; height:56px !important; }
   }
@@ -4367,6 +4367,10 @@ window.addEventListener('popstate', function(e) {
   // If lightbox is open, close it first
   const lb = document.getElementById('nm-lightbox');
   if(lb && lb.classList.contains('open')) { nmLbClose(); return; }
+
+  // If admin review modal is open, close it first
+  const arm = document.getElementById('admin-review-modal');
+  if(arm && arm.style.display === 'flex') { arm.style.display = 'none'; history.pushState(e.state, '', window.location.href); return; }
 
   if(e.state && e.state.nmPage) {
     const id = e.state.nmPage;
@@ -8981,7 +8985,7 @@ function admGoPage(page) {
   if(page === 'revenue')    admLoadRevenue();
   if(page === 'users')      admLoadUsers();
   if(page === 'analytics')  admLoadAnalytics();
-  if(page === 'enquiries')  admLoadEnquiries();
+  if(page === 'enquiries') { admLoadEnquiries(); const b=document.getElementById('adm-enq-badge'); if(b){b.textContent='0';b.style.display='none';} window._admEnqPageOpen = true; } else { window._admEnqPageOpen = false; }
   if(page === 'videos')     admLoadVideos();
 }
 
@@ -9185,10 +9189,10 @@ async function admLoadEnquiries() {
         .order('created_at', { ascending: false })
     );
     const data = result?.data || [];
-    // Update badge
+    // Update badge — only show if admin is NOT currently viewing the enquiries page
     const unread = data.filter(e => !e.replied).length;
     const badge = document.getElementById('adm-enq-badge');
-    if(badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'inline' : 'none'; }
+    if(badge) { badge.textContent = unread; badge.style.display = (unread > 0 && !window._admEnqPageOpen) ? 'inline' : 'none'; }
     if(!data.length) { el.innerHTML = '<div class="adm-empty">No enquiries yet.</div>'; return; }
     el.innerHTML = data.map(e => {
       const d = new Date(e.created_at);
