@@ -4357,46 +4357,67 @@ function showPage(id,cb){
   if(id==='dashboard') renderDashboardStats();
   if(id==='videos') { nmSupaQuery(()=>_supa.from('videos').select('*').order('created_at',{ascending:false})).then(r=>{ if(r&&r.data) loadVideosPage(r.data); }); }
   if(cb) setTimeout(cb,150);
-  // Push to browser history so phone back button navigates within the site
-  if(history.state && history.state.nmPage === id) return;
+  // Always push state — this is what makes back button work on every page
   history.pushState({ nmPage: id, nmView: 'main' }, '', '#' + id);
 }
 
-// Handle phone/browser back button — navigate within the site instead of leaving
+// ── BACK BUTTON HANDLER — handles every case professionally ──
 window.addEventListener('popstate', function(e) {
 
-  // 1. If auth modal is open, close it and stay on current page
+  // PRIORITY 1: Auth modal open → close it, stay on page
   const authOverlay = document.getElementById('auth-overlay');
-  if(authOverlay && authOverlay.classList.contains('active') && !authRequired) {
-    authOverlay.classList.remove('active');
+  if(authOverlay && authOverlay.classList.contains('active')) {
+    if(!authRequired) {
+      authOverlay.classList.remove('active');
+    }
+    // Re-push state so we stay here
     history.pushState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
     return;
   }
 
-  // 2. If AI chatbot is open, close it first
-  if(typeof chatOpen !== 'undefined' && chatOpen) { toggleChat(); history.pushState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href); return; }
+  // PRIORITY 2: AI chatbot open → close it, stay on page
+  if(typeof chatOpen !== 'undefined' && chatOpen) {
+    toggleChat();
+    history.pushState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
+    return;
+  }
 
-  // 2. If lightbox is open, close it first
+  // PRIORITY 3: Photo lightbox open → close it
   const lb = document.getElementById('nm-lightbox');
-  if(lb && lb.classList.contains('open')) { nmLbClose(); history.pushState(e.state || { nmPage: 'marketplace', nmView: 'main' }, '', window.location.href); return; }
+  if(lb && lb.classList.contains('open')) {
+    nmLbClose();
+    history.pushState(e.state || { nmPage: 'marketplace', nmView: 'main' }, '', window.location.href);
+    return;
+  }
 
-  // 3. If admin review modal is open, close it first
+  // PRIORITY 4: Admin review modal open → close it
   const arm = document.getElementById('admin-review-modal');
-  if(arm && arm.style.display === 'flex') { arm.style.display = 'none'; history.pushState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href); return; }
+  if(arm && (arm.style.display === 'flex' || arm.style.display === 'block')) {
+    arm.style.display = 'none';
+    history.pushState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
+    return;
+  }
 
+  // PRIORITY 5: Navigate to the page in history state
   if(e.state && e.state.nmPage) {
     const id = e.state.nmPage;
     const view = e.state.nmView || 'main';
+
+    // Skip 'auth' state — it was just a modal, go to underlying page
+    if(id === 'auth') {
+      history.go(-1);
+      return;
+    }
 
     if(id === 'marketplace') {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       const mktPage = document.getElementById('page-marketplace');
       if(mktPage) mktPage.classList.add('active');
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      const viewMap = {main:'mkt-main-view',profile:'mkt-profile-view',boost:'mkt-boost-view',add:'mkt-add-view',admin:'mkt-admin-view'};
-      Object.values(viewMap).forEach(vid=>{ const el=document.getElementById(vid); if(el) el.style.display='none'; });
+      const viewMap = { main:'mkt-main-view', profile:'mkt-profile-view', boost:'mkt-boost-view', add:'mkt-add-view', admin:'mkt-admin-view' };
+      Object.values(viewMap).forEach(vid => { const el = document.getElementById(vid); if(el) el.style.display = 'none'; });
       const targetId = viewMap[view];
-      if(targetId) { const el=document.getElementById(targetId); if(el) el.style.display='block'; }
+      if(targetId) { const el = document.getElementById(targetId); if(el) el.style.display = 'block'; }
       if(view === 'main' && LISTINGS.length > 0) populateMarketplace();
       if(view === 'admin') populateBizDashboard();
     } else {
@@ -4406,16 +4427,17 @@ window.addEventListener('popstate', function(e) {
         pageEl.classList.add('active');
         window.scrollTo({ top: 0, behavior: 'smooth' });
         if(id === 'dashboard') renderDashboardStats();
-        if(id === 'home') setTimeout(()=>{ if(typeof applyRoleHomePage==='function') applyRoleHomePage(currentUser); },50);
+        if(id === 'home') setTimeout(() => { if(typeof applyRoleHomePage === 'function') applyRoleHomePage(currentUser); }, 50);
       }
     }
   } else {
-    // 4. No state at all (first page load from Instagram/external link or bottom of history)
-    // Always go to home, never exit the site
+    // PRIORITY 6: No state (came from Instagram/Google/external link, or at bottom of stack)
+    // Go to home page — never exit the site
     history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname);
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const home = document.getElementById('page-home');
     if(home) home.classList.add('active');
+    if(typeof applyRoleHomePage === 'function') setTimeout(() => applyRoleHomePage(currentUser), 50);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 });
@@ -4757,7 +4779,7 @@ function showMktView(view){
   window.scrollTo({top:0,behavior:'smooth'});
   // Push history state for every view so phone back button navigates correctly
   if(view === 'main') {
-    history.replaceState({ nmPage: 'marketplace', nmView: 'main' }, '', '#marketplace');
+    history.pushState({ nmPage: 'marketplace', nmView: 'main' }, '', '#marketplace');
   } else if(view === 'profile') {
     history.pushState({ nmPage: 'marketplace', nmView: 'profile' }, '', '#marketplace/profile');
   } else if(view === 'boost') {
@@ -5885,14 +5907,16 @@ function renderDashboardStats(){
 
 // ── INIT MARKETPLACE ON LOAD ──
 document.addEventListener('DOMContentLoaded',()=>{
-  // Always ensure there is a home state at the bottom of the history stack
-  // This means: coming from Instagram, Bing, Google etc — back button goes home, not out
+  // Set up history stack properly so back button never exits the site
+  // Step 1: Replace current state with home (this is the "floor" — pressing back from here goes home not out)
   history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname);
-  // Then push a second state for wherever we actually are
-  // so that one back = home, two backs = leave site (natural behavior)
+  // Step 2: If URL has a hash (e.g. from Instagram link), push that page on top
   const hash = window.location.hash;
-  if(hash && hash.includes('marketplace')) {
-    history.pushState({ nmPage: 'marketplace', nmView: 'main' }, '', '#marketplace');
+  if(hash && hash.length > 1) {
+    const page = hash.replace('#','').split('/')[0];
+    if(page && page !== 'home') {
+      history.pushState({ nmPage: page, nmView: 'main' }, '', hash);
+    }
   }
   // Ensure profile/boost/add views are hidden on load
   ['mkt-profile-view','mkt-boost-view','mkt-add-view','mkt-admin-view'].forEach(id=>{
