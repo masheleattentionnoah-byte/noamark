@@ -1880,10 +1880,10 @@
         <div class="hf-brand-name">NM NOAMARK</div>
         <p class="hf-brand-tagline">Connecting people to great businesses. Creating opportunities. Building a stronger tomorrow.</p>
         <div class="hf-socials">
-          <a class="hf-social" href="#" title="Facebook">📘</a>
-          <a class="hf-social" href="#" title="Instagram">📸</a>
-          <a class="hf-social" href="#" title="TikTok">🎵</a>
-          <a class="hf-social" href="#" title="YouTube">▶️</a>
+          <a class="hf-social" href="https://www.facebook.com/Gingirikanamu" target="_blank" rel="noopener noreferrer" title="Facebook">📘</a>
+          <a class="hf-social" href="https://www.instagram.com/Jnr_.noah" target="_blank" rel="noopener noreferrer" title="Instagram">📸</a>
+          <a class="hf-social" href="#" target="_blank" rel="noopener noreferrer" title="TikTok">🎵</a>
+          <a class="hf-social" href="#" target="_blank" rel="noopener noreferrer" title="YouTube">▶️</a>
         </div>
       </div>
       <div>
@@ -4364,7 +4364,15 @@ function showPage(id,cb){
 // ── BACK BUTTON HANDLER — handles every case professionally ──
 window.addEventListener('popstate', function(e) {
 
-  // PRIORITY 1: Auth modal open → close it, stay on page
+  // PRIORITY 1: Gate modal open → close it, stay on page
+  const gateOverlay = document.getElementById('gate-overlay');
+  if(gateOverlay && gateOverlay.classList.contains('active')) {
+    closeGate();
+    history.pushState(e.state || { nmPage: 'marketplace', nmView: 'main' }, '', window.location.href);
+    return;
+  }
+
+  // PRIORITY 1b: Auth modal open → close it, stay on page
   const authOverlay = document.getElementById('auth-overlay');
   if(authOverlay && authOverlay.classList.contains('active')) {
     if(!authRequired) {
@@ -4403,8 +4411,8 @@ window.addEventListener('popstate', function(e) {
     const id = e.state.nmPage;
     const view = e.state.nmView || 'main';
 
-    // Skip 'auth' state — it was just a modal, go to underlying page
-    if(id === 'auth') {
+    // Skip 'auth' or 'gate' state — it was just a modal, go to underlying page
+    if(id === 'auth' || id === 'gate') {
       history.go(-1);
       return;
     }
@@ -7345,6 +7353,8 @@ let pendingBizId = null;
 function openGate(bizId) {
   pendingBizId = bizId;
   document.getElementById('gate-overlay').classList.add('active');
+  // Push a history state so the phone back button closes the gate instead of leaving the site
+  history.pushState({ nmPage: 'gate', nmView: 'modal' }, '', window.location.href.split('#')[0] + (window.location.hash || ''));
 }
 function closeGate() {
   document.getElementById('gate-overlay').classList.remove('active');
@@ -8565,7 +8575,8 @@ bpLoad();
         bottom:0 !important; left:0 !important; right:0 !important;
         top:auto !important;
         width:100% !important;
-        height:58px !important;
+        height:calc(58px + env(safe-area-inset-bottom)) !important;
+        padding-bottom:env(safe-area-inset-bottom) !important;
         flex-direction:row !important;
         overflow-x:auto !important;
         overflow-y:hidden !important;
@@ -8634,7 +8645,7 @@ bpLoad();
       .adm-nav-badge { position:absolute; top:6px; right:4px; font-size:8px; }
 
       /* Main content */
-      .adm-main { padding:20px 14px 74px; }
+      .adm-main { padding:20px 14px calc(74px + env(safe-area-inset-bottom)); }
       .adm-topbar { flex-direction:column; gap:10px; margin-bottom:20px; }
       .adm-page-title { font-size:20px; }
       .adm-stats { grid-template-columns:1fr 1fr; gap:10px; }
