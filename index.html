@@ -4178,13 +4178,13 @@
     word-break:break-word;
   }
   @media(max-width:700px){
-    #admin-review-modal { padding:10px 6px !important; align-items:flex-start !important; }
-    #admin-review-modal .arm-inner { width:100% !important; border-radius:0; }
+    #admin-review-modal { padding:0 !important; align-items:flex-start !important; }
+    #admin-review-modal .arm-inner { width:100% !important; border-radius:0; min-height:100vh; }
     #admin-review-modal .arm-grid { grid-template-columns:1fr !important; gap:8px !important; }
     #admin-review-modal .arm-header { padding:16px 14px !important; }
-    #admin-review-modal .arm-body { padding:14px !important; padding-bottom:90px !important; }
-    #admin-review-modal #arm-actions { flex-direction:row !important; gap:8px !important; position:fixed !important; bottom:0 !important; left:0 !important; right:0 !important; background:#0a0c10 !important; border-top:1px solid rgba(212,175,55,.3) !important; padding:12px 16px !important; z-index:10001 !important; margin:0 !important; }
-    #admin-review-modal #arm-actions button { flex:1 !important; padding:14px 8px !important; font-size:13px !important; }
+    #admin-review-modal .arm-body { padding:14px !important; padding-bottom:100px !important; }
+    #admin-review-modal #arm-actions { position:fixed !important; bottom:0 !important; left:0 !important; right:0 !important; flex-direction:row !important; gap:8px !important; background:#0a0c10 !important; border-top:2px solid rgba(212,175,55,.4) !important; padding:12px 16px !important; z-index:10001 !important; margin:0 !important; box-sizing:border-box !important; }
+    #admin-review-modal #arm-actions button { flex:1 !important; padding:14px 8px !important; font-size:13px !important; min-width:0 !important; }
     #admin-review-modal #arm-photos img { max-width:80px !important; height:70px !important; }
     #admin-review-modal .arm-menu-item img { width:56px !important; height:56px !important; }
   }
@@ -4364,26 +4364,35 @@ function showPage(id,cb){
 
 // Handle phone/browser back button — navigate within the site instead of leaving
 window.addEventListener('popstate', function(e) {
-  // If lightbox is open, close it first
-  const lb = document.getElementById('nm-lightbox');
-  if(lb && lb.classList.contains('open')) { nmLbClose(); return; }
 
-  // If admin review modal is open, close it first
+  // 1. If auth modal is open, close it and stay on current page
+  const authOverlay = document.getElementById('auth-overlay');
+  if(authOverlay && authOverlay.classList.contains('active') && !authRequired) {
+    authOverlay.classList.remove('active');
+    history.pushState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
+    return;
+  }
+
+  // 2. If AI chatbot is open, close it first
+  if(typeof chatOpen !== 'undefined' && chatOpen) { toggleChat(); history.pushState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href); return; }
+
+  // 2. If lightbox is open, close it first
+  const lb = document.getElementById('nm-lightbox');
+  if(lb && lb.classList.contains('open')) { nmLbClose(); history.pushState(e.state || { nmPage: 'marketplace', nmView: 'main' }, '', window.location.href); return; }
+
+  // 3. If admin review modal is open, close it first
   const arm = document.getElementById('admin-review-modal');
-  if(arm && arm.style.display === 'flex') { arm.style.display = 'none'; history.pushState(e.state, '', window.location.href); return; }
+  if(arm && arm.style.display === 'flex') { arm.style.display = 'none'; history.pushState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href); return; }
 
   if(e.state && e.state.nmPage) {
     const id = e.state.nmPage;
     const view = e.state.nmView || 'main';
 
     if(id === 'marketplace') {
-      // Make sure marketplace page is active
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       const mktPage = document.getElementById('page-marketplace');
       if(mktPage) mktPage.classList.add('active');
       window.scrollTo({ top: 0, behavior: 'smooth' });
-
-      // Show the correct sub-view — but DON'T push new state (we're going back)
       const viewMap = {main:'mkt-main-view',profile:'mkt-profile-view',boost:'mkt-boost-view',add:'mkt-add-view',admin:'mkt-admin-view'};
       Object.values(viewMap).forEach(vid=>{ const el=document.getElementById(vid); if(el) el.style.display='none'; });
       const targetId = viewMap[view];
@@ -4391,7 +4400,6 @@ window.addEventListener('popstate', function(e) {
       if(view === 'main' && LISTINGS.length > 0) populateMarketplace();
       if(view === 'admin') populateBizDashboard();
     } else {
-      // Other pages — show them normally
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       const pageEl = document.getElementById('page-' + id);
       if(pageEl) {
@@ -4402,8 +4410,9 @@ window.addEventListener('popstate', function(e) {
       }
     }
   } else {
-    // No state — go to home, stay in app
-    history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.href.split('#')[0]);
+    // 4. No state at all (first page load from Instagram/external link or bottom of history)
+    // Always go to home, never exit the site
+    history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname);
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const home = document.getElementById('page-home');
     if(home) home.classList.add('active');
@@ -5876,12 +5885,14 @@ function renderDashboardStats(){
 
 // ── INIT MARKETPLACE ON LOAD ──
 document.addEventListener('DOMContentLoaded',()=>{
-  // Push an initial history state so the back button never exits the site
-  history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.href.split('#')[0]);
-
-  // Always reset to main marketplace view — never restore a profile from URL hash
-  if(window.location.hash && window.location.hash.includes('profile')) {
-    history.replaceState({ nmPage: 'marketplace', nmView: 'main' }, '', '#marketplace');
+  // Always ensure there is a home state at the bottom of the history stack
+  // This means: coming from Instagram, Bing, Google etc — back button goes home, not out
+  history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname);
+  // Then push a second state for wherever we actually are
+  // so that one back = home, two backs = leave site (natural behavior)
+  const hash = window.location.hash;
+  if(hash && hash.includes('marketplace')) {
+    history.pushState({ nmPage: 'marketplace', nmView: 'main' }, '', '#marketplace');
   }
   // Ensure profile/boost/add views are hidden on load
   ['mkt-profile-view','mkt-boost-view','mkt-add-view','mkt-admin-view'].forEach(id=>{
@@ -6682,6 +6693,8 @@ function openAuth(type, required) {
     const tabs = document.querySelectorAll('.auth-tab');
     switchAuthType(type, tabs[tabMap[type]||0]);
   }
+  // Push state so phone back button closes auth instead of exiting the site
+  history.pushState({ nmPage: 'auth', nmView: 'modal' }, '', window.location.href.split('#')[0]);
 }
 
 function closeAuth() {
@@ -8985,7 +8998,7 @@ function admGoPage(page) {
   if(page === 'revenue')    admLoadRevenue();
   if(page === 'users')      admLoadUsers();
   if(page === 'analytics')  admLoadAnalytics();
-  if(page === 'enquiries') { admLoadEnquiries(); const b=document.getElementById('adm-enq-badge'); if(b){b.textContent='0';b.style.display='none';} window._admEnqPageOpen = true; } else { window._admEnqPageOpen = false; }
+  if(page === 'enquiries') { admLoadEnquiries(); window._admEnqPageOpen = true; const b=document.getElementById('adm-enq-badge'); if(b){b.textContent='0';b.style.display='none';} } else { window._admEnqPageOpen = false; }
   if(page === 'videos')     admLoadVideos();
 }
 
@@ -9189,7 +9202,7 @@ async function admLoadEnquiries() {
         .order('created_at', { ascending: false })
     );
     const data = result?.data || [];
-    // Update badge — only show if admin is NOT currently viewing the enquiries page
+    // Update badge — only show if admin is NOT currently on the enquiries page
     const unread = data.filter(e => !e.replied).length;
     const badge = document.getElementById('adm-enq-badge');
     if(badge) { badge.textContent = unread; badge.style.display = (unread > 0 && !window._admEnqPageOpen) ? 'inline' : 'none'; }
