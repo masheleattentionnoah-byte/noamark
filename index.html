@@ -4346,19 +4346,34 @@ function showBusinessGate(action) {
   modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
   document.body.appendChild(modal);
 }
-function showPage(id,cb){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('page-'+id).classList.add('active');
-  window.scrollTo({top:0,behavior:'smooth'});
+function showPage(id, cb){
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  window.scrollTo({top: 0, behavior: 'smooth'});
   closeNav();
-  if(id==='home') setTimeout(()=>{ if(typeof applyRoleHomePage==='function') applyRoleHomePage(currentUser); },50);
-  setTimeout(initReveal,100);
-  if(id==='marketplace'){ showMktView('main'); if(cb) setTimeout(cb,150); return; }
-  if(id==='dashboard') renderDashboardStats();
-  if(id==='videos') { nmSupaQuery(()=>_supa.from('videos').select('*').order('created_at',{ascending:false})).then(r=>{ if(r&&r.data) loadVideosPage(r.data); }); }
-  if(cb) setTimeout(cb,150);
-  // Always push state — this is what makes back button work on every page
+  if(id === 'home') setTimeout(() => { if(typeof applyRoleHomePage === 'function') applyRoleHomePage(currentUser); }, 50);
+  setTimeout(initReveal, 100);
+
+  if(id === 'marketplace') {
+    // Just activate the marketplace page.
+    // The caller MUST call showMktView() separately to choose the sub-view.
+    // If no callback is given, default to the main listing view.
+    if(cb) {
+      setTimeout(cb, 150);
+    } else {
+      showMktView('main');
+    }
+    return;
+  }
+
+  // All non-marketplace pages: push one clean history entry
   history.pushState({ nmPage: id, nmView: 'main' }, '', '#' + id);
+  if(id === 'dashboard') renderDashboardStats();
+  if(id === 'videos') {
+    nmSupaQuery(() => _supa.from('videos').select('*').order('created_at', {ascending: false}))
+      .then(r => { if(r && r.data) loadVideosPage(r.data); });
+  }
+  if(cb) setTimeout(cb, 150);
 }
 
 // ── BACK BUTTON HANDLER — handles every case professionally ──
@@ -4417,17 +4432,32 @@ window.addEventListener('popstate', function(e) {
       return;
     }
 
+    // Lightbox was a sub-state of marketplace profile — treat as going back to profile
+    if(id === 'marketplace' && view === 'lightbox') {
+      nmLbClose();
+      history.pushState({ nmPage: 'marketplace', nmView: 'profile' }, '', '#marketplace/profile');
+      return;
+    }
+
     if(id === 'marketplace') {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       const mktPage = document.getElementById('page-marketplace');
       if(mktPage) mktPage.classList.add('active');
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      const viewMap = { main:'mkt-main-view', profile:'mkt-profile-view', boost:'mkt-boost-view', add:'mkt-add-view', admin:'mkt-admin-view' };
-      Object.values(viewMap).forEach(vid => { const el = document.getElementById(vid); if(el) el.style.display = 'none'; });
-      const targetId = viewMap[view];
-      if(targetId) { const el = document.getElementById(targetId); if(el) el.style.display = 'block'; }
-      if(view === 'main' && LISTINGS.length > 0) populateMarketplace();
-      if(view === 'admin') populateBizDashboard();
+      // Restore the business profile if we have the bizId stored in state
+      if(view === 'profile' && e.state.nmBizId) {
+        const biz = LISTINGS.find(b => String(b.id) === String(e.state.nmBizId));
+        if(biz) {
+          window._nmSupressHistoryPush = true;
+          if(typeof _originalShowBizProfile === 'function') _originalShowBizProfile(biz.id);
+          window._nmSupressHistoryPush = false;
+        } else {
+          // Biz not found (maybe not loaded yet) — fall back to main listing
+          showMktView('main', false);
+        }
+      } else {
+        showMktView(view && ['main','boost','add','admin'].includes(view) ? view : 'main', false);
+      }
     } else {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       const pageEl = document.getElementById('page-' + id);
@@ -4484,8 +4514,16 @@ document.querySelectorAll('.opp-filter').forEach(btn=>{
 
 // ── LISTINGS DATABASE ──
 const LISTINGS = [];
+let _listingsLastFetched = 0;
+const LISTINGS_CACHE_MS = 60000;
 
-async function loadListingsFromSupabase() {
+async function loadListingsFromSupabase(force = false) {
+  // Skip re-fetch if data is fresh — avoids redundant Supabase calls that cause lag
+  if (!force && _listingsLastFetched && LISTINGS.length > 0 && (Date.now() - _listingsLastFetched < LISTINGS_CACHE_MS)) {
+    populateMarketplace();
+    renderDashboardStats();
+    return;
+  }
   // Always clear before loading to prevent duplicates on refresh
   LISTINGS.length = 0;
   // Skeleton loading on correct grid IDs
@@ -4580,6 +4618,7 @@ async function loadListingsFromSupabase() {
         });
       });
       // populateMarketplace handles both featured and latest sections correctly
+      _listingsLastFetched = Date.now(); // stamp successful fetch for cache
       populateMarketplace();
       renderDashboardStats();
       setTimeout(nmObserveLazyImages, 100);
@@ -4588,7 +4627,7 @@ async function loadListingsFromSupabase() {
     }
   } catch(e){
     console.warn('Could not load listings from Supabase', e);
-    if(latestGridEl) latestGridEl.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--white-dim);grid-column:1/-1;"><div style="font-size:40px;margin-bottom:16px;">⚡</div><div style="font-size:15px;font-weight:600;">' + (navigator.onLine ? 'Could not load listings right now' : 'You appear to be offline') + '</div><div style="font-size:13px;margin-top:8px;"><button onclick="LISTINGS.length=0;loadListingsFromSupabase();" style="background:var(--green-dark);color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;margin-top:12px;">↻ Try Again</button></div></div>';
+    if(latestGridEl) latestGridEl.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--white-dim);grid-column:1/-1;"><div style="font-size:40px;margin-bottom:16px;">⚡</div><div style="font-size:15px;font-weight:600;">' + (navigator.onLine ? 'Could not load listings right now' : 'You appear to be offline') + '</div><div style="font-size:13px;margin-top:8px;"><button onclick="loadListingsFromSupabase(true);" style="background:var(--green-dark);color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;margin-top:12px;">↻ Try Again</button></div></div>';
   }
 }
 
@@ -4766,7 +4805,9 @@ function setCat(cat,btn){
   populateMarketplace();
 }
 
-function showMktView(view){
+function showMktView(view, pushHistory){
+  // pushHistory defaults to true — pass false when restoring state from popstate
+  if(pushHistory === undefined) pushHistory = true;
   if(view === 'admin' && currentUser && currentUser.type === 'admin') {
     setTimeout(()=>{ loadPendingListings(); loadApprovedListings(); }, 300);
   }
@@ -4785,17 +4826,10 @@ function showMktView(view){
   if(view==='admin') populateBizDashboard();
   if(view==='main' && LISTINGS.length > 0) populateMarketplace();
   window.scrollTo({top:0,behavior:'smooth'});
-  // Push history state for every view so phone back button navigates correctly
-  if(view === 'main') {
-    history.pushState({ nmPage: 'marketplace', nmView: 'main' }, '', '#marketplace');
-  } else if(view === 'profile') {
-    history.pushState({ nmPage: 'marketplace', nmView: 'profile' }, '', '#marketplace/profile');
-  } else if(view === 'boost') {
-    history.pushState({ nmPage: 'marketplace', nmView: 'boost' }, '', '#marketplace/boost');
-  } else if(view === 'add') {
-    history.pushState({ nmPage: 'marketplace', nmView: 'add' }, '', '#marketplace/edit');
-  } else if(view === 'admin') {
-    history.pushState({ nmPage: 'marketplace', nmView: 'admin' }, '', '#marketplace/portal');
+  // Push history only when triggered by a real user action (not during popstate restoration)
+  if(pushHistory) {
+    const urls = { main:'#marketplace', profile:'#marketplace/profile', boost:'#marketplace/boost', add:'#marketplace/edit', admin:'#marketplace/portal' };
+    if(view in urls) history.pushState({ nmPage: 'marketplace', nmView: view }, '', urls[view]);
   }
 }
 
@@ -4855,7 +4889,7 @@ function nmLbOpen(photos, index) {
   lb.addEventListener('touchstart', nmLbTouchStart, { passive: true });
   lb.addEventListener('touchend',   nmLbTouchEnd,   { passive: true });
   // Push history so phone back button closes lightbox, not the page
-  history.pushState({ nmPage: 'marketplace', nmView: 'lightbox' }, '', '');
+  history.pushState({ nmPage: 'marketplace', nmView: 'lightbox' }, '', '#marketplace/profile');
 }
 
 function nmLbShow() {
@@ -5011,7 +5045,7 @@ function showBizProfile(id){
   // Coerce both sides to string so UUID strings and numeric IDs both match
   const biz=LISTINGS.find(b=>String(b.id)===String(id));if(!biz)return;
   // Push profile state so phone back button returns to marketplace listing
-  history.pushState({ nmPage: 'marketplace', nmView: 'profile', nmBizId: String(id) }, '', '#marketplace/profile/' + id);
+  if(!window._nmSupressHistoryPush) history.pushState({ nmPage: 'marketplace', nmView: 'profile', nmBizId: String(id) }, '', '#marketplace/profile/' + id);
   const fullAddress=encodeURIComponent([biz.address,biz.area,biz.city,biz.province].filter(Boolean).join(', ')||biz.area||biz.name);
   const googleMapsUrl=`https://www.google.com/maps/search/?api=1&query=${fullAddress}`;
   const boltUrl=`https://bolt.eu/en-za/ride/?destination=${fullAddress}`;
@@ -5148,8 +5182,7 @@ function showBizProfile(id){
         </div>
       </div>
     </div>`;
-  showMktView('profile');
-  // Store that we navigated from marketplace so Back button works
+  showMktView('profile', false); // false = don't push history, showBizProfile already did it above
   window._nmFromMarketplace = true;
   // Load real reviews for this business
   pubLoadReviews(biz.id);
@@ -5738,7 +5771,7 @@ function adminReviewListing(id) {
       modal.style.display = 'none';
       admLoadApprovals();
       admLoadOverview();
-      loadListingsFromSupabase();
+      loadListingsFromSupabase(true);
     } else {
       approveBtn.disabled = false;
       approveBtn.textContent = '✓ Approve Listing';
@@ -5778,7 +5811,7 @@ async function adminAction(btn, action, listingId) {
     if(action === 'approve') {
       btn.closest('td').innerHTML = '<span style="color:var(--success);font-size:11px;font-weight:600;">✓ Approved — Now Live</span>';
       // Add to LISTINGS so it shows in marketplace immediately
-      loadListingsFromSupabase();
+      loadListingsFromSupabase(true);
     } else {
       btn.closest('td').innerHTML = '<span style="color:var(--danger);font-size:11px;font-weight:600;">✗ Rejected</span>';
     }
@@ -6360,10 +6393,17 @@ function nmRateLimit(key, maxAttempts, windowMs) {
 // ════════════════════════════════════════════════════════════
 // ③  RELIABILITY — Supabase retry wrapper (exponential back-off)
 // ════════════════════════════════════════════════════════════
-async function nmSupaQuery(fn, retries = 3) {
+async function nmSupaQuery(fn, retries = 3, timeoutMs = 8000) {
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      const result = await fn();
+      // Race each query against a timeout so a slow/hung Supabase request
+      // fails fast instead of freezing the UI indefinitely
+      const result = await Promise.race([
+        fn(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Query timed out')), timeoutMs)
+        )
+      ]);
       if (result.error && attempt < retries - 1) {
         await new Promise(r => setTimeout(r, 400 * Math.pow(2, attempt)));
         continue;
@@ -6726,7 +6766,7 @@ function openAuth(type, required) {
     switchAuthType(type, tabs[tabMap[type]||0]);
   }
   // Push state so phone back button closes auth instead of exiting the site
-  history.pushState({ nmPage: 'auth', nmView: 'modal' }, '', window.location.href.split('#')[0]);
+  history.pushState({ nmPage: 'auth', nmView: 'modal' }, '', window.location.href);
 }
 
 function closeAuth() {
@@ -7135,9 +7175,11 @@ function loginAs(user) {
   if(user._isRestore && (user.type === 'business' || user.type === 'admin')) {
     const tryShowPortal = () => {
       if(document.readyState === 'complete') {
-        showPage('marketplace', () => {
-          setTimeout(() => showMktView('admin'), 150);
-        });
+        // Activate marketplace page then show admin sub-view — ONE history entry total
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        const mktPage = document.getElementById('page-marketplace');
+        if(mktPage) mktPage.classList.add('active');
+        setTimeout(() => showMktView('admin'), 150);
       } else {
         setTimeout(tryShowPortal, 300);
       }
@@ -7149,7 +7191,11 @@ function loginAs(user) {
   if(pendingBizId) {
     const id = pendingBizId;
     closeGate();
-    setTimeout(() => { showPage('marketplace'); _originalShowBizProfile(id); }, 200);
+    // Activate marketplace page silently, then open the profile (which pushes its own history)
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const mktPage = document.getElementById('page-marketplace');
+    if(mktPage) mktPage.classList.add('active');
+    setTimeout(() => { _originalShowBizProfile(id); }, 200);
   }
 }
 
@@ -7354,7 +7400,7 @@ function openGate(bizId) {
   pendingBizId = bizId;
   document.getElementById('gate-overlay').classList.add('active');
   // Push a history state so the phone back button closes the gate instead of leaving the site
-  history.pushState({ nmPage: 'gate', nmView: 'modal' }, '', window.location.href.split('#')[0] + (window.location.hash || ''));
+  history.pushState({ nmPage: 'gate', nmView: 'modal' }, '', window.location.href);
 }
 function closeGate() {
   document.getElementById('gate-overlay').classList.remove('active');
@@ -7477,6 +7523,7 @@ function homeSearchGo() {
   const areaVal = (document.getElementById('home-search-area')||{}).value || '';
   if ((bizVal.trim() || areaVal.trim()) && !currentUser) { openAuth('guest'); return; }
   showPage('marketplace', ()=>{
+    showMktView('main');
     setTimeout(()=>{
       const mktSearch = document.getElementById('mkt-search');
       const mktLoc = document.getElementById('mkt-location');
@@ -9136,7 +9183,7 @@ async function admApproveListing(id, btn) {
     if(error) throw error;
     // Show success feedback
     btn.textContent = '✓ Done!'; btn.style.background = '#dcfce7'; btn.style.opacity = '1';
-    setTimeout(()=>{ admLoadApprovals(); admLoadOverview(); loadListingsFromSupabase(); }, 800);
+    setTimeout(()=>{ admLoadApprovals(); admLoadOverview(); loadListingsFromSupabase(true); }, 800);
   } catch(e) {
     console.error('Approve error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
@@ -9151,7 +9198,7 @@ async function admRejectListing(id, btn) {
     const { error } = await nmSupaQuery(() => _supa.from('listings').update({status:'rejected'}).eq('id', id));
     if(error) throw error;
     btn.textContent = '✓ Done!'; btn.style.background = '#fee2e2'; btn.style.opacity = '1';
-    setTimeout(()=>{ admLoadApprovals(); admLoadOverview(); loadListingsFromSupabase(); }, 800);
+    setTimeout(()=>{ admLoadApprovals(); admLoadOverview(); loadListingsFromSupabase(true); }, 800);
   } catch(e) {
     console.error('Reject error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
@@ -9170,7 +9217,7 @@ async function admDeleteListing(id, btn) {
     const row = btn.closest('tr');
     if(row) { row.style.opacity = '0'; row.style.transition = 'opacity .4s'; setTimeout(()=>row.remove(), 400); }
     admLoadOverview();
-    loadListingsFromSupabase();
+    loadListingsFromSupabase(true);
   } catch(e) {
     console.error('Delete error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
