@@ -3958,6 +3958,7 @@
             </div>
           </div>
           <button class="auth-btn auth-btn-primary" onclick="handleBizLogin()">Log In to Business Portal →</button>
+          <div style="text-align:center;margin-top:10px;"><a onclick="showForgotPassword()" style="font-size:12px;color:var(--gold-dim);cursor:pointer;text-decoration:underline;">Forgot your password?</a></div>
           <div class="auth-switch">No account yet? <a onclick="switchAuthMode('biz','signup',document.querySelectorAll('#biz-mode-toggle .auth-mode-btn')[0])">Sign up free</a></div>
         </div>
       </div>
@@ -4029,6 +4030,7 @@
             </div>
           </div>
           <button class="auth-btn auth-btn-gold" onclick="handleSubLogin()">Log In to Learning Hub →</button>
+          <div style="text-align:center;margin-top:10px;"><a onclick="showForgotPassword()" style="font-size:12px;color:var(--gold-dim);cursor:pointer;text-decoration:underline;">Forgot your password?</a></div>
           <div class="auth-switch">No account yet? <a onclick="switchAuthMode('sub','signup',document.querySelectorAll('#sub-mode-toggle .auth-mode-btn')[0])">Sign up free</a></div>
         </div>
       </div>
@@ -4100,10 +4102,32 @@
             </div>
           </div>
           <button class="auth-btn auth-btn-primary" onclick="handleGuestLogin()">Log In →</button>
+          <div style="text-align:center;margin-top:10px;"><a onclick="showForgotPassword()" style="font-size:12px;color:var(--gold-dim);cursor:pointer;text-decoration:underline;">Forgot your password?</a></div>
           <div class="auth-switch">New here? <a onclick="switchAuthMode('guest','signup',document.querySelectorAll('#guest-mode-toggle .auth-mode-btn')[0])">Quick sign up</a></div>
         </div>
       </div>
     </div>
+
+    <!-- ══ FORGOT PASSWORD SCREEN (overlays the main modal body) ══ -->
+    <div id="auth-forgot-screen" style="display:none;padding:28px 24px 24px;">
+      <button onclick="hideForgotPassword()" style="background:none;border:none;color:var(--white-dim);font-size:13px;cursor:pointer;margin-bottom:20px;display:flex;align-items:center;gap:6px;">← Back to Login</button>
+      <div style="text-align:center;font-size:36px;margin-bottom:12px;">🔑</div>
+      <h2 style="font-size:18px;font-weight:800;color:var(--white);text-align:center;margin-bottom:8px;">Forgot Password?</h2>
+      <p style="font-size:13px;color:var(--white-dim);text-align:center;line-height:1.7;margin-bottom:24px;">Enter your registered email address. We'll send your reset request to the NoaMark team and you'll receive a new temporary password shortly.</p>
+      <div class="auth-error" id="forgot-error" style="display:none;margin-bottom:12px;"></div>
+      <div class="auth-success" id="forgot-success" style="display:none;margin-bottom:12px;"></div>
+      <div class="auth-field">
+        <label class="auth-label">Your Registered Email <span style="color:var(--danger)">*</span></label>
+        <input class="auth-input" type="email" id="forgot-email" placeholder="e.g. you@yourbusiness.co.za" onkeydown="if(event.key==='Enter')handleForgotPassword()">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Your Name or Business Name <span style="color:var(--danger)">*</span></label>
+        <input class="auth-input" type="text" id="forgot-name" placeholder="So we can identify your account" onkeydown="if(event.key==='Enter')handleForgotPassword()">
+      </div>
+      <button class="auth-btn auth-btn-primary" onclick="handleForgotPassword()" id="forgot-submit-btn">Send Reset Request →</button>
+      <p style="font-size:11px;color:var(--white-dim);text-align:center;margin-top:14px;line-height:1.6;">Our team will respond within 24 hours with your temporary password via <strong style="color:var(--gold-dim);">support@noamark.com</strong>.</p>
+    </div><!-- /auth-forgot-screen -->
+
   </div>
 </div>
 
@@ -6755,13 +6779,15 @@ async function saveUserToSupabase(user) {
       safeUser.password = hashed.stored;
     } catch(e){ console.warn('Hash failed', e); delete safeUser.password; }
   }
-  try {
-    await nmSupaQuery(() => _supa.from('users').upsert({
-      ...safeUser,
-      joinedAt: safeUser.joinedAt || new Date().toISOString(),
-      plan: safeUser.plan || 'Free'
-    }, { onConflict: 'email' }));
-  } catch(e){ console.warn('Supabase save failed', e); }
+  // Do NOT swallow errors here — if Supabase save fails, the caller must know
+  // so the user is not told "account created" when it was never saved
+  const result = await nmSupaQuery(() => _supa.from('users').upsert({
+    ...safeUser,
+    joinedAt: safeUser.joinedAt || new Date().toISOString(),
+    plan: safeUser.plan || 'Free'
+  }, { onConflict: 'email' }));
+  if (result && result.error) throw new Error(result.error.message || 'Supabase save failed');
+  return result;
 }
 
 // Load users on startup
@@ -6820,6 +6846,11 @@ function openAuth(type, required) {
   authRequired = !!required;
   document.getElementById('auth-overlay').classList.add('active');
   document.getElementById('auth-close-btn').style.display = authRequired ? 'none' : 'block';
+  // Always start on the login form, not the forgot screen
+  const forgotScreen = document.getElementById('auth-forgot-screen');
+  const modalBody = document.querySelector('.auth-modal-body');
+  if(forgotScreen) forgotScreen.style.display = 'none';
+  if(modalBody) modalBody.style.display = '';
   if(type) {
     const tabMap = {business:0, subscriber:1, guest:2};
     const tabs = document.querySelectorAll('.auth-tab');
@@ -6832,6 +6863,11 @@ function openAuth(type, required) {
 function closeAuth() {
   if(authRequired) return;
   document.getElementById('auth-overlay').classList.remove('active');
+  // Always reset forgot password screen so next open starts fresh on the login form
+  const forgotScreen = document.getElementById('auth-forgot-screen');
+  const modalBody = document.querySelector('.auth-modal-body');
+  if(forgotScreen) forgotScreen.style.display = 'none';
+  if(modalBody) modalBody.style.display = '';
 }
 
 // ──────────────────────────────────────────────────
@@ -6994,7 +7030,13 @@ async function handleBizSignup() {
   // Without await, the hash is not complete before we log the user in,
   // and login from another device will fail the password check.
   showAuthError('biz-signup-error', 'Creating your account…');
-  await saveUserToSupabase({ name, email, password:pass, role:'business' });
+  try {
+    await saveUserToSupabase({ name, email, password:pass, role:'business' });
+  } catch(e) {
+    showAuthError('biz-signup-error', '❌ Could not save your account. Please check your connection and try again.');
+    NM_USERS.businesses = NM_USERS.businesses.filter(b => b.email.toLowerCase() !== email.toLowerCase());
+    return;
+  }
   trackUser('business', name, email);
   loginAs({ type:'business', name:biz.name, owner:owner, email:biz.email, plan:'Free Listing', id:biz.id, joinedAt:biz.joinedAt });
   showAuthSuccess('biz-signup-success', '✓ Account created! Welcome, '+name+'. Redirecting to add your listing…');
@@ -7073,7 +7115,13 @@ async function handleSubSignup() {
   // Without await, hashing is incomplete before the user is logged in,
   // causing login from another device to fail the password check.
   showAuthError('sub-signup-error', 'Creating your account…');
-  await saveUserToSupabase({ name, email, password:pass, role:'subscriber' });
+  try {
+    await saveUserToSupabase({ name, email, password:pass, role:'subscriber' });
+  } catch(e) {
+    showAuthError('sub-signup-error', '❌ Could not save your account. Please check your connection and try again.');
+    NM_USERS.subscribers = NM_USERS.subscribers.filter(s => s.email.toLowerCase() !== email.toLowerCase());
+    return;
+  }
   trackUser('subscriber', name, email);
   loginAs({ type:'subscriber', name:sub.name, email:sub.email, plan:'Free', id:sub.id });
   showAuthSuccess('sub-signup-success', '✓ Account created! Welcome, '+name+'.');
@@ -7137,8 +7185,13 @@ async function handleGuestSignup() {
   const guestId = generateId();
   const guest = { name, location, password:pass, id:guestId, visitedAt: new Date().toISOString() };
   NM_USERS.guests.push(guest);
-  // Await the save so hashing completes before we proceed
-  await saveUserToSupabase({ name, email: name+'_explorer@noamark.local', password:pass, role:'guest' });
+  try {
+    await saveUserToSupabase({ name, email: name+'_explorer@noamark.local', password:pass, role:'guest' });
+  } catch(e) {
+    showAuthError('guest-error', '❌ Could not save your account. Please check your connection and try again.');
+    NM_USERS.guests = NM_USERS.guests.filter(g => g.id !== guestId);
+    return;
+  }
   trackUser('guest', name, location);
   loginAs({ type:'guest', name:guest.name, location:guest.location, plan:'Explorer', id:guest.id });
   showAuthSuccess('guest-success', '✓ Welcome, '+name+'! Taking you to the marketplace…');
@@ -8785,6 +8838,7 @@ bpLoad();
         <div class="adm-nav-item" onclick="admGoPage('users')"><span class="adm-nav-icon">👥</span><span class="adm-nav-label">Users</span></div>
         <div class="adm-nav-item" onclick="admGoPage('analytics')"><span class="adm-nav-icon">📈</span><span class="adm-nav-label">Analytics</span></div>
         <div class="adm-nav-item" onclick="admGoPage('enquiries')"><span class="adm-nav-icon">📩</span><span class="adm-nav-label">Enquiries</span><span class="adm-nav-badge" id="adm-enq-badge" style="display:none;">0</span></div>
+        <div class="adm-nav-item" onclick="admGoPage('resets')"><span class="adm-nav-icon">🔑</span><span class="adm-nav-label">Password Resets</span><span class="adm-nav-badge" id="adm-resets-badge" style="display:none;">0</span></div>
         <div class="adm-nav-item" onclick="admGoPage('videos')"><span class="adm-nav-icon">🎬</span><span class="adm-nav-label">Videos</span></div>
         <div class="adm-signout">
           <div class="adm-signout-btn" onclick="handleLogout()">🚪 Sign Out of Admin</div>
@@ -9099,6 +9153,31 @@ bpLoad();
         </div>
       </div>
 
+      <!-- ══ PAGE: PASSWORD RESETS ══ -->
+      <div class="adm-page" id="adm-page-resets">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:28px;">
+          <div>
+            <div class="adm-page-title">Password Reset Requests</div>
+            <div class="adm-page-sub">Users who forgot their password — review and reset manually</div>
+          </div>
+          <button class="adm-btn-refresh" onclick="admLoadResets()">↻ Refresh</button>
+        </div>
+        <div class="adm-card">
+          <div id="adm-resets-list"><div class="adm-empty">Loading…</div></div>
+        </div>
+        <!-- Manual reset form -->
+        <div class="adm-card" style="margin-top:24px;border-color:rgba(244,196,48,.2);">
+          <div class="adm-card-title" style="margin-bottom:16px;">🔧 Manually Reset a User's Password</div>
+          <p style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px;line-height:1.6;">Enter the user's registered email and set a new temporary password. Tell the user their temp password and ask them to change it after logging in.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+            <div><label style="font-size:11px;color:rgba(255,255,255,.4);display:block;margin-bottom:6px;">User Email</label><input id="adm-reset-email" type="email" placeholder="user@email.com" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;padding:10px 12px;border-radius:8px;font-size:13px;box-sizing:border-box;"></div>
+            <div><label style="font-size:11px;color:rgba(255,255,255,.4);display:block;margin-bottom:6px;">New Temporary Password</label><input id="adm-reset-newpw" type="text" placeholder="e.g. NoaMark@2026!" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;padding:10px 12px;border-radius:8px;font-size:13px;box-sizing:border-box;"></div>
+          </div>
+          <div id="adm-reset-msg" style="font-size:12px;margin-bottom:12px;display:none;padding:10px 14px;border-radius:8px;"></div>
+          <button onclick="admResetUserPassword()" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#111827;font-weight:700;font-size:13px;padding:11px 24px;border:none;border-radius:8px;cursor:pointer;">Reset Password</button>
+        </div>
+      </div>
+
     </div><!-- /adm-main -->
   </div><!-- /adm-shell -->
 </div><!-- /page-admin -->
@@ -9131,7 +9210,6 @@ function admGoPage(page) {
   document.querySelectorAll('.adm-nav-item').forEach(n => n.classList.remove('active'));
   const pageEl = document.getElementById('adm-page-' + page);
   if(pageEl) pageEl.classList.add('active');
-  // Highlight nav item
   document.querySelectorAll('.adm-nav-item').forEach(n => {
     if(n.getAttribute('onclick') && n.getAttribute('onclick').includes("'" + page + "'")) n.classList.add('active');
   });
@@ -9141,7 +9219,195 @@ function admGoPage(page) {
   if(page === 'users')      admLoadUsers();
   if(page === 'analytics')  admLoadAnalytics();
   if(page === 'enquiries') { admLoadEnquiries(); window._admEnqPageOpen = true; const b=document.getElementById('adm-enq-badge'); if(b){b.textContent='0';b.style.display='none';} } else { window._admEnqPageOpen = false; }
+  if(page === 'resets')     admLoadResets();
   if(page === 'videos')     admLoadVideos();
+}
+
+// ──────────────────────────────────────────────────
+// FORGOT PASSWORD — user-facing
+// ──────────────────────────────────────────────────
+function showForgotPassword() {
+  const body = document.querySelector('.auth-modal-body');
+  const screen = document.getElementById('auth-forgot-screen');
+  if(body) body.style.display = 'none';
+  if(screen) screen.style.display = 'block';
+  // Clear previous state
+  const errEl = document.getElementById('forgot-error');
+  const sucEl = document.getElementById('forgot-success');
+  const emailEl = document.getElementById('forgot-email');
+  const nameEl = document.getElementById('forgot-name');
+  if(errEl) { errEl.style.display='none'; errEl.textContent=''; }
+  if(sucEl) { sucEl.style.display='none'; sucEl.textContent=''; }
+  if(emailEl) emailEl.value = '';
+  if(nameEl) nameEl.value = '';
+}
+
+function hideForgotPassword() {
+  const body = document.querySelector('.auth-modal-body');
+  const screen = document.getElementById('auth-forgot-screen');
+  if(body) body.style.display = '';
+  if(screen) screen.style.display = 'none';
+}
+
+async function handleForgotPassword() {
+  const email = (document.getElementById('forgot-email').value || '').trim().toLowerCase();
+  const name  = (document.getElementById('forgot-name').value || '').trim();
+  const errEl = document.getElementById('forgot-error');
+  const sucEl = document.getElementById('forgot-success');
+  const btn   = document.getElementById('forgot-submit-btn');
+
+  errEl.style.display = 'none'; errEl.textContent = '';
+  sucEl.style.display = 'none'; sucEl.textContent = '';
+
+  if(!email) { errEl.textContent = 'Please enter your registered email address.'; errEl.style.display='block'; return; }
+  if(!name)  { errEl.textContent = 'Please enter your name or business name.'; errEl.style.display='block'; return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errEl.textContent = 'Please enter a valid email address.'; errEl.style.display='block'; return; }
+
+  btn.disabled = true; btn.textContent = 'Sending…';
+
+  try {
+    // Check user exists in Supabase
+    const result = await nmSupaQuery(() => _supa.from('users').select('id,email,name,role').eq('email', email).maybeSingle());
+    if(!result || !result.data) {
+      errEl.textContent = 'No account found with that email address. Please check the email and try again.';
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Send Reset Request →';
+      return;
+    }
+    // Save reset request to Supabase password_resets table
+    await nmSupaQuery(() => _supa.from('password_resets').insert({
+      email: email,
+      name: name,
+      user_role: result.data.role || 'unknown',
+      requested_at: new Date().toISOString(),
+      status: 'pending'
+    }));
+    // Update badge count for admin
+    sucEl.textContent = '✅ Request sent successfully! The NoaMark team will contact you at ' + email + ' within 24 hours with your new temporary password.';
+    sucEl.style.display = 'block';
+    btn.textContent = 'Request Sent ✓';
+  } catch(e) {
+    console.error('Reset request error:', e);
+    errEl.textContent = 'Something went wrong. Please try again or contact support@noamark.com directly.';
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Send Reset Request →';
+  }
+}
+
+// ──────────────────────────────────────────────────
+// ADMIN — Load & manage password reset requests
+// ──────────────────────────────────────────────────
+async function admLoadResets() {
+  const listEl = document.getElementById('adm-resets-list');
+  const badge  = document.getElementById('adm-resets-badge');
+  if(!listEl) return;
+  listEl.innerHTML = '<div class="adm-empty">Loading…</div>';
+
+  try {
+    const result = await nmSupaQuery(() =>
+      _supa.from('password_resets').select('*').order('requested_at', { ascending: false })
+    );
+    const resets = (result && result.data) || [];
+    const pending = resets.filter(r => r.status === 'pending');
+
+    // Update badge
+    if(badge) {
+      if(pending.length > 0) { badge.textContent = pending.length; badge.style.display = 'flex'; }
+      else { badge.style.display = 'none'; }
+    }
+
+    if(resets.length === 0) {
+      listEl.innerHTML = '<div class="adm-empty">No password reset requests yet.</div>';
+      return;
+    }
+
+    listEl.innerHTML = `
+      <div class="adm-table-wrap">
+        <table class="adm-table">
+          <thead><tr>
+            <th>Name</th><th>Email</th><th>Account Type</th><th>Requested</th><th>Status</th><th>Action</th>
+          </tr></thead>
+          <tbody>
+            ${resets.map(r => {
+              const date = r.requested_at ? new Date(r.requested_at).toLocaleString('en-ZA') : '—';
+              const statusBadge = r.status === 'pending'
+                ? '<span style="background:rgba(251,191,36,.15);color:#fbbf24;font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;">PENDING</span>'
+                : '<span style="background:rgba(34,197,94,.15);color:#22c55e;font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;">DONE</span>';
+              const actionBtn = r.status === 'pending'
+                ? `<button onclick="admMarkResetDone('${r.id}')" style="background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);font-size:10px;font-weight:700;padding:5px 10px;border-radius:6px;cursor:pointer;">Mark Done</button>`
+                : `<span style="font-size:11px;color:rgba(255,255,255,.3);">Resolved</span>`;
+              return `<tr>
+                <td class="biz-name">${nmSafe(r.name || '—')}</td>
+                <td style="color:#fbbf24;">${nmSafe(r.email || '—')}</td>
+                <td>${nmSafe(r.user_role || '—')}</td>
+                <td>${date}</td>
+                <td>${statusBadge}</td>
+                <td>${actionBtn}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } catch(e) {
+    listEl.innerHTML = '<div class="adm-empty">Failed to load reset requests. Check your Supabase connection.</div>';
+  }
+}
+
+async function admMarkResetDone(id) {
+  try {
+    await nmSupaQuery(() => _supa.from('password_resets').update({ status: 'done' }).eq('id', id));
+    admLoadResets();
+  } catch(e) { alert('Could not update status. Try again.'); }
+}
+
+async function admResetUserPassword() {
+  const email = (document.getElementById('adm-reset-email').value || '').trim().toLowerCase();
+  const newPw  = (document.getElementById('adm-reset-newpw').value || '').trim();
+  const msgEl  = document.getElementById('adm-reset-msg');
+
+  msgEl.style.display = 'none'; msgEl.textContent = '';
+
+  if(!email || !newPw) {
+    msgEl.style.background = 'rgba(239,68,68,.15)'; msgEl.style.color = '#f87171';
+    msgEl.textContent = 'Please fill in both the email and the new password.';
+    msgEl.style.display = 'block'; return;
+  }
+  if(newPw.length < 8) {
+    msgEl.style.background = 'rgba(239,68,68,.15)'; msgEl.style.color = '#f87171';
+    msgEl.textContent = 'Password must be at least 8 characters.';
+    msgEl.style.display = 'block'; return;
+  }
+
+  try {
+    // Hash the new password using the same method as registration
+    let storedPw = newPw;
+    try {
+      const hashed = await nmHashPassword(newPw);
+      storedPw = hashed.stored;
+    } catch(e) { console.warn('Hash failed, storing plain (not ideal):', e); }
+
+    const result = await nmSupaQuery(() =>
+      _supa.from('users').update({ password: storedPw }).eq('email', email).select('id')
+    );
+    if(result && result.data && result.data.length > 0) {
+      // Mark any pending reset for this email as done
+      await nmSupaQuery(() => _supa.from('password_resets').update({ status: 'done' }).eq('email', email).eq('status', 'pending'));
+      msgEl.style.background = 'rgba(34,197,94,.15)'; msgEl.style.color = '#22c55e';
+      msgEl.textContent = '✅ Password updated for ' + email + '. Tell the user their temporary password and ask them to log in.';
+      msgEl.style.display = 'block';
+      document.getElementById('adm-reset-email').value = '';
+      document.getElementById('adm-reset-newpw').value = '';
+      admLoadResets();
+    } else {
+      msgEl.style.background = 'rgba(239,68,68,.15)'; msgEl.style.color = '#f87171';
+      msgEl.textContent = 'No user found with that email address. Check the email and try again.';
+      msgEl.style.display = 'block';
+    }
+  } catch(e) {
+    msgEl.style.background = 'rgba(239,68,68,.15)'; msgEl.style.color = '#f87171';
+    msgEl.textContent = 'Error resetting password. Check your Supabase connection.';
+    msgEl.style.display = 'block';
+  }
 }
 
 async function admLoadOverview() {
