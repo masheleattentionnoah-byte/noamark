@@ -5433,11 +5433,14 @@ function validateAndContinueStep5() {
   const shopPhotos = document.getElementById('biz_place_photos');
   const hasWorkPhotos = workPhotos && workPhotos.files.length > 0;
   const hasShopPhotos = !section1Skipped && shopPhotos && shopPhotos.files.length > 0;
+  // In edit mode, user may not upload new files — count existing saved thumbnails instead
+  const savedThumbs = document.querySelectorAll('#place-photo-preview img[data-saved], #food-photo-preview img[data-saved], #place-photo-preview img.saved-thumb, #food-photo-preview img.saved-thumb').length;
+  const hasExistingPhotos = window._editingListingId && (
+    document.querySelectorAll('#place-photo-preview img').length > 0 ||
+    document.querySelectorAll('#food-photo-preview img').length > 0
+  );
 
-  if(!hasWorkPhotos && !hasShopPhotos) {
-    const cat = document.getElementById('biz_cat')?.value || 'services';
-    const labels = PHOTO_LABELS[cat] || PHOTO_LABELS.services;
-    const sectionName = labels.s2.label.replace(' *','').replace(/[📷🍔🛒✂️👗🧰🛣️]/u,'').trim();
+  if(!hasWorkPhotos && !hasShopPhotos && !hasExistingPhotos) {
     alert('⚠️ Please upload at least 1 photo to show your work or business before continuing.');
     return;
   }
@@ -5451,6 +5454,40 @@ function validateAndContinueStep5() {
   const panel=document.getElementById('step-6');
   if(panel) panel.classList.add('active');
   window.scrollTo({top:400,behavior:'smooth'});
+}
+
+// Replace a single saved photo in edit mode — updates the thumbnail inline
+// and stores the new file so it uploads only that one on submit
+window._replacedPhotos = {}; // index → File
+window._removedPhotoIndexes = new Set();
+
+function replaceExistingPhoto(input, index, wrapId) {
+  if(!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  window._replacedPhotos[index] = file;
+  // Preview the replacement inline immediately
+  const wrap = document.getElementById(wrapId);
+  if(wrap) {
+    const img = wrap.querySelector('img');
+    if(img) { img.src = URL.createObjectURL(file); img.setAttribute('data-replaced','1'); }
+    const label = wrap.querySelector('label');
+    if(label) { const lbl = wrap.querySelector('.replace-lbl'); if(lbl) lbl.textContent = '✓ New'; }
+    // Show a tiny badge to confirm replacement
+    const badge = document.createElement('div');
+    badge.style.cssText = 'position:absolute;bottom:18px;left:2px;background:rgba(34,197,94,.9);color:#fff;font-size:8px;font-weight:700;padding:2px 4px;border-radius:3px;';
+    badge.textContent = '✓ New';
+    // Remove any prior badge
+    const old = wrap.querySelector('.new-badge');
+    if(old) old.remove();
+    badge.className = 'new-badge';
+    wrap.appendChild(badge);
+  }
+}
+
+function removeExistingPhoto(index, wrapId) {
+  window._removedPhotoIndexes.add(index);
+  const wrap = document.getElementById(wrapId);
+  if(wrap) wrap.remove();
 }
 
 function previewMedia(input, previewId, type, maxFiles){
@@ -5605,34 +5642,116 @@ async function submitBusiness(){
       .replace('snapscan','SnapScan').replace('ozow','Ozow').replace('card','Card')).join(', ');
   const boost=document.querySelector('input[name="boost_select"]:checked')?.value||'none';
 
-  // Upload photos to Supabase Storage (shop + product photos combined, max 10)
+  // ── PHOTO HANDLING ──
+  // In edit mode: keep saved photos (minus removed ones), replace individual ones,
+  // and add any newly uploaded ones. All uploads run in PARALLEL for speed.
   let photoUrls = [];
   const shopInput = document.getElementById('biz_place_photos');
   const productInput = document.getElementById('biz_food_photos');
-  const allPhotoFiles = [
-    ...Array.from(shopInput?.files || []).slice(0, 5),
-    ...Array.from(productInput?.files || []).slice(0, 5)
-  ].slice(0, 10);
 
-  if(allPhotoFiles.length > 0) {
-    // User uploaded new photos — upload them
-    for(const file of allPhotoFiles) {
-      try {
-        const compressed = await nmCompressImage(file, 800, 400);
-        const ext = compressed.name.endsWith('.jpg') ? '.jpg' : ('.' + (file.name.split('.').pop() || 'jpg'));
-        const fileName = Date.now() + '_' + Math.random().toString(36).slice(2) + ext;
-        const result = await nmSupaQuery(() => _supa.storage.from('business-photos').upload(fileName, compressed, { upsert: true }));
-        if(!result.error) {
-          const { data: urlData } = _supa.storage.from('business-photos').getPublicUrl(fileName);
-          photoUrls.push(urlData.publicUrl);
-        }
-      } catch(e){ console.warn('Photo upload failed', e); }
-    }
-  } else if(window._editingListingId) {
-    // No new photos uploaded — keep existing ones from the listing
+  if(window._editingListingId) {
+    // EDIT MODE — start with existing saved photos
     const existing = LISTINGS.find(l => l.id === window._editingListingId);
-    if(existing) {
-      photoUrls = existing.photos || (existing.photo ? [existing.photo] : []);
+    let savedUrls = existing ? (existing.photos || (existing.photo ? [existing.photo] : [])) : [];
+
+    // Build list of saved URLs minus removed ones
+    const keptUrls = savedUrls.filter((_, i) => !window._removedPhotoIndexes.has(i));
+
+    // Upload replacements and new photos in parallel
+    const uploadTasks = [];
+
+    // Replacements — for each saved photo index that was replaced
+    const replacedEntries = Object.entries(window._replacedPhotos || {});
+    for(const [idxStr, file] of replacedEntries) {
+      uploadTasks.push(
+        (async () => {
+          try {
+            const compressed = await nmCompressImage(file, 800, 400);
+            const fileName = 'biz_' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.jpg';
+            const result = await nmSupaQuery(() => _supa.storage.from('business-photos').upload(fileName, compressed, { upsert: true }));
+            if(!result.error) {
+              const { data: urlData } = _supa.storage.from('business-photos').getPublicUrl(fileName);
+              return { type: 'replace', index: parseInt(idxStr), url: urlData.publicUrl };
+            }
+          } catch(e) { console.warn('Replace photo upload failed', e); }
+          return null;
+        })()
+      );
+    }
+
+    // New photos from file inputs (section 1 + section 2)
+    const newFiles = [
+      ...Array.from(shopInput?.files || []).slice(0, 5),
+      ...Array.from(productInput?.files || []).slice(0, 5)
+    ].slice(0, Math.max(0, 10 - keptUrls.length));
+
+    for(const file of newFiles) {
+      uploadTasks.push(
+        (async () => {
+          try {
+            const compressed = await nmCompressImage(file, 800, 400);
+            const fileName = 'biz_' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.jpg';
+            const result = await nmSupaQuery(() => _supa.storage.from('business-photos').upload(fileName, compressed, { upsert: true }));
+            if(!result.error) {
+              const { data: urlData } = _supa.storage.from('business-photos').getPublicUrl(fileName);
+              return { type: 'new', url: urlData.publicUrl };
+            }
+          } catch(e) { console.warn('New photo upload failed', e); }
+          return null;
+        })()
+      );
+    }
+
+    // Wait for ALL uploads in parallel
+    const uploadResults = await Promise.all(uploadTasks);
+
+    // Apply replacements to kept URLs
+    let finalUrls = [...keptUrls];
+    for(const r of uploadResults) {
+      if(!r) continue;
+      if(r.type === 'replace') {
+        // Find where this saved index now sits in keptUrls
+        const savedIdx = parseInt(r.index);
+        if(!window._removedPhotoIndexes.has(savedIdx)) {
+          const posInKept = savedUrls.slice(0, savedIdx + 1).filter((_, i) => !window._removedPhotoIndexes.has(i)).length - 1;
+          if(posInKept >= 0 && posInKept < finalUrls.length) {
+            finalUrls[posInKept] = r.url;
+          }
+        }
+      } else if(r.type === 'new') {
+        if(finalUrls.length < 10) finalUrls.push(r.url);
+      }
+    }
+    photoUrls = finalUrls;
+
+    // Reset edit-mode tracking state
+    window._replacedPhotos = {};
+    window._removedPhotoIndexes = new Set();
+
+  } else {
+    // NEW LISTING MODE — upload all selected photos in parallel
+    const allPhotoFiles = [
+      ...Array.from(shopInput?.files || []).slice(0, 5),
+      ...Array.from(productInput?.files || []).slice(0, 5)
+    ].slice(0, 10);
+
+    if(allPhotoFiles.length > 0) {
+      const uploadTasks = allPhotoFiles.map(file =>
+        (async () => {
+          try {
+            const compressed = await nmCompressImage(file, 800, 400);
+            const fileName = 'biz_' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.jpg';
+            const result = await nmSupaQuery(() => _supa.storage.from('business-photos').upload(fileName, compressed, { upsert: true }));
+            if(!result.error) {
+              const { data: urlData } = _supa.storage.from('business-photos').getPublicUrl(fileName);
+              return urlData.publicUrl;
+            }
+          } catch(e) { console.warn('Photo upload failed', e); }
+          return null;
+        })()
+      );
+      const results = await Promise.all(uploadTasks);
+      photoUrls = results.filter(Boolean);
     }
   }
   const photoUrl = photoUrls[0] || '';
@@ -5720,6 +5839,9 @@ async function submitBusiness(){
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 6000);
       ['biz_name','biz_cat','biz_type','biz_desc','biz_years','biz_address','biz_area','biz_city','biz_province','biz_landmark','biz_hours_weekday','biz_hours_sat','biz_hours_sun','biz_status','biz_price_hint','biz_menu','biz_owner','biz_phone','biz_whatsapp','biz_email','biz_facebook','biz_instagram'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+      // Reset photo tracking state for next use
+      window._replacedPhotos = {};
+      window._removedPhotoIndexes = new Set();
       nextStep(1);
     } else {
       alert('There was an issue submitting. Please contact support@noamark.com');
@@ -7980,10 +8102,18 @@ function bpEditListing() {
     if(myListing.photos && myListing.photos.length > 0) {
       const previewEl = document.getElementById('place-photo-preview');
       if(previewEl) {
-        previewEl.innerHTML = myListing.photos.map(url =>
-          `<div style="position:relative;display:inline-block;margin:4px;">
-            <img src="${url}" style="width:80px;height:80px;object-fit:cover;border-radius:4px;border:1px solid var(--border-soft);">
+        previewEl.innerHTML = myListing.photos.map((url, i) =>
+          `<div style="position:relative;display:inline-block;margin:4px;" id="saved-photo-wrap-${i}">
+            <img src="${url}" class="saved-thumb" data-saved="1" data-index="${i}" data-url="${url}"
+              style="width:80px;height:80px;object-fit:cover;border-radius:4px;border:1px solid var(--border-soft);">
             <div style="font-size:9px;color:var(--white-dim);text-align:center;margin-top:2px;">Saved</div>
+            <label title="Replace this photo" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.75);color:#fbbf24;font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px;cursor:pointer;line-height:1.4;">
+              ✎
+              <input type="file" accept="image/jpeg,image/png,image/webp" style="display:none;"
+                onchange="replaceExistingPhoto(this, ${i}, 'saved-photo-wrap-${i}')">
+            </label>
+            <button onclick="removeExistingPhoto(${i}, 'saved-photo-wrap-${i}')" title="Remove this photo"
+              style="position:absolute;bottom:18px;right:2px;background:rgba(239,68,68,.85);color:#fff;border:none;width:16px;height:16px;border-radius:50%;font-size:9px;cursor:pointer;line-height:1;padding:0;">✕</button>
           </div>`
         ).join('');
       }
