@@ -765,9 +765,9 @@
     .mkt-grid{grid-template-columns:1fr!important;}
     .boost-grid{grid-template-columns:1fr!important;}
     .biz-body-grid{grid-template-columns:1fr!important;}
-    .biz-profile-body{padding:0 16px!important;}
+    .biz-profile-body{padding:16px 16px 0!important;}
     /* Sort bar mobile */
-    #mkt-profile-view{padding:60px 0 40px!important;}
+    #mkt-profile-view{padding:90px 0 40px!important;}
     #mkt-sort-bar{padding:12px 16px!important;gap:8px!important;}
     .sort-btn{padding:6px 10px!important;font-size:9px!important;white-space:nowrap;}
     /* Business profile mobile fixes */
@@ -1256,6 +1256,20 @@
 </style>
 <!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// Pre-hide home page so it doesn't flash when reloading on a hash like #marketplace/profile/123
+(function(){
+  try {
+    var h = window.location.hash;
+    if(h && h !== '#home' && h !== '#') {
+      var s = document.createElement('style');
+      s.id = 'nm-preload-hide';
+      s.textContent = '#page-home{display:none!important;}';
+      document.head.appendChild(s);
+    }
+  } catch(e){}
+})();
+</script>
 </head>
 <body>
 
@@ -6182,10 +6196,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Determine which page to show on load (needed for history floor below)
   const pageToShow = (hashPage && validPages.includes(hashPage)) ? hashPage : 'home';
 
-  // Set the history floor — this is the bottom of the stack so back never exits the site.
-  // Use the ACTUAL page as the floor (not always home) so pressing back once
-  // from the loaded page doesn't immediately exit the site.
-  history.replaceState({ nmPage: pageToShow, nmView: hashView || 'main', nmBizId: hashBizId }, '', window.location.pathname + (hash || ''));
+  // Set the history floor — always home so pressing back repeatedly never exits the site.
+  // The actual current page is pushed on top of this floor by the blocks below.
+  history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname);
 
   // Hide all pages first
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -6200,6 +6213,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   const pageEl = document.getElementById('page-' + pageToShow);
   if(pageEl) pageEl.classList.add('active');
   else document.getElementById('page-home').classList.add('active');
+  // Remove the pre-hide style now that the correct page is visible
+  const nmPreHide = document.getElementById('nm-preload-hide');
+  if(nmPreHide) nmPreHide.remove();
 
   // Hide search/category/sort bars immediately if on a marketplace sub-view (not main listing)
   // They must stay visible on home page and marketplace main — only hide inside profile/boost/edit/portal
@@ -6233,9 +6249,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     history.pushState({ nmPage:'marketplace', nmView: nmView, nmBizId: hashBizId },
       '', hash || '#marketplace');
   } else if(pageToShow !== 'home') {
-    // Push correct page state for non-home, non-marketplace pages
-    // Also push home first so back goes home, not exits site
-    history.pushState({ nmPage:'home', nmView:'main' }, '', window.location.pathname);
+    // Push correct page state for non-home, non-marketplace pages.
+    // Floor is already home (set above), so just push the current page on top.
     history.pushState({ nmPage: pageToShow, nmView: 'main' }, '', hash || '#' + pageToShow);
   }
 
