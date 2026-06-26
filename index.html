@@ -1254,10 +1254,8 @@
   @media(max-width:900px){.bp-sidebar{display:none;}.bp-metrics{grid-template-columns:1fr 1fr;}.bp-2col,.bp-3col,.bp-form-grid{grid-template-columns:1fr;}}
 
 </style>
-<!-- Supabase SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Pre-hide home flash: runs instantly before Supabase loads or any paint occurs -->
 <script>
-// Pre-hide home page so it doesn't flash when reloading on a hash like #marketplace/profile/123
 (function(){
   try {
     var h = window.location.hash;
@@ -1270,6 +1268,8 @@
   } catch(e){}
 })();
 </script>
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -6197,8 +6197,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   const pageToShow = (hashPage && validPages.includes(hashPage)) ? hashPage : 'home';
 
   // Set the history floor — always home so pressing back repeatedly never exits the site.
-  // The actual current page is pushed on top of this floor by the blocks below.
-  history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname);
+  // Keep window.location.href (with hash) so we replace the current reload entry in-place.
+  history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.href);
 
   // Hide all pages first
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
