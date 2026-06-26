@@ -4533,9 +4533,11 @@ window.addEventListener('popstate', function(e) {
       }
     }
   } else {
-    // PRIORITY 6: No state (came from Instagram/Google/external link, or at bottom of stack)
-    // Go to home page — never exit the site
-    history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname);
+    // PRIORITY 6: No state — landed on a pre-SPA entry (Instagram/Google/external link).
+    // pushState (not replaceState) so home sits ON TOP of the unknown entry.
+    // This means pressing back again goes to the unknown entry, fires this handler again,
+    // and keeps the user inside the app indefinitely.
+    history.pushState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname);
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const home = document.getElementById('page-home');
     if(home) home.classList.add('active');
