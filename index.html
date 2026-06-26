@@ -4873,6 +4873,19 @@ function showMktView(view, pushHistory){
     const el = document.getElementById(targetId);
     if(el) el.style.display = 'block';
   }
+  // Hide search hero, category nav, transport sub-nav and sort bar when inside
+  // a business profile, boost, add-listing, or admin view — they don't apply there
+  // and it looks unprofessional. Restore them when back on main listing view.
+  const searchHero    = document.querySelector('.mkt-hero');
+  const catNav        = document.getElementById('mkt-cat-nav');
+  const transportSub  = document.getElementById('transport-sub-nav');
+  const sortBar       = document.getElementById('mkt-sort-bar');
+  const showControls  = (view === 'main');
+  if(searchHero)   searchHero.style.display   = showControls ? '' : 'none';
+  if(catNav)       catNav.style.display       = showControls ? '' : 'none';
+  if(transportSub) transportSub.style.display = showControls ? '' : 'none';
+  if(sortBar)      sortBar.style.display      = showControls ? '' : 'none';
+
   if(view==='admin') populateBizDashboard();
   if(view==='main' && LISTINGS.length > 0) populateMarketplace();
   window.scrollTo({top:0,behavior:'smooth'});
@@ -6154,22 +6167,51 @@ function renderDashboardStats(){
 
 // ── INIT MARKETPLACE ON LOAD ──
 document.addEventListener('DOMContentLoaded',()=>{
-  // Set up history stack properly so back button never exits the site
-  // Step 1: Replace current state with home (this is the "floor" — pressing back from here goes home not out)
-  history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname);
-  // Step 2: If URL has a hash (e.g. from Instagram link), push that page on top
-  const hash = window.location.hash;
-  if(hash && hash.length > 1) {
-    const page = hash.replace('#','').split('/')[0];
-    if(page && page !== 'home') {
-      history.pushState({ nmPage: page, nmView: 'main' }, '', hash);
-    }
-  }
-  // Ensure profile/boost/add views are hidden on load
+  // ── RELOAD RESTORATION — read current URL hash and restore exact page ──
+  const hash = window.location.hash; // e.g. '#marketplace/boost' or '#terms'
+  const hashPath = hash ? hash.replace('#','') : ''; // e.g. 'marketplace/boost'
+  const hashParts = hashPath.split('/');             // e.g. ['marketplace','boost']
+  const hashPage = hashParts[0] || 'home';           // e.g. 'marketplace'
+  const hashView = hashParts[1] || 'main';           // e.g. 'boost'
+  const hashBizId = hashParts[2] || null;            // e.g. '123' for profile
+
+  // Valid page IDs that exist in the DOM
+  const validPages = ['home','about','contact','terms','privacy','faqs',
+    'opportunities','videos','learning','plans','subscribe','dashboard','marketplace'];
+
+  // Set the history floor — always home at bottom of stack so back never exits site
+  history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + (hash || ''));
+
+  // Hide all pages first
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+
+  // Hide all marketplace sub-views
   ['mkt-profile-view','mkt-boost-view','mkt-add-view','mkt-admin-view'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.style.display = 'none';
   });
+
+  // Determine which page to show on load
+  const pageToShow = (hashPage && validPages.includes(hashPage)) ? hashPage : 'home';
+  const pageEl = document.getElementById('page-' + pageToShow);
+  if(pageEl) pageEl.classList.add('active');
+  else document.getElementById('page-home').classList.add('active');
+
+  // If marketplace — restore the correct sub-view
+  if(pageToShow === 'marketplace') {
+    const viewMap = { main:'mkt-main-view', profile:'mkt-profile-view',
+                      boost:'mkt-boost-view', edit:'mkt-add-view', portal:'mkt-admin-view' };
+    const viewId = viewMap[hashView] || 'mkt-main-view';
+    const viewEl = document.getElementById(viewId);
+    if(viewEl) viewEl.style.display = 'block';
+    // Push the correct marketplace state onto history
+    history.pushState({ nmPage:'marketplace', nmView: hashView==='edit'?'add':hashView==='portal'?'admin':hashView, nmBizId: hashBizId },
+      '', hash || '#marketplace');
+  } else if(pageToShow !== 'home') {
+    // Push correct page state for non-home, non-marketplace pages
+    history.pushState({ nmPage: pageToShow, nmView: 'main' }, '', hash || '#' + pageToShow);
+  }
+
   populateMarketplace();
   renderDashboardStats();
   renderHomeBoosted();
@@ -6178,11 +6220,13 @@ document.addEventListener('DOMContentLoaded',()=>{
   // ── Auto-restore session from device fingerprint ──
   const saved = restoreSession();
   if(saved) {
-    // Mark as restore so loginAs knows to re-open the portal
     saved._isRestore = true;
-    // Silently log the user back in without showing modal
+    // If we're already on a specific page (not home), don't redirect to portal
+    // Only auto-redirect to portal if reloaded from home or no hash
+    if(hashPage && hashPage !== 'home' && hashPage !== '') {
+      saved._isRestore = false; // suppress portal redirect — user is already on their page
+    }
     loginAs(saved);
-    // Show a brief welcome back toast
     setTimeout(()=>{
       const tracker = document.getElementById('user-tracker');
       const text = document.getElementById('tracker-text');
@@ -6193,6 +6237,16 @@ document.addEventListener('DOMContentLoaded',()=>{
         setTimeout(()=>tracker.classList.remove('visible'), 5000);
       }
     }, 800);
+    // If on marketplace/profile with a bizId, restore the profile after listings load
+    if(pageToShow === 'marketplace' && hashView === 'profile' && hashBizId) {
+      setTimeout(() => {
+        if(typeof _originalShowBizProfile === 'function' && LISTINGS.length > 0) {
+          window._nmSupressHistoryPush = true;
+          _originalShowBizProfile(hashBizId);
+          window._nmSupressHistoryPush = false;
+        }
+      }, 1200); // wait for listings to load
+    }
   }
 });
 
