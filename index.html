@@ -1628,7 +1628,7 @@
 .home-footer-bottom p { font-size: 11px; color: #9ca3af; }
 </style>
 
-<div id="page-home" class="page active">
+<div id="page-home" class="page">
 
   <!-- HERO -->
   <div class="home-hero">
@@ -6179,8 +6179,13 @@ document.addEventListener('DOMContentLoaded',()=>{
   const validPages = ['home','about','contact','terms','privacy','faqs',
     'opportunities','videos','learning','plans','subscribe','dashboard','marketplace'];
 
-  // Set the history floor — always home at bottom of stack so back never exits site
-  history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + (hash || ''));
+  // Determine which page to show on load (needed for history floor below)
+  const pageToShow = (hashPage && validPages.includes(hashPage)) ? hashPage : 'home';
+
+  // Set the history floor — this is the bottom of the stack so back never exits the site.
+  // Use the ACTUAL page as the floor (not always home) so pressing back once
+  // from the loaded page doesn't immediately exit the site.
+  history.replaceState({ nmPage: pageToShow, nmView: hashView || 'main', nmBizId: hashBizId }, '', window.location.pathname + (hash || ''));
 
   // Hide all pages first
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -6191,11 +6196,25 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(el) el.style.display = 'none';
   });
 
-  // Determine which page to show on load
-  const pageToShow = (hashPage && validPages.includes(hashPage)) ? hashPage : 'home';
+  // Show the correct page
   const pageEl = document.getElementById('page-' + pageToShow);
   if(pageEl) pageEl.classList.add('active');
   else document.getElementById('page-home').classList.add('active');
+
+  // Hide search/category/sort bars immediately if on a marketplace sub-view (not main listing)
+  // They must stay visible on home page and marketplace main — only hide inside profile/boost/edit/portal
+  const _knownSubViews = ['profile','boost','edit','portal'];
+  const _onMktSubView = (pageToShow === 'marketplace' && _knownSubViews.includes(hashView));
+  const _searchHero   = document.querySelector('.mkt-hero');
+  const _catNav       = document.getElementById('mkt-cat-nav');
+  const _transportSub = document.getElementById('transport-sub-nav');
+  const _sortBar      = document.getElementById('mkt-sort-bar');
+  if(_onMktSubView) {
+    if(_searchHero)   _searchHero.style.display   = 'none';
+    if(_catNav)       _catNav.style.display       = 'none';
+    if(_transportSub) _transportSub.style.display = 'none';
+    if(_sortBar)      _sortBar.style.display      = 'none';
+  }
 
   // If marketplace — restore the correct sub-view
   if(pageToShow === 'marketplace') {
@@ -6204,11 +6223,19 @@ document.addEventListener('DOMContentLoaded',()=>{
     const viewId = viewMap[hashView] || 'mkt-main-view';
     const viewEl = document.getElementById(viewId);
     if(viewEl) viewEl.style.display = 'block';
-    // Push the correct marketplace state onto history
-    history.pushState({ nmPage:'marketplace', nmView: hashView==='edit'?'add':hashView==='portal'?'admin':hashView, nmBizId: hashBizId },
+    // For sub-views (profile/boost/edit/portal), push main state first so that
+    // pressing back goes to the listing page, not exits the site
+    if(hashView && ['profile','boost','edit','portal'].includes(hashView)) {
+      history.pushState({ nmPage:'marketplace', nmView:'main' }, '', '#marketplace');
+    }
+    // Then push the actual current sub-view state on top
+    const nmView = hashView==='edit'?'add':hashView==='portal'?'admin':(hashView||'main');
+    history.pushState({ nmPage:'marketplace', nmView: nmView, nmBizId: hashBizId },
       '', hash || '#marketplace');
   } else if(pageToShow !== 'home') {
     // Push correct page state for non-home, non-marketplace pages
+    // Also push home first so back goes home, not exits site
+    history.pushState({ nmPage:'home', nmView:'main' }, '', window.location.pathname);
     history.pushState({ nmPage: pageToShow, nmView: 'main' }, '', hash || '#' + pageToShow);
   }
 
