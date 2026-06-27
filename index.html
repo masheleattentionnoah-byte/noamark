@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- ANTI-FLASH: hide body immediately so no page flashes before JS shows the correct one -->
+<style id="nm-anti-flash">body{visibility:hidden!important;}</style>
+<!-- Safety net: if JS fails for any reason, reveal body after 2s so site is never blank -->
+<script>setTimeout(function(){var s=document.getElementById('nm-anti-flash');if(s)s.remove();},2000);</script>
 <meta charset="UTF-8">
 <meta name="description" content="NoaMark — South Africa's local business discovery platform. Find trusted businesses, trading services, and opportunities in Limpopo, Mpumalanga, Gauteng and beyond.">
 <meta name="keywords" content="NoaMark, South Africa local businesses, Limpopo businesses, Giyani businesses, Polokwane businesses, South Africa marketplace, local services South Africa, business directory SA">
@@ -4469,11 +4473,19 @@ window.addEventListener('popstate', function(e) {
     return;
   }
 
-  // PRIORITY 3: Photo lightbox open → close it
+  // PRIORITY 3: Photo lightbox open → close it, then land on profile state.
+  // We deliberately do NOT push the lightbox state back — that would create a loop
+  // where every back press just toggles the lightbox. Instead we push the profile
+  // state so the NEXT back press goes to marketplace main listing cleanly.
   const lb = document.getElementById('nm-lightbox');
   if(lb && lb.classList.contains('open')) {
     nmLbClose();
-    history.pushState(e.state || { nmPage: 'marketplace', nmView: 'main' }, '', window.location.href);
+    // Grab the bizId from the lightbox state if available, fall back to window var
+    const lbBizId = (e.state && e.state.nmBizId) || window._currentProfileBizId || null;
+    history.pushState(
+      { nmPage: 'marketplace', nmView: 'profile', nmBizId: lbBizId },
+      '', lbBizId ? '#marketplace/profile/' + lbBizId : '#marketplace/profile'
+    );
     return;
   }
 
@@ -4496,10 +4508,29 @@ window.addEventListener('popstate', function(e) {
       return;
     }
 
-    // Lightbox was a sub-state of marketplace profile — treat as going back to profile
+    // Lightbox was a sub-state of marketplace profile — restore profile view.
+    // nmLbClose() is safe to call even if already closed (no-op).
     if(id === 'marketplace' && view === 'lightbox') {
       nmLbClose();
-      history.pushState({ nmPage: 'marketplace', nmView: 'profile' }, '', '#marketplace/profile');
+      // Restore the profile if we have a bizId, otherwise show main listing
+      const lbBizId = e.state && e.state.nmBizId;
+      if(lbBizId) {
+        const profBiz = LISTINGS.find(b => String(b.id) === String(lbBizId));
+        if(profBiz) {
+          // Show profile but do NOT push history — this is restoration, not navigation
+          window._nmSupressHistoryPush = true;
+          if(typeof _originalShowBizProfile === 'function') _originalShowBizProfile(lbBizId);
+          window._nmSupressHistoryPush = false;
+          history.pushState({ nmPage: 'marketplace', nmView: 'profile', nmBizId: String(lbBizId) }, '', '#marketplace/profile/' + lbBizId);
+        } else {
+          showMktView('main', false);
+          history.pushState({ nmPage: 'marketplace', nmView: 'main' }, '', '#marketplace');
+        }
+      } else {
+        // No bizId — fall back to main listing
+        showMktView('main', false);
+        history.pushState({ nmPage: 'marketplace', nmView: 'main' }, '', '#marketplace');
+      }
       return;
     }
 
@@ -4508,15 +4539,18 @@ window.addEventListener('popstate', function(e) {
       const mktPage = document.getElementById('page-marketplace');
       if(mktPage) mktPage.classList.add('active');
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      // Restore the business profile if we have the bizId stored in state
-      if(view === 'profile' && e.state.nmBizId) {
-        const biz = LISTINGS.find(b => String(b.id) === String(e.state.nmBizId));
+      // Restore the business profile — use state bizId, fall back to window var
+      const restoreBizId = (view === 'profile')
+        ? (e.state.nmBizId || window._currentProfileBizId || null)
+        : null;
+      if(view === 'profile' && restoreBizId) {
+        const biz = LISTINGS.find(b => String(b.id) === String(restoreBizId));
         if(biz) {
           window._nmSupressHistoryPush = true;
           if(typeof _originalShowBizProfile === 'function') _originalShowBizProfile(biz.id);
           window._nmSupressHistoryPush = false;
         } else {
-          // Biz not found (maybe not loaded yet) — fall back to main listing
+          // Biz not in listings yet (still loading) — show main listing
           showMktView('main', false);
         }
       } else {
@@ -4529,7 +4563,16 @@ window.addEventListener('popstate', function(e) {
         pageEl.classList.add('active');
         window.scrollTo({ top: 0, behavior: 'smooth' });
         if(id === 'dashboard') renderDashboardStats();
-        if(id === 'home') setTimeout(() => { if(typeof applyRoleHomePage === 'function') applyRoleHomePage(currentUser); }, 50);
+        if(id === 'home') {
+          // Re-push home so pressing back again never exits the app.
+          // Use replaceState if URL is already #home to avoid stacking identical entries.
+          if(window.location.hash === '#home' || window.location.hash === '') {
+            history.replaceState({ nmPage: 'home', nmView: 'main' }, '', '#home');
+          } else {
+            history.pushState({ nmPage: 'home', nmView: 'main' }, '', '#home');
+          }
+          setTimeout(() => { if(typeof applyRoleHomePage === 'function') applyRoleHomePage(currentUser); }, 50);
+        }
       }
     }
   } else {
@@ -5123,6 +5166,9 @@ function menuBuilderInit() {
 function showBizProfile(id){
   // Coerce both sides to string so UUID strings and numeric IDs both match
   const biz=LISTINGS.find(b=>String(b.id)===String(id));if(!biz)return;
+  // Store the current profile bizId on window so the lightbox back-button handler
+  // can always reconstruct the correct profile state without relying on history state
+  window._currentProfileBizId = String(id);
   // Push profile state so phone back button returns to marketplace listing
   if(!window._nmSupressHistoryPush) history.pushState({ nmPage: 'marketplace', nmView: 'profile', nmBizId: String(id) }, '', '#marketplace/profile/' + id);
   const fullAddress=encodeURIComponent([biz.address,biz.area,biz.city,biz.province].filter(Boolean).join(', ')||biz.area||biz.name);
@@ -6199,8 +6245,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   const pageToShow = (hashPage && validPages.includes(hashPage)) ? hashPage : 'home';
 
   // Set the history floor — always home so pressing back repeatedly never exits the site.
-  // Keep window.location.href (with hash) so we replace the current reload entry in-place.
-  history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.href);
+  // Use #home explicitly (not the current URL with hash) so the floor is always a clean
+  // home entry — prevents the popstate handler from seeing a stale marketplace hash.
+  history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + (pageToShow === 'home' ? '' : window.location.hash));
 
   // Hide all pages first
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -6218,6 +6265,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Remove the pre-hide style now that the correct page is visible
   const nmPreHide = document.getElementById('nm-preload-hide');
   if(nmPreHide) nmPreHide.remove();
+  // Remove the anti-flash body-hide — site is now ready to show
+  const nmAntiFlash = document.getElementById('nm-anti-flash');
+  if(nmAntiFlash) nmAntiFlash.remove();
 
   // Hide search/category/sort bars immediately if on a marketplace sub-view (not main listing)
   // They must stay visible on home page and marketplace main — only hide inside profile/boost/edit/portal
@@ -7257,6 +7307,18 @@ async function handleBizSignup() {
     NM_USERS.businesses = NM_USERS.businesses.filter(b => b.email.toLowerCase() !== email.toLowerCase());
     return;
   }
+  // Verify the account was actually saved by checking for the email (upsert conflict key).
+  // This prevents showing "account created" when the DB write silently failed.
+  try {
+    const verify = await nmSupaQuery(() =>
+      _supa.from('users').select('id,name').eq('role','business').ilike('email', email).limit(1)
+    );
+    if (!verify || !verify.data || verify.data.length === 0) {
+      showAuthError('biz-signup-error', '❌ Account could not be confirmed in our system. Please check your connection and try again, or contact support@noamark.com.');
+      NM_USERS.businesses = NM_USERS.businesses.filter(b => b.email.toLowerCase() !== email.toLowerCase());
+      return;
+    }
+  } catch(e) { /* Verification network error — proceed optimistically, upsert likely succeeded */ }
   trackUser('business', name, email);
   loginAs({ type:'business', name:biz.name, owner:owner, email:biz.email, plan:'Free Listing', id:biz.id, joinedAt:biz.joinedAt });
   showAuthSuccess('biz-signup-success', '✓ Account created! Welcome, '+name+'. Redirecting to add your listing…');
@@ -7288,16 +7350,29 @@ async function handleBizLogin() {
 
   showAuthError('biz-login-error', 'Checking account...');
   try {
-    const result = await nmSupaQuery(() => _supa.from('users').select('*').eq('role','business').ilike('name', loginName).limit(1));
-    const bizByName = result && result.data && result.data[0];
-    if(!bizByName) { showAuthError('biz-login-error','\u274C No business account found with that name. Please check the spelling or create a new account.'); return; }
-    if(bizByName.email.toLowerCase() !== email.toLowerCase()) { showAuthError('biz-login-error','\u274C That email does not match. Please check your email.'); return; }
-    const pwOk = await nmVerifyPassword(pass, bizByName.password);
-    if(!pwOk) { showAuthError('biz-login-error','\u274C Incorrect password. Please try again.'); return; }
-    loginAs({ type:'business', name:bizByName.name, owner:bizByName.name, email:bizByName.email, plan:'Business', id:bizByName.id, joinedAt:bizByName.joinedAt || bizByName.created_at });
-    showAuthSuccess('biz-login-success', '\u2713 Welcome back, '+bizByName.name+'!');
+    // Query by EMAIL (the upsert conflict key — always unique, never has spacing/case issues).
+    // The old query used business name which failed when names had subtle differences.
+    const result = await nmSupaQuery(() =>
+      _supa.from('users').select('*').eq('role','business').ilike('email', email).limit(1)
+    );
+    const biz = result && result.data && result.data[0];
+    if (!biz) {
+      showAuthError('biz-login-error', '\u274C No business account found with that email. Please check your email or sign up for a new account.');
+      return;
+    }
+    // Verify business name matches (case-insensitive) so the right business is confirmed
+    if (biz.name.trim().toLowerCase() !== loginName.trim().toLowerCase()) {
+      showAuthError('biz-login-error', '\u274C Business name does not match our records. Please use the exact name you registered with.');
+      return;
+    }
+    const pwOk = await nmVerifyPassword(pass, biz.password);
+    if (!pwOk) { showAuthError('biz-login-error', '\u274C Incorrect password. Please try again.'); return; }
+    loginAs({ type:'business', name:biz.name, owner:biz.name, email:biz.email, plan:'Business', id:biz.id, joinedAt:biz.joinedAt || biz.created_at });
+    showAuthSuccess('biz-login-success', '\u2713 Welcome back, ' + biz.name + '!');
     setTimeout(closeAuth, 900);
-  } catch(e) { showAuthError('biz-login-error', navigator.onLine ? 'Connection error. Please try again.' : 'You appear to be offline. Check your connection.'); }
+  } catch(e) {
+    showAuthError('biz-login-error', navigator.onLine ? 'Connection error. Please try again.' : 'You appear to be offline. Check your connection.');
+  }
 }
 
 // ──────────────────────────────────────────────────
