@@ -4580,7 +4580,7 @@ window.addEventListener('popstate', function(e) {
     // pushState (not replaceState) so home sits ON TOP of the unknown entry.
     // This means pressing back again goes to the unknown entry, fires this handler again,
     // and keeps the user inside the app indefinitely.
-    history.pushState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname);
+    history.pushState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const home = document.getElementById('page-home');
     if(home) home.classList.add('active');
@@ -6274,14 +6274,16 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Pressing back from marketplace → home(cushion) → popstate fires with nmPage:'home' → app stays open ✅
   // Pressing back from home(cushion) → home(replaced) → popstate fires with nmPage:'home' → app stays open ✅
   // Pressing back from home(replaced) → Google — but popstate fires (no state) → pushes home → app stays open ✅
-  history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname);
+  // Use '#home' not bare pathname — bare '/' causes a hard reload when back is pressed
+  // to these entries because the browser sees a URL change. '#home' keeps it SPA.
+  history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
   // Push a second home entry as a cushion — this is what users land on when pressing back
   // from any in-app navigation. The replaced entry below it catches any further back presses.
   if(pageToShow === 'home') {
-    history.pushState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname);
+    history.pushState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
   } else {
     // For non-home pages (e.g. reloaded on #marketplace), push home cushion then the page
-    history.pushState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname);
+    history.pushState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
     // The page-specific state is pushed below in the marketplace/non-home block
   }
 
