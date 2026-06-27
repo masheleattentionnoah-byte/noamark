@@ -5010,8 +5010,13 @@ function nmLbOpen(photos, index) {
   lb.removeEventListener('touchend',   nmLbTouchEnd);
   lb.addEventListener('touchstart', nmLbTouchStart, { passive: true });
   lb.addEventListener('touchend',   nmLbTouchEnd,   { passive: true });
-  // Push history so phone back button closes lightbox, not the page
-  history.pushState({ nmPage: 'marketplace', nmView: 'lightbox' }, '', '#marketplace/profile');
+  // Push history so phone back button closes lightbox, not the page.
+  // Include the bizId in both the state AND the URL so reload/back always knows which profile to restore.
+  const _lbBizId = window._currentProfileBizId || null;
+  history.pushState(
+    { nmPage: 'marketplace', nmView: 'lightbox', nmBizId: _lbBizId },
+    '', _lbBizId ? '#marketplace/profile/' + _lbBizId : '#marketplace/profile'
+  );
 }
 
 function nmLbShow() {
@@ -6244,10 +6249,34 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Determine which page to show on load (needed for history floor below)
   const pageToShow = (hashPage && validPages.includes(hashPage)) ? hashPage : 'home';
 
-  // Set the history floor — always home so pressing back repeatedly never exits the site.
-  // Use #home explicitly (not the current URL with hash) so the floor is always a clean
-  // home entry — prevents the popstate handler from seeing a stale marketplace hash.
-  history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + (pageToShow === 'home' ? '' : window.location.hash));
+  // Set the history floor — two entries so pressing back can never exit to an external site.
+  //
+  // Stack BEFORE this code (user came from Google):
+  //   [Google-search-result, noamark.com]   ← current position
+  //
+  // replaceState turns the current entry into a home state entry:
+  //   [Google-search-result, home(replaced)]
+  //
+  // pushState adds a second home entry on top as a cushion:
+  //   [Google-search-result, home(replaced), home(cushion)]
+  //
+  // Now when the user navigates to marketplace and a profile, the stack is:
+  //   [Google, home(replaced), home(cushion), marketplace/main, marketplace/profile]
+  //
+  // Pressing back from profile → marketplace ✅
+  // Pressing back from marketplace → home(cushion) → popstate fires with nmPage:'home' → app stays open ✅
+  // Pressing back from home(cushion) → home(replaced) → popstate fires with nmPage:'home' → app stays open ✅
+  // Pressing back from home(replaced) → Google — but popstate fires (no state) → pushes home → app stays open ✅
+  history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname);
+  // Push a second home entry as a cushion — this is what users land on when pressing back
+  // from any in-app navigation. The replaced entry below it catches any further back presses.
+  if(pageToShow === 'home') {
+    history.pushState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname);
+  } else {
+    // For non-home pages (e.g. reloaded on #marketplace), push home cushion then the page
+    history.pushState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname);
+    // The page-specific state is pushed below in the marketplace/non-home block
+  }
 
   // Hide all pages first
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -6265,23 +6294,32 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Remove the pre-hide style now that the correct page is visible
   const nmPreHide = document.getElementById('nm-preload-hide');
   if(nmPreHide) nmPreHide.remove();
-  // Remove the anti-flash body-hide — site is now ready to show
-  const nmAntiFlash = document.getElementById('nm-anti-flash');
-  if(nmAntiFlash) nmAntiFlash.remove();
+  // NOTE: nmAntiFlash is removed AFTER the sub-view is set up below.
+  // Removing it here causes the wrong sub-view to flash before the profile loads.
 
-  // Hide search/category/sort bars immediately if on a marketplace sub-view (not main listing)
-  // They must stay visible on home page and marketplace main — only hide inside profile/boost/edit/portal
+  // Show/hide search hero, category nav, transport sub-nav and sort bar based on view.
+  // On sub-views (profile/boost/edit/portal) hide them.
+  // On marketplace main view explicitly show them so reload always restores them correctly.
   const _knownSubViews = ['profile','boost','edit','portal'];
-  const _onMktSubView = (pageToShow === 'marketplace' && _knownSubViews.includes(hashView));
-  const _searchHero   = document.querySelector('.mkt-hero');
-  const _catNav       = document.getElementById('mkt-cat-nav');
-  const _transportSub = document.getElementById('transport-sub-nav');
-  const _sortBar      = document.getElementById('mkt-sort-bar');
+  const _onMktSubView  = (pageToShow === 'marketplace' && _knownSubViews.includes(hashView));
+  const _onMktMain     = (pageToShow === 'marketplace' && !_knownSubViews.includes(hashView));
+  const _searchHero    = document.querySelector('.mkt-hero');
+  const _catNav        = document.getElementById('mkt-cat-nav');
+  const _transportSub  = document.getElementById('transport-sub-nav');
+  const _sortBar       = document.getElementById('mkt-sort-bar');
   if(_onMktSubView) {
+    // Hide controls inside profile/boost/edit/portal views
     if(_searchHero)   _searchHero.style.display   = 'none';
     if(_catNav)       _catNav.style.display       = 'none';
     if(_transportSub) _transportSub.style.display = 'none';
     if(_sortBar)      _sortBar.style.display      = 'none';
+  } else if(_onMktMain) {
+    // Explicitly restore controls on marketplace main — fixes reload making them disappear
+    if(_searchHero)   _searchHero.style.display   = '';
+    if(_catNav)       _catNav.style.display       = '';
+    if(_sortBar)      _sortBar.style.display      = '';
+    // Transport sub-nav: only show if transport category is currently active
+    if(_transportSub) _transportSub.style.display = (typeof currentCat !== 'undefined' && currentCat === 'transport') ? 'block' : 'none';
   }
 
   // If marketplace — restore the correct sub-view
@@ -6306,8 +6344,15 @@ document.addEventListener('DOMContentLoaded',()=>{
     history.pushState({ nmPage: pageToShow, nmView: 'main' }, '', hash || '#' + pageToShow);
   }
 
-  populateMarketplace();
-  renderDashboardStats();
+  // NOW remove the anti-flash body-hide — the correct page AND sub-view are both set up.
+  // This prevents any wrong sub-view from flashing before the profile/boost page loads.
+  const nmAntiFlash = document.getElementById('nm-anti-flash');
+  if(nmAntiFlash) nmAntiFlash.remove();
+
+  // loadListingsFromSupabase fetches from Supabase then calls populateMarketplace()
+  // and renderDashboardStats() itself once data is ready. Calling populateMarketplace()
+  // directly here would run before listings are loaded and show an empty grid.
+  loadListingsFromSupabase();
   renderHomeBoosted();
   loadNotifPrefs();
 
@@ -6341,6 +6386,23 @@ document.addEventListener('DOMContentLoaded',()=>{
         }
       }, 1200); // wait for listings to load
     }
+  }
+
+  // Restore profile for ALL visitors (not just logged-in users) when reloading on a profile URL.
+  // This runs after the session check so logged-in users aren't double-restored.
+  if(pageToShow === 'marketplace' && hashView === 'profile' && hashBizId) {
+    // Wait for Supabase listings to finish loading before trying to show the profile
+    const _tryRestoreProfile = (attempts) => {
+      if(LISTINGS.length > 0) {
+        window._nmSupressHistoryPush = true;
+        if(typeof _originalShowBizProfile === 'function') _originalShowBizProfile(hashBizId);
+        window._nmSupressHistoryPush = false;
+      } else if(attempts > 0) {
+        setTimeout(() => _tryRestoreProfile(attempts - 1), 400);
+      }
+      // If listings never load, the profile page is already shown (blank) — acceptable
+    };
+    setTimeout(() => _tryRestoreProfile(10), 600); // try up to 10 times, 400ms apart = 4s
   }
 });
 
