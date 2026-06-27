@@ -3025,8 +3025,8 @@
       <button class="btn-primary" onclick="showMktView('add')" style="padding:18px 48px;">+ List Your Business Free</button>
     </div>
 
-    <!-- ADD BUSINESS CTA BANNER -->
-    <div style="margin-top:40px;padding:60px 20px;background:linear-gradient(135deg,var(--black-2),#111520);border:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:24px;">
+    <!-- ADD BUSINESS CTA BANNER — hidden for logged-in users via applyRoleHomePage -->
+    <div id="mkt-add-biz-cta" style="margin-top:40px;padding:60px 20px;background:linear-gradient(135deg,var(--black-2),#111520);border:1px solid var(--border);display:none;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:24px;">
       <div>
         <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;">Own a Business?</p>
         <h3 style="font-family:var(--font-display);font-size:36px;font-weight:300;color:var(--white);">Get discovered by <em style="color:var(--gold);">your community</em></h3>
@@ -4954,6 +4954,15 @@ function showMktView(view, pushHistory){
 
   if(view==='admin') populateBizDashboard();
   if(view==='main' && LISTINGS.length > 0) populateMarketplace();
+  // Show the 'Own a Business?' CTA only on main view AND only for guests (not logged-in users)
+  if(view==='main') {
+    const mktAddCta = document.getElementById('mkt-add-biz-cta');
+    if(mktAddCta) mktAddCta.style.display = currentUser ? 'none' : 'flex';
+  } else {
+    // Always hide on profile/boost/edit/admin views
+    const mktAddCta = document.getElementById('mkt-add-biz-cta');
+    if(mktAddCta) mktAddCta.style.display = 'none';
+  }
   window.scrollTo({top:0,behavior:'smooth'});
   // Push history only when triggered by a real user action (not during popstate restoration)
   if(pushHistory) {
@@ -5309,11 +5318,11 @@ function showBizProfile(id){
             <a href="${googleMapsUrl}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#4285F4;text-decoration:none;padding:12px 16px;background:rgba(66,133,244,.05);border:1px solid rgba(66,133,244,.2);margin-bottom:10px;transition:border-color .3s;" onmouseover="this.style.borderColor='#4285F4'" onmouseout="this.style.borderColor='rgba(66,133,244,.2)'">📍 View on Google Maps</a>
             <a href="${boltUrl}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#34E0A1;text-decoration:none;padding:12px 16px;background:rgba(52,224,161,.05);border:1px solid rgba(52,224,161,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#34E0A1'" onmouseout="this.style.borderColor='rgba(52,224,161,.2)'">🚗 Get a Bolt Here</a>
           </div>
-          <div style="background:linear-gradient(135deg,rgba(212,175,55,.05),rgba(11,13,16,.8));border:1px solid rgba(212,175,55,.2);padding:28px;text-align:center;">
+          ${!currentUser ? `<div style="background:linear-gradient(135deg,rgba(212,175,55,.05),rgba(11,13,16,.8));border:1px solid rgba(212,175,55,.2);padding:28px;text-align:center;">
             <p style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:8px;">Own a Business?</p>
             <p style="font-size:12px;color:var(--white-dim);margin-bottom:16px;line-height:1.6;">Get listed and reach customers in your community.</p>
             <button class="btn-primary" onclick="showMktView('add')" style="font-size:10px;padding:12px 24px;width:100%;">+ List My Business</button>
-          </div>
+          </div>` : ''}
         </div>
       </div>
 
@@ -5354,6 +5363,10 @@ function showBizProfile(id){
       </div>
     </div>`;
   showMktView('profile', false); // false = don't push history, showBizProfile already did it above
+  // Always hide the 'Own a Business?' CTA banner on profile pages — it is irrelevant
+  // and unprofessional to show a listing upsell while someone is viewing a business profile.
+  const _profileCta = document.getElementById('mkt-add-biz-cta');
+  if(_profileCta) _profileCta.style.display = 'none';
   window._nmFromMarketplace = true;
   // Load real reviews for this business
   pubLoadReviews(biz.id);
@@ -7748,6 +7761,10 @@ function applyRoleHomePage(user) {
   const boostSection  = document.getElementById('home-boost-section');
   const vipBanner     = document.querySelector('.home-vip-banner');
   const roleBanner    = document.getElementById('home-role-banner');
+  const mktAddCta     = document.getElementById('mkt-add-biz-cta');
+
+  // Hide the marketplace "Own a Business?" CTA for all logged-in users
+  if(mktAddCta) mktAddCta.style.display = user ? 'none' : '';
 
   if(!user) {
     // Logged out — default public view
