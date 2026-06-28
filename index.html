@@ -4304,81 +4304,49 @@
   }
 </style>
 <!-- ══ BOOKING MODAL ══ -->
-<div id="booking-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9998;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)closeBookingModal()">
-  <div style="background:var(--black-2);border:1px solid var(--border-soft);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;position:relative;">
-    <div style="background:linear-gradient(135deg,rgba(22,101,52,.12),transparent);padding:24px 28px;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between;">
+<div id="booking-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9998;align-items:center;justify-content:center;padding:16px;" onclick="if(event.target===this)closeBookingModal()">
+  <div style="background:var(--black-2);border:1px solid var(--border-soft);width:100%;max-width:540px;max-height:92vh;overflow-y:auto;position:relative;display:flex;flex-direction:column;">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,rgba(22,101,52,.18),transparent);padding:22px 28px;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
       <div>
-        <div style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--green-dark);margin-bottom:4px;">Book Now</div>
-        <div style="font-size:18px;font-weight:700;color:var(--white);" id="bm-biz-name">Business Name</div>
+        <div style="font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--green-dark);margin-bottom:5px;">📅 BOOKING REQUEST</div>
+        <div style="font-size:19px;font-weight:700;color:var(--white);font-family:var(--font-display);" id="bm-biz-name">Business Name</div>
+        <div id="bm-avail-notice" style="display:none;font-size:11px;color:#86efac;margin-top:6px;"></div>
       </div>
-      <button onclick="closeBookingModal()" style="background:rgba(255,255,255,.06);border:1px solid var(--border-soft);color:var(--white);width:36px;height:36px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
+      <button onclick="closeBookingModal()" style="background:rgba(255,255,255,.07);border:1px solid var(--border-soft);color:var(--white-dim);width:38px;height:38px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;" onmouseover="this.style.borderColor='var(--white-dim)'" onmouseout="this.style.borderColor='var(--border-soft)'">✕</button>
     </div>
-    <div style="padding:28px;">
-      <!-- Booking Type -->
-      <div style="margin-bottom:20px;">
-        <label style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:10px;">Booking Type</label>
+
+    <div style="padding:24px 28px;flex:1;">
+
+      <!-- Step 1: Booking Type (dynamic per category) -->
+      <div style="margin-bottom:22px;">
+        <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;">What would you like to book?</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="bm-type-grid">
-          <div class="bm-type-opt" data-type="appointment" onclick="bmSelectType('appointment')" style="padding:14px;border:2px solid var(--border-soft);cursor:pointer;text-align:center;transition:all .2s;">
-            <div style="font-size:22px;margin-bottom:6px;">📅</div>
-            <div style="font-size:12px;font-weight:700;color:var(--white);">Appointment</div>
-            <div style="font-size:10px;color:var(--white-dim);margin-top:3px;">Specific date & time</div>
-          </div>
-          <div class="bm-type-opt" data-type="service" onclick="bmSelectType('service')" style="padding:14px;border:2px solid var(--border-soft);cursor:pointer;text-align:center;transition:all .2s;">
-            <div style="font-size:22px;margin-bottom:6px;">🛠️</div>
-            <div style="font-size:12px;font-weight:700;color:var(--white);">Service Booking</div>
-            <div style="font-size:10px;color:var(--white-dim);margin-top:3px;">Haircut, repair, etc.</div>
-          </div>
-          <div class="bm-type-opt" data-type="reservation" onclick="bmSelectType('reservation')" style="padding:14px;border:2px solid var(--border-soft);cursor:pointer;text-align:center;transition:all .2s;">
-            <div style="font-size:22px;margin-bottom:6px;">🪑</div>
-            <div style="font-size:12px;font-weight:700;color:var(--white);">Reservation</div>
-            <div style="font-size:10px;color:var(--white-dim);margin-top:3px;">Table / seat / space</div>
-          </div>
-          <div class="bm-type-opt" data-type="enquiry" onclick="bmSelectType('enquiry')" style="padding:14px;border:2px solid var(--border-soft);cursor:pointer;text-align:center;transition:all .2s;">
-            <div style="font-size:22px;margin-bottom:6px;">💬</div>
-            <div style="font-size:12px;font-weight:700;color:var(--white);">General Request</div>
-            <div style="font-size:10px;color:var(--white-dim);margin-top:3px;">Flexible / open request</div>
-          </div>
+          <!-- Populated dynamically by openBookingModal based on business category -->
         </div>
       </div>
 
-      <!-- Date & Time -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
-        <div>
-          <label style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:8px;">Date</label>
-          <input type="date" id="bm-date" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 12px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
-        </div>
-        <div>
-          <label style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:8px;">Time</label>
-          <input type="time" id="bm-time" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 12px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
-        </div>
-      </div>
+      <!-- Step 2: Dynamic fields injected here -->
+      <div id="bm-dynamic-fields"></div>
 
-      <!-- Service requested -->
+      <!-- Always shown: Phone + Notes -->
       <div style="margin-bottom:16px;">
-        <label style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:8px;">Your Phone Number <span style="font-weight:400;color:var(--white-dim);text-transform:none;letter-spacing:0;">(for SMS confirmation)</span></label>
-        <input type="tel" id="bm-cust-phone" placeholder="e.g. 063 418 9749" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+        <label style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:8px;">Your Phone Number <span style="font-weight:400;color:var(--white-dim);text-transform:none;letter-spacing:0;">(for SMS confirmation)</span></label>
+        <input type="tel" id="bm-cust-phone" placeholder="e.g. 063 418 9749" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;transition:border-color .2s;" onfocus="this.style.borderColor='var(--green-dark)'" onblur="this.style.borderColor='var(--border-soft)'">
       </div>
 
-      <!-- Service requested -->
-      <div style="margin-bottom:16px;">
-        <label style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:8px;">What do you need? <span style="font-weight:400;color:var(--white-dim);text-transform:none;letter-spacing:0;">(service, item, or request)</span></label>
-        <input type="text" id="bm-service" placeholder="e.g. Haircut, Car wash, Table for 2, Plumbing repair…" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
-      </div>
-
-      <!-- Notes -->
       <div style="margin-bottom:20px;">
-        <label style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:8px;">Additional Notes <span style="font-weight:400;color:var(--white-dim);text-transform:none;letter-spacing:0;">(optional)</span></label>
-        <textarea id="bm-notes" rows="3" placeholder="Any special requests, allergies, access needs…" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 14px;font-size:13px;font-family:var(--font-body);outline:none;resize:vertical;box-sizing:border-box;"></textarea>
+        <label style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:8px;">Additional Notes <span style="font-weight:400;color:var(--white-dim);text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <textarea id="bm-notes" rows="3" placeholder="Any special requests, preferences or details for the business…" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 14px;font-size:13px;font-family:var(--font-body);outline:none;resize:vertical;box-sizing:border-box;transition:border-color .2s;" onfocus="this.style.borderColor='var(--green-dark)'" onblur="this.style.borderColor='var(--border-soft)'"></textarea>
       </div>
 
-      <!-- Availability notice -->
-      <div id="bm-avail-notice" style="display:none;padding:10px 14px;background:rgba(22,101,52,.1);border:1px solid rgba(22,101,52,.3);font-size:12px;color:#86efac;margin-bottom:16px;"></div>
+      <!-- Status message -->
+      <div id="bm-status" style="display:none;margin-bottom:16px;padding:12px 16px;font-size:13px;"></div>
 
-      <!-- Status -->
-      <div id="bm-status" style="display:none;margin-bottom:16px;padding:12px 16px;font-size:13px;border-radius:0;"></div>
-
-      <button onclick="submitBooking()" id="bm-submit-btn" style="width:100%;background:var(--green-dark);border:none;color:#fff;padding:16px;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;font-family:var(--font-body);transition:background .3s;">📅 Confirm Booking Request</button>
-      <div style="font-size:11px;color:var(--white-dim);text-align:center;margin-top:12px;line-height:1.6;">The business will confirm or reschedule your booking. You'll be notified by SMS.</div>
+      <!-- Submit -->
+      <button onclick="submitBooking()" id="bm-submit-btn" style="width:100%;background:var(--green-dark);border:none;color:#fff;padding:16px;font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer;font-family:var(--font-body);transition:background .3s;">📅 CONFIRM BOOKING REQUEST</button>
+      <div style="font-size:11px;color:var(--white-dim);text-align:center;margin-top:12px;line-height:1.7;">The business will confirm or reschedule your booking.<br>You will be notified by SMS once confirmed.</div>
     </div>
   </div>
 </div>
@@ -4590,6 +4558,14 @@ window.addEventListener('popstate', function(e) {
     }
     // Re-push state so we stay here
     history.pushState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
+    return;
+  }
+
+  // PRIORITY 1c: Booking modal open → close it, stay on page
+  const bookingModal = document.getElementById('booking-modal');
+  if(bookingModal && bookingModal.style.display === 'flex') {
+    closeBookingModal();
+    history.pushState(e.state || { nmPage: 'marketplace', nmView: 'profile' }, '', window.location.href);
     return;
   }
 
@@ -5418,7 +5394,7 @@ function showBizProfile(id){
         </div>
         <div style="display:flex;flex-direction:column;gap:10px;flex-shrink:0;">
           ${biz.phone ? `<a href="tel:${biz.phone}" class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;">📞 Call Now</a>` : `<span class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;opacity:.4;cursor:not-allowed;">📞 No Number</span>`}
-          <button onclick="openBookingModal('${biz.id}','${nmSafe(biz.name)}')" class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;background:var(--green-dark);border-color:var(--green-dark);">📅 Book Now</button>
+          <button onclick="openBookingModal('${biz.id}','${nmSafe(biz.name)}','${biz.cat}')" class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;background:var(--green-dark);border-color:var(--green-dark);">📅 Book Now</button>
           ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#25D366;color:#25D366;">💬 WhatsApp</a>` : `<span class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;opacity:.4;cursor:not-allowed;">💬 No WhatsApp</span>`}
           <a href="${googleMapsUrl}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#4285F4;color:#4285F4;">📍 Google Maps</a>
           <a href="${boltUrl}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#34E0A1;color:#34E0A1;">🚗 Order Bolt</a>
@@ -10378,46 +10354,179 @@ async function nmSendSMS(toNumber, message) {
 // ── Booking Modal State ────────────────────────────────────────
 let _bmBizId   = null;
 let _bmBizName = '';
+let _bmBizCat  = '';
 let _bmType    = 'appointment';
 
-function openBookingModal(bizId, bizName) {
+// ── Category → allowed booking types map ──
+// Each category only shows the booking types that make sense for it.
+const BM_CAT_TYPES = {
+  food:      ['reservation', 'enquiry'],
+  shops:     ['appointment', 'enquiry'],
+  beauty:    ['appointment', 'service', 'enquiry'],
+  laundry:   ['service', 'appointment', 'enquiry'],
+  services:  ['appointment', 'service', 'enquiry'],
+  transport: ['appointment', 'enquiry'],
+  default:   ['appointment', 'service', 'reservation', 'enquiry']
+};
+
+// ── Booking type definitions ──
+const BM_TYPE_DEFS = {
+  appointment: {
+    icon: '📅',
+    label: 'Appointment',
+    sub: 'Schedule a specific date & time',
+    fields: ['datetime']
+  },
+  service: {
+    icon: '🔧',
+    label: 'Service Booking',
+    sub: 'Request a specific service',
+    fields: ['datetime', 'service']
+  },
+  reservation: {
+    icon: '🪑',
+    label: 'Reservation',
+    sub: 'Reserve a table, seat or space',
+    fields: ['datetime', 'partysize']
+  },
+  enquiry: {
+    icon: '💬',
+    label: 'General Enquiry',
+    sub: 'Ask a question or make a request',
+    fields: ['what']
+  }
+};
+
+// ── Beautiful field templates ──
+function bmFieldHTML(field) {
+  const inp = 'width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;transition:border-color .2s;';
+  const lbl = 'font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:8px;';
+  const focusblur = "onfocus=\"this.style.borderColor='var(--green-dark)'\" onblur=\"this.style.borderColor='var(--border-soft)'\"";
+  if (field === 'datetime') return `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+      <div>
+        <label style="${lbl}">Date</label>
+        <input type="date" id="bm-date" style="${inp}" ${focusblur}>
+      </div>
+      <div>
+        <label style="${lbl}">Time</label>
+        <input type="time" id="bm-time" style="${inp}" ${focusblur}>
+      </div>
+    </div>`;
+  if (field === 'service') return `
+    <div style="margin-bottom:16px;">
+      <label style="${lbl}">Service Required</label>
+      <input type="text" id="bm-service" placeholder="e.g. Men's haircut, Full car service, Deep clean…" style="${inp}" ${focusblur}>
+    </div>`;
+  if (field === 'partysize') return `
+    <div style="margin-bottom:16px;">
+      <label style="${lbl}">Party / Group Size</label>
+      <select id="bm-party" style="${inp}background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 14px center;appearance:none;">
+        <option value="1">1 person</option>
+        <option value="2" selected>2 people</option>
+        <option value="3">3 people</option>
+        <option value="4">4 people</option>
+        <option value="5">5 people</option>
+        <option value="6">6 people</option>
+        <option value="7+">7+ people</option>
+      </select>
+    </div>`;
+  if (field === 'what') return `
+    <div style="margin-bottom:16px;">
+      <label style="${lbl}">What do you need?</label>
+      <input type="text" id="bm-service" placeholder="Describe your request or question…" style="${inp}" ${focusblur}>
+    </div>`;
+  return '';
+}
+
+function openBookingModal(bizId, bizName, bizCat) {
   if (!currentUser) {
-    bpToast('Please sign in to book — tap Sign In above.');
+    bpToast('Please sign in to make a booking.');
     openAuth('subscriber');
     return;
   }
-  _bmBizId   = bizId;
+  _bmBizId   = String(bizId);
   _bmBizName = bizName;
-  _bmType    = 'appointment';
+  _bmBizCat  = bizCat || 'default';
+  _bmType    = null;
 
   document.getElementById('bm-biz-name').textContent = bizName;
-  document.getElementById('bm-date').value   = '';
-  document.getElementById('bm-time').value   = '';
-  document.getElementById('bm-cust-phone').value = '';
-  document.getElementById('bm-service').value = '';
-  document.getElementById('bm-notes').value  = '';
+  document.getElementById('bm-notes').value   = '';
+  document.getElementById('bm-cust-phone').value = currentUser.phone || '';
   const st = document.getElementById('bm-status');
   st.style.display = 'none'; st.textContent = '';
   document.getElementById('bm-submit-btn').disabled = false;
+  document.getElementById('bm-submit-btn').textContent = '📅 CONFIRM BOOKING REQUEST';
 
-  // Set min date to today
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('bm-date').min = today;
+  // Build type buttons based on category
+  const allowedTypes = BM_CAT_TYPES[_bmBizCat] || BM_CAT_TYPES.default;
+  const grid = document.getElementById('bm-type-grid');
+  grid.innerHTML = allowedTypes.map(type => {
+    const def = BM_TYPE_DEFS[type];
+    return `<div class="bm-type-opt" data-type="${type}" onclick="bmSelectType('${type}')" style="padding:16px 12px;border:2px solid var(--border-soft);cursor:pointer;text-align:center;transition:all .25s;background:var(--black-3);">
+      <div style="font-size:24px;margin-bottom:8px;">${def.icon}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:3px;">${def.label}</div>
+      <div style="font-size:10px;color:var(--white-dim);line-height:1.4;">${def.sub}</div>
+    </div>`;
+  }).join('');
 
-  // Reset type selection
-  document.querySelectorAll('.bm-type-opt').forEach(el => {
-    el.style.borderColor = 'var(--border-soft)';
-    el.style.background  = 'transparent';
-  });
-  const first = document.querySelector('.bm-type-opt[data-type="appointment"]');
-  if (first) { first.style.borderColor = 'var(--green-dark)'; first.style.background = 'rgba(22,101,52,.08)'; }
+  // Auto-select first type
+  bmSelectType(allowedTypes[0]);
 
   // Load availability notice
   loadBmAvailability(bizId);
 
+  // Push history state so back button closes the modal
+  history.pushState({ nmPage: 'booking-modal', nmBizId: bizId }, '', window.location.href);
+
   const modal = document.getElementById('booking-modal');
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
+}
+
+function bmSelectType(type) {
+  _bmType = type;
+  const def = BM_TYPE_DEFS[type];
+  if (!def) return;
+
+  // Update button styles
+  document.querySelectorAll('.bm-type-opt').forEach(el => {
+    const isActive = el.dataset.type === type;
+    el.style.borderColor  = isActive ? 'var(--green-dark)' : 'var(--border-soft)';
+    el.style.background   = isActive ? 'rgba(22,101,52,.15)' : 'var(--black-3)';
+    el.style.transform    = isActive ? 'translateY(-2px)' : 'none';
+    el.style.boxShadow    = isActive ? '0 4px 20px rgba(22,101,52,.25)' : 'none';
+    // Label color
+    const nameEl = el.querySelector('div:nth-child(2)');
+    if (nameEl) nameEl.style.color = isActive ? 'var(--white)' : 'var(--white)';
+  });
+
+  // Render dynamic fields
+  const dynEl = document.getElementById('bm-dynamic-fields');
+  dynEl.innerHTML = def.fields.map(bmFieldHTML).join('');
+
+  // Set date min to today
+  const dateEl = document.getElementById('bm-date');
+  if (dateEl) dateEl.min = new Date().toISOString().split('T')[0];
+}
+
+async function loadBmAvailability(bizId) {
+  const notice = document.getElementById('bm-avail-notice');
+  try {
+    const { data } = await _supa.from('business_availability').select('*').eq('listing_id', String(bizId)).single();
+    if (data) {
+      const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      const openDays = dayNames.filter((_,i) => data['day_' + i]);
+      if (openDays.length > 0) {
+        notice.style.display = 'block';
+        notice.textContent = '⏰ Open: ' + openDays.join(', ') + ' · ' + (data.open_time || '08:00') + ' – ' + (data.close_time || '17:00');
+      } else {
+        notice.style.display = 'none';
+      }
+    } else {
+      notice.style.display = 'none';
+    }
+  } catch { notice.style.display = 'none'; }
 }
 
 function closeBookingModal() {
@@ -10425,324 +10534,155 @@ function closeBookingModal() {
   document.body.style.overflow = '';
 }
 
-function bmSelectType(type) {
-  _bmType = type;
-  document.querySelectorAll('.bm-type-opt').forEach(el => {
-    const active = el.dataset.type === type;
-    el.style.borderColor = active ? 'var(--green-dark)' : 'var(--border-soft)';
-    el.style.background  = active ? 'rgba(22,101,52,.08)' : 'transparent';
-  });
-}
-
-async function loadBmAvailability(bizId) {
-  const notice = document.getElementById('bm-avail-notice');
-  try {
-    const { data } = await _supa.from('business_availability').select('*').eq('listing_id', bizId).single();
-    if (data) {
-      const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-      const openDays = days.filter((_,i) => data['day_' + i]);
-      notice.style.display = 'block';
-      notice.textContent = `⏰ Available: ${openDays.join(', ')} · ${data.open_time || '08:00'} – ${data.close_time || '17:00'}`;
-    } else {
-      notice.style.display = 'none';
-    }
-  } catch { notice.style.display = 'none'; }
-}
-
 async function submitBooking() {
   if (!currentUser) return;
-  const dateVal    = document.getElementById('bm-date').value;
-  const timeVal    = document.getElementById('bm-time').value;
-  const serviceVal = document.getElementById('bm-service').value.trim();
-  const notesVal   = document.getElementById('bm-notes').value.trim();
-  const statusEl   = document.getElementById('bm-status');
-  const btn        = document.getElementById('bm-submit-btn');
+  const statusEl = document.getElementById('bm-status');
+  const btn      = document.getElementById('bm-submit-btn');
+  const def      = BM_TYPE_DEFS[_bmType] || {};
 
-  if (!dateVal || !timeVal) {
-    statusEl.style.display = 'block';
+  // Gather fields
+  const dateVal    = (document.getElementById('bm-date')  || {}).value || '';
+  const timeVal    = (document.getElementById('bm-time')  || {}).value || '';
+  const serviceVal = (document.getElementById('bm-service') || {}).value?.trim() || '';
+  const partyVal   = (document.getElementById('bm-party') || {}).value || '';
+  const notesVal   = document.getElementById('bm-notes').value.trim();
+  const phoneVal   = document.getElementById('bm-cust-phone').value.trim();
+  const custName   = currentUser.name || currentUser.email || 'Customer';
+
+  // Validation
+  const showErr = (msg) => {
+    statusEl.style.display   = 'block';
     statusEl.style.background = 'rgba(239,68,68,.1)';
-    statusEl.style.border = '1px solid rgba(239,68,68,.3)';
-    statusEl.style.color = '#fca5a5';
-    statusEl.textContent = '⚠️ Please select a date and time.';
-    return;
+    statusEl.style.border     = '1px solid rgba(239,68,68,.3)';
+    statusEl.style.color      = '#fca5a5';
+    statusEl.textContent      = msg;
+  };
+
+  if (_bmType !== 'enquiry') {
+    if (!dateVal) { showErr('⚠️ Please select a date.'); return; }
+    if (!timeVal) { showErr('⚠️ Please select a time.'); return; }
   }
-  if (!serviceVal) {
-    statusEl.style.display = 'block';
-    statusEl.style.background = 'rgba(239,68,68,.1)';
-    statusEl.style.border = '1px solid rgba(239,68,68,.3)';
-    statusEl.style.color = '#fca5a5';
-    statusEl.textContent = '⚠️ Please describe what you need.';
-    return;
+  if ((_bmType === 'service' || _bmType === 'enquiry') && !serviceVal) {
+    showErr('⚠️ Please describe what you need.'); return;
   }
 
   btn.disabled = true;
-  btn.textContent = '⏳ Sending…';
+  btn.textContent = '⏳ Sending your request…';
 
   try {
-    const { data: listing } = await _supa.from('listings').select('phone,name').eq('id', _bmBizId).single();
-    const custName  = currentUser.name || currentUser.email || 'Customer';
-    // currentUser has no phone — use the phone field from the booking form if we add one,
-    // or fall back to empty. We'll read from a dedicated customer phone input.
-    const custPhoneEl = document.getElementById('bm-cust-phone');
-    const custPhone = (custPhoneEl ? custPhoneEl.value.trim() : '') || '';
+    // Build the service field value intelligently
+    let serviceField = serviceVal || (_bmType === 'reservation' ? 'Table reservation for ' + (partyVal || '2') : _bmType);
 
     const { error } = await _supa.from('bookings').insert({
-      listing_id:    _bmBizId,
-      customer_name: custName,
+      listing_id:     _bmBizId,
+      customer_name:  custName,
       customer_email: currentUser.email || '',
-      customer_phone: custPhone,
-      booking_type:  _bmType,
-      booking_date:  dateVal,
-      booking_time:  timeVal,
-      service:       serviceVal,
-      notes:         notesVal,
-      status:        'pending',
-      created_at:    new Date().toISOString()
+      customer_phone: phoneVal || currentUser.phone || '',
+      booking_type:   _bmType,
+      booking_date:   dateVal || null,
+      booking_time:   timeVal || null,
+      service:        serviceField,
+      notes:          notesVal || null,
+      status:         'pending',
+      created_at:     new Date().toISOString()
     });
 
     if (error) throw error;
 
-    // SMS to business owner
-    if (listing && listing.phone) {
-      const smsMsg = `NoaMark Booking Request!\n\nFrom: ${custName}${custPhone ? ' · ' + custPhone : ''}\nType: ${_bmType}\nDate: ${dateVal} at ${timeVal}\nService: ${serviceVal}\n${notesVal ? 'Notes: ' + notesVal + '\n' : ''}\nLog in to noamark.com to confirm or reschedule.`;
-      nmSendSMS(listing.phone, smsMsg);
-    }
+    // Fetch business owner phone for SMS
+    const { data: listing } = await _supa.from('listings').select('phone,name,owner_email').eq('id', _bmBizId).single();
 
-    // SMS to customer
-    if (custPhone) {
-      const custSms = `Your booking at ${_bmBizName} has been received!\n\nDate: ${dateVal} at ${timeVal}\nService: ${serviceVal}\n\nYou will receive a confirmation shortly. – NoaMark`;
-      nmSendSMS(custPhone, custSms);
-    }
+    // Format messages
+    const typeLabel  = BM_TYPE_DEFS[_bmType]?.label || _bmType;
+    const dateLabel  = dateVal ? new Date(dateVal + 'T00:00:00').toLocaleDateString('en-ZA', { weekday:'short', day:'numeric', month:'short' }) : '';
+    const timeLabel  = timeVal ? (' at ' + fmtTime12h(timeVal)) : '';
+    const smsToBiz   = 'NoaMark: New ' + typeLabel + ' from ' + custName + (dateLabel ? ' on ' + dateLabel + timeLabel : '') + '. Service: ' + serviceField + '. Login to noamark.com to manage.';
+    const smsToUser  = 'NoaMark: Hi ' + custName.split(' ')[0] + ', your ' + typeLabel.toLowerCase() + ' at ' + _bmBizName + (dateLabel ? ' on ' + dateLabel + timeLabel : '') + ' was received. The business will confirm shortly.';
 
-    // In-portal notification for business
-    try {
-      await _supa.from('notifications').insert({
-        listing_id: _bmBizId,
-        type: 'booking',
-        message: `📅 New booking from ${custName} for ${serviceVal} on ${dateVal} at ${timeVal}`,
-        read: false,
-        created_at: new Date().toISOString()
-      });
-    } catch {}
+    // Send SMS via BulkSMS
+    if (listing?.phone)  bmSendSMS(listing.phone, smsToBiz);
+    if (phoneVal)        bmSendSMS(phoneVal, smsToUser);
 
-    statusEl.style.display = 'block';
-    statusEl.style.background = 'rgba(22,101,52,.1)';
-    statusEl.style.border = '1px solid rgba(22,101,52,.3)';
-    statusEl.style.color = '#86efac';
-    statusEl.textContent = '✅ Booking request sent! The business will confirm shortly.';
-    btn.textContent = '✅ Booking Sent';
+    // Insert in-portal notification
+    await _supa.from('notifications').insert({
+      listing_id: _bmBizId,
+      type:       'booking',
+      message:    'New ' + typeLabel + ' from ' + custName + (dateLabel ? ' · ' + dateLabel + timeLabel : ''),
+      read:       false,
+      created_at: new Date().toISOString()
+    }).then(()=>{}).catch(()=>{});
 
-    setTimeout(() => closeBookingModal(), 3000);
+    // Flash the notification badge in portal
+    bmFlashNotifBadge();
 
-  } catch(err) {
+    // Show success
+    statusEl.style.display   = 'block';
+    statusEl.style.background = 'rgba(22,101,52,.2)';
+    statusEl.style.border     = '1px solid var(--green-dark)';
+    statusEl.style.color      = '#86efac';
+    statusEl.textContent      = '✅ Booking request sent! ' + _bmBizName + ' will confirm shortly. You\'ll receive an SMS.';
+    btn.textContent = '✅ Request Sent!';
+    btn.style.background = 'rgba(22,101,52,.5)';
+
+  } catch (err) {
     console.error('Booking error:', err);
     btn.disabled = false;
-    btn.textContent = '📅 Confirm Booking Request';
-    statusEl.style.display = 'block';
-    statusEl.style.background = 'rgba(239,68,68,.1)';
-    statusEl.style.border = '1px solid rgba(239,68,68,.3)';
-    statusEl.style.color = '#fca5a5';
-    statusEl.textContent = '❌ Failed to send booking. Please try again.';
+    btn.textContent = '📅 CONFIRM BOOKING REQUEST';
+    showErr('❌ Something went wrong. Please try again.');
   }
 }
 
-// ── Business Portal: Bookings Tab ─────────────────────────────
-let _allBookings    = [];
-let _bookingFilter  = 'all';
-
-async function bpLoadBookings() {
-  const myListing = getMyListing();
-  if (!myListing) return;
-
-  const { data, error } = await _supa
-    .from('bookings')
-    .select('*')
-    .eq('listing_id', myListing.id)
-    .order('booking_date', { ascending: true });
-
-  if (error) { console.warn('bookings load error:', error); return; }
-  _allBookings = data || [];
-  bpRenderBookings();
-  bpUpdateBookingBadge();
+function fmtTime12h(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  return (h % 12 || 12) + ':' + String(m).padStart(2,'0') + ' ' + ampm;
 }
 
-function bpUpdateBookingBadge() {
-  const pending = _allBookings.filter(b => b.status === 'pending').length;
-  const badge = document.getElementById('bp-book-badge');
-  if (badge) { badge.textContent = pending; badge.style.display = pending > 0 ? 'inline-block' : 'none'; }
-  const statusLine = document.getElementById('bp-book-status-line');
-  if (statusLine) statusLine.textContent = pending > 0 ? `${pending} pending booking${pending > 1 ? 's' : ''} need your attention` : 'Manage customer appointments and reservations';
-}
+// ── BulkSMS Credentials ──────────────────────────────────────
+// Sign up at bulksms.com → Settings → Advanced → API Credentials
+// Replace the values below with your real Token ID and Token Secret
+const BULKSMS_TOKEN_ID     = 'AC926B71CAA14D7A96D9249DE614B100-';
+const BULKSMS_TOKEN_SECRET = 'cU7x_QWBkrjVS3vmQh_ufcjwQU261';
+// ─────────────────────────────────────────────────────────────
 
-function bpFilterBookings(filter, btn) {
-  _bookingFilter = filter;
-  document.querySelectorAll('[id^="bp-bf-"]').forEach(b => { b.style.borderColor = ''; b.style.color = ''; });
-  if (btn) { btn.style.borderColor = 'var(--green-dark)'; btn.style.color = 'var(--green-dark)'; }
-  bpRenderBookings();
-}
-
-function bpRenderBookings() {
-  const list = document.getElementById('bp-book-list');
-  if (!list) return;
-
-  const filtered = _bookingFilter === 'all' ? _allBookings
-    : _allBookings.filter(b => b.status === _bookingFilter);
-
-  if (!filtered.length) {
-    const msg = _bookingFilter === 'all' ? 'No bookings yet' : `No ${_bookingFilter} bookings`;
-    list.innerHTML = `<div class="bp-empty"><div class="bp-empty-icon">📅</div><div class="bp-empty-text">${msg}</div><div class="bp-empty-sub">Customers who book through your profile will appear here</div></div>`;
+async function bmSendSMS(toNumber, message) {
+  if (!toNumber || !message) return;
+  // Skip silently if credentials not yet configured
+  if (BULKSMS_TOKEN_ID === 'YOUR_BULKSMS_TOKEN_ID') {
+    console.info('BulkSMS not configured yet. SMS not sent:', message);
     return;
   }
-
-  const statusColor = { pending:'#fbbf24', confirmed:'#86efac', declined:'#fca5a5', rescheduled:'#93c5fd' };
-  const statusBg    = { pending:'rgba(251,191,36,.08)', confirmed:'rgba(22,101,52,.08)', declined:'rgba(239,68,68,.08)', rescheduled:'rgba(59,130,246,.08)' };
-  const typeIcon    = { appointment:'📅', service:'🛠️', reservation:'🪑', enquiry:'💬' };
-
-  list.innerHTML = filtered.map(b => `
-    <div class="bp-enq-item" style="flex-direction:column;gap:0;padding:20px 0;" id="book-row-${b.id}">
-      <div style="display:flex;align-items:flex-start;gap:14px;">
-        <div class="bp-enq-av" style="background:${statusBg[b.status]||'rgba(255,255,255,.06)'};color:${statusColor[b.status]||'#fff'};font-size:18px;">${typeIcon[b.booking_type]||'📅'}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
-            <span class="bp-enq-name">${nmSafe(b.customer_name)}</span>
-            <span style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:3px 8px;border:1px solid;color:${statusColor[b.status]||'#9ca3af'};border-color:${statusColor[b.status]||'rgba(156,163,175,.3)'};background:${statusBg[b.status]||'transparent'};">${b.status}</span>
-            <span style="font-size:11px;color:var(--white-dim);">${(b.booking_type||'').replace('_',' ')}</span>
-          </div>
-          <div class="bp-enq-sub">📅 ${b.booking_date || '—'} at ${b.booking_time || '—'}</div>
-          ${b.customer_phone ? `<div class="bp-enq-sub">📞 ${nmSafe(b.customer_phone)}</div>` : ''}
-          ${b.customer_email ? `<div class="bp-enq-sub">✉️ ${nmSafe(b.customer_email)}</div>` : ''}
-          <div class="bp-enq-msg" style="margin-top:8px;"><strong style="color:var(--white-soft);">Service:</strong> ${nmSafe(b.service)}</div>
-          ${b.notes ? `<div class="bp-enq-msg"><strong style="color:var(--white-soft);">Notes:</strong> ${nmSafe(b.notes)}</div>` : ''}
-        </div>
-      </div>
-      ${b.status === 'pending' ? `
-      <div class="bp-enq-actions" style="padding-left:50px;margin-top:14px;">
-        <button class="bp-btn bp-btn-g" style="font-size:10px;" onclick="bpActionBooking('${b.id}','confirmed','${nmSafe(b.customer_phone)}','${nmSafe(b.customer_name)}','${b.booking_date}','${b.booking_time}')">✅ Confirm</button>
-        <button class="bp-btn" style="font-size:10px;border-color:#fca5a5;color:#fca5a5;" onclick="bpActionBooking('${b.id}','declined','${nmSafe(b.customer_phone)}','${nmSafe(b.customer_name)}','${b.booking_date}','${b.booking_time}')">❌ Decline</button>
-        <button class="bp-btn" style="font-size:10px;border-color:#93c5fd;color:#93c5fd;" onclick="bpReschedulePrompt('${b.id}','${nmSafe(b.customer_phone)}','${nmSafe(b.customer_name)}')">🔄 Reschedule</button>
-      </div>` : `
-      <div style="padding-left:50px;margin-top:8px;">
-        <span style="font-size:11px;color:var(--white-dim);">Responded ${b.status === 'confirmed' ? '✅' : b.status === 'rescheduled' ? '🔄' : '❌'} — ${b.updated_at ? new Date(b.updated_at).toLocaleDateString('en-ZA') : ''}</span>
-      </div>`}
-    </div>`).join('');
+  let num = toNumber.replace(/[^0-9]/g, '');
+  if (num.startsWith('0') && num.length === 10) num = '27' + num.slice(1);
+  if (!num.startsWith('27')) num = '27' + num;
+  try {
+    await fetch('https://api.bulksms.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Authorization': 'Basic ' + btoa(BULKSMS_TOKEN_ID + ':' + BULKSMS_TOKEN_SECRET), 'Content-Type': 'application/json' },
+      body: JSON.stringify([{ to: num, body: message }])
+    });
+  } catch(e) { console.warn('SMS failed:', e); }
 }
 
-async function bpActionBooking(bookingId, newStatus, custPhone, custName, date, time) {
-  const myListing = getMyListing();
-  const bizName = myListing ? myListing.name : 'the business';
-
-  const { error } = await _supa.from('bookings').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', bookingId);
-  if (error) { bpToast('❌ Update failed'); return; }
-
-  // Update local state
-  const b = _allBookings.find(x => String(x.id) === String(bookingId));
-  if (b) b.status = newStatus;
-  bpRenderBookings();
-  bpUpdateBookingBadge();
-
-  // SMS notification to customer
-  if (custPhone) {
-    let smsMsg = '';
-    if (newStatus === 'confirmed') {
-      smsMsg = `✅ Your booking at ${bizName} is CONFIRMED!\n\nDate: ${date} at ${time}\n\nSee you then! – NoaMark`;
-    } else if (newStatus === 'declined') {
-      smsMsg = `Your booking at ${bizName} could not be accommodated at this time.\n\nPlease contact them directly to arrange an alternative. – NoaMark`;
-    }
-    if (smsMsg) nmSendSMS(custPhone, smsMsg);
+function bmFlashNotifBadge() {
+  const dot = document.getElementById('bp-notif-dot');
+  if (dot) dot.classList.add('show');
+  const badge = document.getElementById('bp-bk-badge');
+  if (badge) {
+    badge.style.display = 'inline';
+    badge.textContent = (parseInt(badge.textContent || '0') || 0) + 1;
   }
-  bpToast(newStatus === 'confirmed' ? '✅ Booking confirmed — customer notified by SMS' : '❌ Booking declined — customer notified');
 }
 
-function bpReschedulePrompt(bookingId, custPhone, custName) {
-  const newDate = prompt('Enter new date (YYYY-MM-DD):');
-  if (!newDate) return;
-  const newTime = prompt('Enter new time (HH:MM):');
-  if (!newTime) return;
-  bpRescheduleBooking(bookingId, custPhone, custName, newDate, newTime);
-}
-
-async function bpRescheduleBooking(bookingId, custPhone, custName, newDate, newTime) {
-  const myListing = getMyListing();
-  const bizName = myListing ? myListing.name : 'the business';
-
-  const { error } = await _supa.from('bookings').update({
-    status: 'rescheduled',
-    booking_date: newDate,
-    booking_time: newTime,
-    updated_at: new Date().toISOString()
-  }).eq('id', bookingId);
-
-  if (error) { bpToast('❌ Reschedule failed'); return; }
-
-  const b = _allBookings.find(x => String(x.id) === String(bookingId));
-  if (b) { b.status = 'rescheduled'; b.booking_date = newDate; b.booking_time = newTime; }
-  bpRenderBookings();
-  bpUpdateBookingBadge();
-
-  if (custPhone) {
-    const smsMsg = `🔄 Your booking at ${bizName} has been rescheduled.\n\nNew Date: ${newDate} at ${newTime}\n\nPlease confirm with the business if needed. – NoaMark`;
-    nmSendSMS(custPhone, smsMsg);
-  }
-  bpToast('🔄 Booking rescheduled — customer notified by SMS');
-}
-
-// ── Availability Settings ─────────────────────────────────────
-const _DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-let _bpAvailDays = [true,true,true,true,true,false,false];
-
-function bpRenderAvailabilityGrid() {
-  const grid = document.getElementById('bp-avail-grid');
-  if (!grid) return;
-  grid.innerHTML = _DAYS.map((d,i) => `
-    <div onclick="bpToggleDay(${i})" id="bp-avday-${i}" style="padding:10px 12px;border:2px solid ${_bpAvailDays[i]?'var(--green-dark)':'var(--border-soft)'};cursor:pointer;text-align:center;background:${_bpAvailDays[i]?'rgba(22,101,52,.08)':'transparent'};transition:all .2s;">
-      <div style="font-size:12px;font-weight:700;color:${_bpAvailDays[i]?'var(--green-dark)':'var(--white-dim)'};">${d.slice(0,3)}</div>
-      <div style="font-size:10px;color:${_bpAvailDays[i]?'#86efac':'var(--white-dim)'};margin-top:2px;">${_bpAvailDays[i]?'Open':'Closed'}</div>
-    </div>`).join('');
-}
-
-function bpToggleDay(i) {
-  _bpAvailDays[i] = !_bpAvailDays[i];
-  bpRenderAvailabilityGrid();
-}
-
-async function bpLoadAvailability() {
-  const myListing = getMyListing();
-  if (!myListing) return;
-  const { data } = await _supa.from('business_availability').select('*').eq('listing_id', myListing.id).maybeSingle();
-  if (data) {
-    _bpAvailDays = [data.day_0,data.day_1,data.day_2,data.day_3,data.day_4,data.day_5,data.day_6];
-    const openEl  = document.getElementById('bp-avail-open');
-    const closeEl = document.getElementById('bp-avail-close');
-    if (openEl  && data.open_time)  openEl.value  = data.open_time;
-    if (closeEl && data.close_time) closeEl.value = data.close_time;
-  }
-  bpRenderAvailabilityGrid();
-}
-
-async function bpSaveAvailability() {
-  const myListing = getMyListing();
-  if (!myListing) { bpToast('No listing found'); return; }
-  const openTime  = document.getElementById('bp-avail-open').value  || '08:00';
-  const closeTime = document.getElementById('bp-avail-close').value || '17:00';
-  const payload = {
-    listing_id: myListing.id,
-    day_0: _bpAvailDays[0], day_1: _bpAvailDays[1], day_2: _bpAvailDays[2],
-    day_3: _bpAvailDays[3], day_4: _bpAvailDays[4], day_5: _bpAvailDays[5],
-    day_6: _bpAvailDays[6],
-    open_time: openTime, close_time: closeTime, updated_at: new Date().toISOString()
-  };
-  const { error } = await _supa.from('business_availability').upsert(payload, { onConflict: 'listing_id' });
-  if (error) { bpToast('❌ Save failed: ' + error.message); return; }
-  bpToast('✅ Availability saved! Customers will see your booking hours.');
-}
-
-// ── Close booking modal on ESC ──────────────────────────────
+// ── ESC key closes booking modal ──────────────────────────────
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
     const bm = document.getElementById('booking-modal');
     if (bm && bm.style.display === 'flex') closeBookingModal();
   }
 });
+
 
 // ══════════════════════════════════════════════════════════════
 // ████  END BOOKINGS SYSTEM  ███████████████████████████████████
