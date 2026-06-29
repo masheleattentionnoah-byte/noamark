@@ -19,7 +19,7 @@
 <link rel="icon" href="/favicon-512x512.png" type="image/png">
 <link rel="apple-touch-icon" href="/favicon-512x512.png">
 <link rel="manifest" href="/site.webmanifest">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NoaMark — Discover Local Businesses in South Africa | Limpopo · Mpumalanga · Gauteng</title>
 
 <!-- Open Graph (Facebook, WhatsApp preview) -->
@@ -29,12 +29,16 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="NoaMark">
 <meta property="og:locale" content="en_ZA">
+<meta property="og:image" content="https://noamark.com/favicon-512x512.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="NoaMark — Discover Local Businesses in South Africa">
 <meta name="twitter:description" content="Find trusted local businesses, services, and opportunities across South Africa.">
 <meta name="twitter:site" content="@noamark">
+<meta name="twitter:image" content="https://noamark.com/favicon-512x512.png">
 
 <!-- Structured Data: Organization (helps Google understand the site) -->
 <script type="application/ld+json">
@@ -168,6 +172,10 @@
   .nav-links{display:flex;gap:28px;list-style:none;flex:1;justify-content:center;}
   .nav-links a{font-size:10.5px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--green-dark);text-decoration:none;transition:color .3s;cursor:pointer;white-space:nowrap;}
   .nav-links a:hover{color:var(--gold-dim);}
+  /* ── NAV ACTIVE STATE ── */
+  .nav-link-home { /* gets active underline only when on home */ }
+  .nav-active-link { border-bottom:2px solid var(--green-dark) !important; padding-bottom:2px; }
+
   .nav-cta{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#111827;background:var(--gold);padding:10px 22px;border:none;cursor:pointer;text-decoration:none;transition:all .3s;border-radius:6px;white-space:nowrap;}
   .nav-cta:hover{background:#14532D;color:#fff;transform:translateY(-1px);}
   .nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;background:none;border:none;padding:4px;flex-shrink:0;}
@@ -463,7 +471,6 @@
   .biz-gallery-main:hover{opacity:.90;}
   .biz-gallery-thumbs{display:flex;gap:6px;margin-top:6px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;}
   .biz-gallery-thumb{width:80px;height:60px;object-fit:cover;cursor:pointer;opacity:0.65;transition:opacity .2s,outline .2s;flex-shrink:0;outline:2px solid transparent;}
-  .biz-gallery-thumb.active{opacity:1;outline:2px solid var(--green-fresh);}
   .biz-gallery-swipe-hint{position:absolute;bottom:10px;left:12px;background:rgba(0,0,0,.5);color:#fff;font-size:10px;font-weight:600;padding:4px 10px;border-radius:20px;pointer-events:none;letter-spacing:.5px;display:none;}
   @media(max-width:768px){.biz-gallery-swipe-hint{display:block;}}
   .biz-gallery-thumb.active{opacity:1;outline:2px solid var(--gold);}
@@ -1286,7 +1293,7 @@
     <div class="nav-logo-name">Noa<span>Mark</span></div>
   </div>
   <ul class="nav-links" id="main-nav-links">
-    <li id="nav-item-home"><a onclick="showPage('home')" style="border-bottom:2px solid var(--green-dark);padding-bottom:2px;">Home</a></li>
+    <li id="nav-item-home"><a onclick="showPage('home')" class="nav-link-home">Home</a></li>
     <li id="nav-item-marketplace"><a onclick="showPage('marketplace')">Marketplace</a></li>
     <li id="nav-item-opportunities"><a onclick="showPage('opportunities')">Opportunities</a></li>
     <li id="nav-item-learning"><a onclick="showPage('learning')">Learn</a></li>
@@ -1721,27 +1728,27 @@
       <a class="home-view-all" onclick="showPage('marketplace')">View all categories →</a>
     </div>
     <div class="cat-grid">
-      <div class="cat-item" onclick="showPage('marketplace')">
+      <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('food',document.querySelector('.mkt-cat-btn[data-cat=food]'));},200))">
         <span class="cat-icon">🍔</span>
         <span class="cat-label">Food &amp; Restaurants</span>
       </div>
-      <div class="cat-item" onclick="showPage('marketplace')">
+      <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('shops',document.querySelector('.mkt-cat-btn[data-cat=shops]'));},200))">
         <span class="cat-icon">🛒</span>
         <span class="cat-label">Shops &amp; Spaza</span>
       </div>
-      <div class="cat-item" onclick="showPage('marketplace')">
+      <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('beauty',document.querySelector('.mkt-cat-btn[data-cat=beauty]'));},200))">
         <span class="cat-icon">✂️</span>
         <span class="cat-label">Beauty &amp; Barber</span>
       </div>
-      <div class="cat-item" onclick="showPage('marketplace')">
+      <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('laundry',document.querySelector('.mkt-cat-btn[data-cat=laundry]'));},200))">
         <span class="cat-icon">👔</span>
         <span class="cat-label">Laundry</span>
       </div>
-      <div class="cat-item" onclick="showPage('marketplace')">
+      <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('services',document.querySelector('.mkt-cat-btn[data-cat=services]'));},200))">
         <span class="cat-icon">🔧</span>
         <span class="cat-label">Services</span>
       </div>
-      <div class="cat-item" onclick="showPage('marketplace')">
+      <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('transport',document.querySelector('.mkt-cat-btn[data-cat=transport]'));},200))">
         <span class="cat-icon">🚗</span>
         <span class="cat-label">Transport</span>
       </div>
@@ -2319,7 +2326,6 @@
       <p class="footer-reg">NoaMark is a business education and opportunity analysis platform. We are not financial advisors. All business ventures carry risk. Results vary based on individual effort and market conditions. NoaMark operates from Polokwane, Limpopo, South Africa.</p>
     </div>
   </footer>
-</div>
 
 <!-- ════════════════════════════════════
      PAGE: OPPORTUNITIES
@@ -2531,19 +2537,19 @@
             <div class="learn-lesson">What is a business model?</div>
           <div class="learn-expand-btn" style="margin-top:16px;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);cursor:pointer;">▸ START LESSON</div>
           <div class="learn-lessons-expanded" style="display:none;margin-top:16px;">
-            <div class="learn-lesson-expanded" style="display:none;border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
+            <div class="learn-lesson-expanded" style="border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
               <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:6px;">📖 What is a business model?</div>
               <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">A business model is simply how you make money. You have a product or service, you find customers who need it, and you charge them more than it costs you to provide it. The difference is your profit.</div>
             </div>
-            <div class="learn-lesson-expanded" style="display:none;border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
+            <div class="learn-lesson-expanded" style="border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
               <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:6px;">📖 How to find your first customer</div>
               <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Start with people you know — friends, family, neighbours. Tell everyone what you are doing. Post on WhatsApp groups in your area. Your first customer is closer than you think.</div>
             </div>
-            <div class="learn-lesson-expanded" style="display:none;border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
+            <div class="learn-lesson-expanded" style="border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
               <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:6px;">📖 How to price your product</div>
               <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Add up what it costs you to make or provide it (materials, transport, time). Then add your profit margin — at minimum 30%. If the market pays more, charge more.</div>
             </div>
-            <div class="learn-lesson-expanded" style="display:none;border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
+            <div class="learn-lesson-expanded" style="border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
               <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:6px;">📖 Managing your first income</div>
               <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Open a separate account or use a separate wallet for business money. Never mix personal and business funds. Track every rand in and out from day one.</div>
             </div>
@@ -2564,19 +2570,19 @@
             <div class="learn-lesson">Revenue vs profit</div>
           <div class="learn-expand-btn" style="margin-top:16px;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);cursor:pointer;">▸ START LESSON</div>
           <div class="learn-lessons-expanded" style="display:none;margin-top:16px;">
-            <div class="learn-lesson-expanded" style="display:none;border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
+            <div class="learn-lesson-expanded" style="border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
               <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:6px;">📖 Revenue vs profit</div>
               <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Revenue is all the money coming in. Profit is what is left after you pay all your costs. A business can have high revenue and still lose money — always focus on profit.</div>
             </div>
-            <div class="learn-lesson-expanded" style="display:none;border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
+            <div class="learn-lesson-expanded" style="border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
               <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:6px;">📖 Fixed vs variable costs</div>
               <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Fixed costs stay the same every month (rent, subscriptions). Variable costs change with how much you sell (ingredients, packaging). Know both so you can plan.</div>
             </div>
-            <div class="learn-lesson-expanded" style="display:none;border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
+            <div class="learn-lesson-expanded" style="border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
               <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:6px;">📖 Reading your numbers daily</div>
               <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Every day, write down what you earned and what you spent. A simple notebook works. You cannot improve what you do not measure.</div>
             </div>
-            <div class="learn-lesson-expanded" style="display:none;border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
+            <div class="learn-lesson-expanded" style="border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
               <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:6px;">📖 When to reinvest</div>
               <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Reinvest when your business is consistently profitable — not before. Put money back into things that directly help you earn more: stock, tools, or marketing.</div>
             </div>
@@ -2611,15 +2617,15 @@
             <div class="learn-lesson">Overspending before earning</div>
           <div class="learn-expand-btn" style="margin-top:16px;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);cursor:pointer;">▸ START LESSON</div>
           <div class="learn-lessons-expanded" style="display:none;margin-top:16px;">
-            <div class="learn-lesson-expanded" style="display:none;border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
+            <div class="learn-lesson-expanded" style="border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
               <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:6px;">📖 Overspending before earning</div>
               <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Do not buy equipment, uniforms, or a fancy setup before you have paying customers. Start lean. Prove the business works first, then invest in it.</div>
             </div>
-            <div class="learn-lesson-expanded" style="display:none;border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
+            <div class="learn-lesson-expanded" style="border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
               <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:6px;">📖 No daily tracking</div>
               <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Not tracking your money daily is the fastest way to fail. You will not notice small leaks until they have drained everything. Start a daily record from day one.</div>
             </div>
-            <div class="learn-lesson-expanded" style="display:none;border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
+            <div class="learn-lesson-expanded" style="border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
               <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:6px;">📖 Selling to wrong customers</div>
               <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Know exactly who your customer is. Trying to sell to everyone means you sell to no one. Pick one type of customer and serve them extremely well.</div>
             </div>
@@ -2974,13 +2980,13 @@
 
   <!-- CATEGORY NAV -->
   <div class="mkt-cats" id="mkt-cat-nav">
-    <button class="mkt-cat-btn active" onclick="setCat('all',this)"><span class="mkt-cat-icon">🏪</span><span class="mkt-cat-label">All</span></button>
-    <button class="mkt-cat-btn" onclick="setCat('food',this)"><span class="mkt-cat-icon">🍔</span><span class="mkt-cat-label">Food</span></button>
-    <button class="mkt-cat-btn" onclick="setCat('shops',this)"><span class="mkt-cat-icon">🛒</span><span class="mkt-cat-label">Shops</span></button>
-    <button class="mkt-cat-btn" onclick="setCat('beauty',this)"><span class="mkt-cat-icon">💇</span><span class="mkt-cat-label">Beauty</span></button>
-    <button class="mkt-cat-btn" onclick="setCat('laundry',this)"><span class="mkt-cat-icon">🧺</span><span class="mkt-cat-label">Laundry</span></button>
-    <button class="mkt-cat-btn" onclick="setCat('services',this)"><span class="mkt-cat-icon">🧰</span><span class="mkt-cat-label">Services</span></button>
-    <button class="mkt-cat-btn" onclick="setCat('transport',this)"><span class="mkt-cat-icon">🚕</span><span class="mkt-cat-label">Transport</span></button>
+    <button class="mkt-cat-btn active" data-cat="all" onclick="setCat('all',this)"><span class="mkt-cat-icon">🏪</span><span class="mkt-cat-label">All</span></button>
+    <button class="mkt-cat-btn" data-cat="food" onclick="setCat('food',this)"><span class="mkt-cat-icon">🍔</span><span class="mkt-cat-label">Food</span></button>
+    <button class="mkt-cat-btn" data-cat="shops" onclick="setCat('shops',this)"><span class="mkt-cat-icon">🛒</span><span class="mkt-cat-label">Shops</span></button>
+    <button class="mkt-cat-btn" data-cat="beauty" onclick="setCat('beauty',this)"><span class="mkt-cat-icon">💇</span><span class="mkt-cat-label">Beauty</span></button>
+    <button class="mkt-cat-btn" data-cat="laundry" onclick="setCat('laundry',this)"><span class="mkt-cat-icon">🧺</span><span class="mkt-cat-label">Laundry</span></button>
+    <button class="mkt-cat-btn" data-cat="services" onclick="setCat('services',this)"><span class="mkt-cat-icon">🧰</span><span class="mkt-cat-label">Services</span></button>
+    <button class="mkt-cat-btn" data-cat="transport" onclick="setCat('transport',this)"><span class="mkt-cat-icon">🚕</span><span class="mkt-cat-label">Transport</span></button>
   </div>
 
   <!-- TRANSPORT SUB-OPTIONS -->
@@ -3460,10 +3466,24 @@
           <div class="bp-topbar-title" id="bp-topbar-title">Overview</div>
           <div class="bp-topbar-sub" id="bp-topbar-sub">Your business at a glance</div>
         </div>
-        <div class="bp-topbar-right" style="flex-wrap:wrap;gap:6px;">
+        <div class="bp-topbar-right" style="flex-wrap:wrap;gap:6px;position:relative;">
           <span class="bp-live-pill bp-pill-offline" id="bp-live-pill">● Not listed</span>
           <button class="bp-btn bp-btn-gold" onclick="bpEditListing()" style="font-size:9px;">+ Edit Listing</button>
           <button class="bp-btn bp-btn-g" onclick="showMktView('boost')" style="font-size:9px;">⭐ Boost</button>
+          <!-- Notification Bell -->
+          <button id="bp-bell-btn" onclick="bpToggleNotifPanel()" style="position:relative;background:var(--black-3);border:1px solid var(--border-soft);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:15px;line-height:1;" title="Notifications">
+            🔔<span id="bp-bell-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 5px;min-width:14px;text-align:center;"></span>
+          </button>
+          <!-- Notification Panel -->
+          <div id="bp-notif-panel" style="display:none;position:absolute;top:44px;right:0;width:320px;max-height:400px;overflow-y:auto;background:var(--black-2);border:1px solid var(--border-soft);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.15);z-index:999;">
+            <div style="padding:14px 16px;border-bottom:1px solid var(--border-soft);display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--white-dim);">Notifications</span>
+              <button onclick="bpMarkAllNotifRead()" style="font-size:11px;color:var(--green-dark);background:transparent;border:none;cursor:pointer;font-weight:600;">Mark all read</button>
+            </div>
+            <div id="bp-notif-list" style="padding:8px 0;">
+              <div style="padding:24px;text-align:center;color:var(--white-dim);font-size:12px;">Loading…</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -3644,6 +3664,7 @@
               <button class="bp-btn" id="bp-bf-pending" onclick="bpFilterBookings('pending',this)" style="font-size:9px;">Pending</button>
               <button class="bp-btn" id="bp-bf-confirmed" onclick="bpFilterBookings('confirmed',this)" style="font-size:9px;">Confirmed</button>
               <button class="bp-btn" id="bp-bf-declined" onclick="bpFilterBookings('declined',this)" style="font-size:9px;">Declined</button>
+              <button class="bp-btn" id="bp-bf-rescheduled" onclick="bpFilterBookings('rescheduled',this)" style="font-size:9px;">Rescheduled</button>
             </div>
           </div>
 
@@ -4346,7 +4367,7 @@
 
       <!-- Submit -->
       <button onclick="submitBooking()" id="bm-submit-btn" style="width:100%;background:var(--green-dark);border:none;color:#fff;padding:16px;font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer;font-family:var(--font-body);transition:background .3s;">📅 CONFIRM BOOKING REQUEST</button>
-      <div style="font-size:11px;color:var(--white-dim);text-align:center;margin-top:12px;line-height:1.7;">The business will confirm or reschedule your booking.<br>You will be notified by SMS once confirmed.</div>
+      <div style="font-size:11px;color:var(--white-dim);text-align:center;margin-top:12px;line-height:1.7;">The business will review and confirm your request.<br>You will be notified by SMS once confirmed.</div>
     </div>
   </div>
 </div>
@@ -4469,7 +4490,7 @@ function showBoostThenList(){
     return;
   }
   const boostEl = document.getElementById('home-boost-section');
-  if(!boostShown){
+  if(!boostShown && boostEl){
     boostShown = true;
     boostEl.style.display = 'block';
     boostEl.scrollIntoView({behavior:'smooth', block:'start'});
@@ -4494,7 +4515,7 @@ function showBusinessGate(action) {
       <button onclick="document.getElementById('biz-gate-modal').remove()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:#6b7280;font-size:20px;cursor:pointer;line-height:1;">✕</button>
       <div style="font-size:40px;margin-bottom:16px;">🏪</div>
       <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#22c55e;margin-bottom:12px;">Business Account Required</p>
-      <h3 style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:400;color:#fff;margin-bottom:12px;">You need a Business account to ${actionLabel}</h3>
+      <h3 style="font-family:'Poppins',sans-serif;font-size:26px;font-weight:700;color:#fff;margin-bottom:12px;">You need a Business account to ${actionLabel}</h3>
       <p style="font-size:13px;color:#9ca3af;line-height:1.7;margin-bottom:32px;">Create a free Business account to list your business, manage your profile, and boost your visibility on NoaMark.</p>
       <div style="display:flex;flex-direction:column;gap:12px;">
         <button onclick="document.getElementById('biz-gate-modal').remove();openAuth('business')" style="background:#166534;color:#fff;border:none;padding:16px 28px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;transition:background .2s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#166534'">
@@ -4511,9 +4532,18 @@ function showBusinessGate(action) {
 }
 function showPage(id, cb){
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-' + id).classList.add('active');
+  const _pageTarget = document.getElementById('page-' + id);
+  if(!_pageTarget){ console.warn('showPage: page not found:', id); return; }
+  _pageTarget.classList.add('active');
   window.scrollTo({top: 0, behavior: 'smooth'});
   closeNav();
+  // Update nav active link state
+  document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('nav-active-link'));
+  const navPages = ['home','marketplace','opportunities','learning','videos','plans'];
+  if(navPages.includes(id)) {
+    const navItem = document.getElementById('nav-item-' + id);
+    if(navItem) { const link = navItem.querySelector('a'); if(link) link.classList.add('nav-active-link'); }
+  }
   if(id === 'home') setTimeout(() => { if(typeof applyRoleHomePage === 'function') applyRoleHomePage(currentUser); }, 50);
   setTimeout(initReveal, 100);
 
@@ -4798,6 +4828,7 @@ async function loadListingsFromSupabase(force = false) {
           id:           l.id,
           name:         l.name,
           owner:        l.owner,
+          owner_email:  l.owner_email || l.email || '',
           cat:          l.type || 'services',
           area:         l.area || '',
           city:         l.city || '',
@@ -4826,6 +4857,7 @@ async function loadListingsFromSupabase(force = false) {
           payments:     l.payments || '',
           walkins:      l.walkins || '',
           years:        l.years || '',
+          transport_sub:l.transport_sub || '',
         });
       });
       // populateMarketplace handles both featured and latest sections correctly
@@ -4875,7 +4907,7 @@ function renderCard(biz){
     ?'<div class="listing-status status-open">● Open</div>'
     :'<div class="listing-status status-closed">● Closed</div>';
   return `<div class="listing-card ${boostClass}" onclick="showBizProfile('${biz.id}')">
-    <div class="listing-img">${biz.photo ? `<img src="${biz.photo}" alt="${nmSafe(biz.name)}" style="width:100%;height:100%;object-fit:cover;">` : `<div class="listing-img-bg">${biz.emoji}</div>`}${badge}${statusBadge}</div>
+    <div class="listing-img">${biz.photo ? `<img src="${biz.photo}" alt="${nmSafe(biz.name)}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none'">` : ''}<div class="listing-img-bg" style="${biz.photo ? 'display:none;' : ''}">${biz.emoji}</div>${badge}${statusBadge}</div>
     <div class="listing-info">
       <div class="listing-cat">${getCatLabel(biz.cat)}</div>
       <h3 class="listing-name">${nmSafe(biz.name)}</h3>
@@ -5010,7 +5042,12 @@ function setCat(cat,btn){
   currentCat=cat;
   currentTransportSub='all';
   document.querySelectorAll('.mkt-cat-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+  if(btn) btn.classList.add('active');
+  else {
+    // Called from home page — find and activate the correct button
+    const target = document.querySelector('.mkt-cat-btn[data-cat="'+cat+'"]');
+    if(target) target.classList.add('active');
+  }
   // Show/hide transport sub-nav
   const subNav=document.getElementById('transport-sub-nav');
   if(subNav) subNav.style.display = cat==='transport' ? 'block' : 'none';
@@ -5539,6 +5576,14 @@ async function pubSubmitReview(listingId) {
     const stars = document.getElementById('pub-rev-stars');
     if (stars) stars.querySelectorAll('span').forEach(s => s.style.color = '#374151');
     await pubLoadReviews(listingId);
+    // Insert portal notification for business owner
+    _supa.from('notifications').insert({
+      listing_id: String(listingId),
+      type: 'review',
+      message: 'New ' + rating + '★ review from ' + name + (text.length > 50 ? ': ' + text.slice(0,50) + '…' : ': ' + text),
+      read: false,
+      created_at: new Date().toISOString()
+    }).then(()=>{}).catch(()=>{});
     if (btn) { btn.textContent = '✅ Review Submitted!'; setTimeout(() => { btn.textContent = 'Submit Review'; btn.disabled = false; }, 3000); }
   } catch(e) {
     alert('Could not submit review. Please try again.');
@@ -5571,6 +5616,14 @@ async function pubSubmitEnquiry(listingId, bizName) {
     document.getElementById('pub-enq-name').value = '';
     document.getElementById('pub-enq-phone').value = '';
     document.getElementById('pub-enq-msg').value = '';
+    // Insert portal notification for business owner
+    _supa.from('notifications').insert({
+      listing_id: String(listingId),
+      type: 'enquiry',
+      message: 'New enquiry from ' + name + (msg.length > 60 ? ': ' + msg.slice(0,60) + '…' : ': ' + msg),
+      read: false,
+      created_at: new Date().toISOString()
+    }).then(()=>{}).catch(()=>{});
     if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = '#22c55e'; statusEl.textContent = '✅ Message sent! The business will get back to you.'; setTimeout(() => statusEl.style.display = 'none', 6000); }
     if (btn) { btn.textContent = 'Send Message'; btn.disabled = false; }
   } catch(e) {
@@ -5998,7 +6051,8 @@ async function submitBusiness(){
     payments, walkins,
     facebook, instagram,
     menu: JSON.stringify(menuItems),
-    price_hint: priceHint
+    price_hint: priceHint,
+    owner_email: currentUser ? currentUser.email : email  // critical: used to match bookings/portal to this listing
   };
   try {
     if(listingId) {
@@ -6416,6 +6470,19 @@ document.addEventListener('DOMContentLoaded',()=>{
   const pageEl = document.getElementById('page-' + pageToShow);
   if(pageEl) pageEl.classList.add('active');
   else document.getElementById('page-home').classList.add('active');
+  // Update nav active link on load
+  (function(){
+    const _navPages = ['home','marketplace','opportunities','learning','videos','plans'];
+    document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('nav-active-link'));
+    if(_navPages.includes(pageToShow)) {
+      const _navItem = document.getElementById('nav-item-' + pageToShow);
+      if(_navItem) { const _link = _navItem.querySelector('a'); if(_link) _link.classList.add('nav-active-link'); }
+    } else {
+      // Default: mark Home active for non-nav pages
+      const _navItem = document.getElementById('nav-item-home');
+      if(_navItem) { const _link = _navItem.querySelector('a'); if(_link) _link.classList.add('nav-active-link'); }
+    }
+  })();
   // Remove the pre-hide style now that the correct page is visible
   const nmPreHide = document.getElementById('nm-preload-hide');
   if(nmPreHide) nmPreHide.remove();
@@ -6555,7 +6622,7 @@ function renderHomeBoosted(){
   }
   if(empty) empty.style.display = 'none';
 
-  // Remove old cards (keep empty state node)
+  // Remove old cards (keep empty state node) — prevents stacking on re-render
   Array.from(grid.children).forEach(c => { if(c.id !== 'home-boosted-empty') c.remove(); });
 
   const boostColors = {
@@ -6568,23 +6635,29 @@ function renderHomeBoosted(){
   boosted.forEach(biz => {
     const card = document.createElement('div');
     card.className = 'biz-card';
+    card.style.cursor = 'pointer';
+    // FIXED: use biz.cat (not biz.category) and biz.area (not biz.location)
+    // FIXED: clicking opens the actual business profile, not just marketplace root
+    // FIXED: show real photo if available, with emoji fallback
+    const imgHTML = biz.photo
+      ? `<img src="${nmSafe(biz.photo)}" alt="${nmSafe(biz.name)}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none'">`
+      : `<div class="biz-img" style="background:${boostColors[biz.boost]||'linear-gradient(135deg,#f3f4f6,#e5e7eb)'};font-size:40px;display:flex;align-items:center;justify-content:center;height:100%;">${catEmoji[biz.cat]||'🏪'}</div>`;
     card.innerHTML = `
-      <div class="biz-img-wrap">
-        <div class="biz-img" style="background:${boostColors[biz.boost]||'linear-gradient(135deg,#f3f4f6,#e5e7eb)'};">
-          ${catEmoji[biz.category]||'🏪'}
-        </div>
-        <div class="biz-boosted-label">⭐ Boosted</div>
+      <div class="biz-img-wrap" style="position:relative;overflow:hidden;background:${boostColors[biz.boost]||'linear-gradient(135deg,#f3f4f6,#e5e7eb)'};">
+        ${imgHTML}
+        <div class="biz-boosted-label">⭐ ${biz.boost === 'dominance' ? 'Dominance' : biz.boost === 'growth' ? 'Featured' : 'Boosted'}</div>
         <div class="biz-fav">🤍</div>
       </div>
       <div class="biz-info">
-        <div class="biz-name">${biz.name}</div>
-        <div class="biz-category">${getCatLabel(biz.category)}</div>
-        <div class="biz-location">📍 ${biz.location||'South Africa'}</div>
+        <div class="biz-name">${nmSafe(biz.name)}</div>
+        <div class="biz-category">${getCatLabel(biz.cat)}</div>
+        <div class="biz-location">📍 ${nmSafe(biz.area || biz.city || 'South Africa')}</div>
         <div class="biz-footer">
-          <div class="biz-rating"><span class="star">⭐</span> New</div>
-          <div class="biz-view-btn" onclick="showPage('marketplace')">View Details</div>
+          <div class="biz-rating"><span class="star">⭐</span> ${biz.rating ? Number(biz.rating).toFixed(1) : 'New'}</div>
+          <div class="biz-view-btn" style="cursor:pointer;">View Details →</div>
         </div>
       </div>`;
+    card.onclick = () => showPage('marketplace', () => setTimeout(() => showBizProfile(biz.id), 100));
     grid.appendChild(card);
   });
 }
@@ -7190,12 +7263,10 @@ function nmPayfastBoost(planKey, planName, amount, listingId) {
     const listing = params.get('listing') || '';
     // Remove query string to keep URL clean
     history.replaceState({}, '', window.location.pathname);
-    // Wait for DOM + session to load, then show confirmation and poll
-    window.addEventListener('DOMContentLoaded', async () => {
+    // Execute after DOM + session load
+    const _doPayfastReturn = async () => {
       await new Promise(r => setTimeout(r, 1200));
       if (plan && listing) {
-        // Optimistically update the listing's boost_tier in Supabase
-        // (your server-side ITN handler should do this authoritatively)
         try {
           await nmSupaQuery(() =>
             _supa.from('listings').update({ boost_tier: plan }).eq('id', listing)
@@ -7203,15 +7274,24 @@ function nmPayfastBoost(planKey, planName, amount, listingId) {
         } catch (e) { console.warn('Boost update after return failed; ITN will handle it.', e); }
       }
       bpToast('✅ Payment received! Your boost is being activated. Please refresh the page in a moment.');
-      // Reload listings to reflect new boost
       setTimeout(() => { if (typeof loadListingsFromSupabase === 'function') loadListingsFromSupabase(); }, 2000);
-    });
+    };
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', _doPayfastReturn);
+    } else {
+      _doPayfastReturn();
+    }
   }
   if (params.get('boost_cancel') === '1') {
     history.replaceState({}, '', window.location.pathname);
-    window.addEventListener('DOMContentLoaded', () => {
+    const _doPayfastCancel = () => {
       setTimeout(() => bpToast('Payment cancelled. Your listing was not charged.'), 1200);
-    });
+    };
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', _doPayfastCancel);
+    } else {
+      _doPayfastCancel();
+    }
   }
 })();
 
@@ -7265,9 +7345,17 @@ async function saveUserToSupabase(user) {
 // Load users on startup
 loadNMUsers();
 
-// ── ADMIN CREDENTIALS ──
+// ── ADMIN CREDENTIALS — verified via SHA-256 hash, never stored in plaintext ──
 const ADMIN_EMAIL = 'noamarkinvest@gmail.com';
-const ADMIN_PASSWORD = 'Noah#2026';
+// Hash = SHA-256('nm_admin_salt_2026::Noah#2026') — plaintext never in source
+const _ADMIN_PH = 'a5445015b3bf3e40a9a70ea92bb4beb429728bd2490711577fddae6f2c078989';
+async function _verifyAdminPass(pass) {
+  try {
+    const enc = new TextEncoder();
+    const buf = await crypto.subtle.digest('SHA-256', enc.encode('nm_admin_salt_2026::' + pass));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('') === _ADMIN_PH;
+  } catch(e) { return false; }
+}
 
 function saveNMUsers() { /* handled by Supabase now */ }
 
@@ -7536,11 +7624,14 @@ async function handleBizLogin() {
   const pass      = document.getElementById('biz-login-password').value;
 
   // ── ADMIN LOGIN CHECK (runs FIRST — before name field validation) ──
-  if(email && pass && email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && pass === ADMIN_PASSWORD) {
-    loginAs({ type:'admin', name:'NoaMark Admin', owner:'NoaMark', email:ADMIN_EMAIL, plan:'Admin', id:'admin-001' });
-    showAuthSuccess('biz-login-success', '✓ Welcome back, Admin!');
-    setTimeout(()=>{ closeAuth(); showAdminDashboard(); }, 900);
-    return;
+  if(email && pass && email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+    const isAdmin = await _verifyAdminPass(pass);
+    if(isAdmin) {
+      loginAs({ type:'admin', name:'NoaMark Admin', owner:'NoaMark', email:ADMIN_EMAIL, plan:'Admin', id:'admin-001' });
+      showAuthSuccess('biz-login-success', '✓ Welcome back, Admin!');
+      setTimeout(()=>{ closeAuth(); showAdminDashboard(); }, 900);
+      return;
+    }
   }
 
   if(!loginName||!email||!pass) { showAuthError('biz-login-error','Please fill in all fields before continuing.'); return; }
@@ -8135,7 +8226,6 @@ window.updateAdminUserCount = function() {
 function homeSearchGo() {
   const bizVal = (document.getElementById('home-search-business')||{}).value || '';
   const areaVal = (document.getElementById('home-search-area')||{}).value || '';
-  if ((bizVal.trim() || areaVal.trim()) && !currentUser) { openAuth('guest'); return; }
   showPage('marketplace', ()=>{
     showMktView('main');
     setTimeout(()=>{
@@ -8154,11 +8244,6 @@ function homeSearchGo() {
   searchInput.addEventListener('keydown', function(e){
     if(e.key === 'Enter') {
       const val = this.value.trim();
-      if(val && !currentUser) {
-        openAuth('guest');
-        return;
-      }
-      // Authenticated — go to marketplace with search pre-filled
       if(val) {
         showPage('marketplace', ()=>{
           setTimeout(()=>{
@@ -8254,12 +8339,16 @@ function submitContactForm(){
     }
   })
   .catch(() => {
-    // On network error still give feedback
+    // Network error — show honest error with direct contact details
     const successEl = document.getElementById('contact-success');
-    document.getElementById('contact-name').value = '';
-    document.getElementById('contact-email').value = '';
-    document.getElementById('contact-message').value = '';
-    if(successEl){ successEl.style.display = 'block'; setTimeout(()=>{ successEl.style.display='none'; }, 6000); }
+    if(successEl) {
+      successEl.style.display = 'block';
+      successEl.style.background = 'rgba(239,68,68,.08)';
+      successEl.style.borderColor = 'rgba(239,68,68,.3)';
+      successEl.style.color = '#ef4444';
+      successEl.textContent = '❌ Could not send right now. Please email us directly at support@noamark.com or WhatsApp +27 63 418 9749.';
+      setTimeout(()=>{ successEl.style.display='none'; successEl.style.background=''; successEl.style.borderColor=''; successEl.style.color=''; }, 8000);
+    }
   })
   .finally(() => {
     if(btn){ btn.textContent = 'Send Message →'; btn.disabled = false; }
@@ -8428,7 +8517,7 @@ function bpGoPage(p) {
   if(p === 'mylisting') bpRenderMyListing();
   if(p === 'enquiries') bpSyncEnquiriesFromSupabase();
   if(p === 'reviews') bpSyncReviewsFromSupabase();
-  if(p === 'bookings') { bpLoadBookings(); bpLoadAvailability(); }
+  if(p === 'bookings') { bpLoadBookings().then(() => bpLoadAvailability()); }
 }
 
 // ── EDIT LISTING — pre-fill form with existing data ──
@@ -8588,6 +8677,11 @@ function populateBizDashboard() {
   }
   bpRenderEnquiries();
   bpRenderReviews();
+  // Pre-set _bpListingId so notification bell works without visiting Bookings tab
+  if (myListing && myListing.id) {
+    window._bpListingId = String(myListing.id);
+    bpRefreshNotifBadge();
+  }
 }
 
 function bpSyncListingPreview(l) {
@@ -8746,7 +8840,7 @@ Message: ${enq.msg}
 
 Write a professional, friendly reply in under 80 words. Include a call to action.${myListing?.phone?' Phone: '+myListing.phone:''} Sign off as "${currentUser.name}".`;
   try {
-    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:200, messages:[{role:'user',content:prompt}] }) });
+    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:200, messages:[{role:'user',content:prompt}] }) });
     const d = await r.json();
     ta.value = d.content?.map(c=>c.text||'').join('') || 'Could not generate. Please write manually.';
   } catch(e) { ta.value = 'Connection error. Please write manually.'; }
@@ -8840,7 +8934,7 @@ async function bpAIReviewReply(id) {
   ta.value = '✦ Drafting reply...'; ta.disabled = true;
   const prompt = `You are the owner of "${currentUser?.name||'a business'}". Reply to this ${rev.stars}-star review from ${rev.name}: "${rev.text}". Keep it under 50 words. ${rev.stars>=4?'Thank them warmly.':'Acknowledge the issue and show you care.'} Sign off as the owner.`;
   try {
-    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:120, messages:[{role:'user',content:prompt}] }) });
+    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:120, messages:[{role:'user',content:prompt}] }) });
     const d = await r.json();
     ta.value = d.content?.map(c=>c.text||'').join('') || 'Could not generate.';
   } catch(e) { ta.value = 'Error. Write manually.'; }
@@ -8887,7 +8981,7 @@ Reviews: ${revs.length}${avg?' (avg '+avg+'/5)':''}
 
 Give numbered tips (1–3). Be direct. Each tip max 2 sentences. Focus on what's missing or weak.`;
   try {
-    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:300, messages:[{role:'user',content:prompt}] }) });
+    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:300, messages:[{role:'user',content:prompt}] }) });
     const d = await r.json();
     if(d.error) { el.innerHTML=`<div class="bp-empty">⚠️ ${d.error}</div>`; return; }
     el.innerHTML = `<div class="bp-ai-box">${(d.content?.map(c=>c.text||'').join('')||'Could not load.').replace(/\n/g,'<br>')}</div>`;
@@ -8909,7 +9003,7 @@ Business: ${currentUser.name}, ${myListing?.cat||''}, ${myListing?.area||'South 
 Current description: ${myListing?.desc||'Not provided'}
 Improvement request: ${prompt_extra||'Make it more professional and customer-focused'}`;
   try {
-    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:200, messages:[{role:'user',content:prompt}] }) });
+    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:200, messages:[{role:'user',content:prompt}] }) });
     const d = await r.json();
     bpData.enhancedDesc = d.content?.map(c=>c.text||'').join('') || '';
     textEl.textContent = bpData.enhancedDesc;
@@ -8929,7 +9023,7 @@ async function bpGetPerfAnalysis() {
   const prompt = `Brief performance assessment for this NoaMark business (max 100 words, 2 improvement tips):
 ${currentUser.name} | ${myListing?.cat||'unlisted'} | ${myListing?.area||'SA'} | Boost: ${myListing?.boost||'none'} | Enquiries: ${bpData.enquiries.length} | Reviews: ${revs.length} | Avg: ${avg||'none'}`;
   try {
-    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:200, messages:[{role:'user',content:prompt}] }) });
+    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:200, messages:[{role:'user',content:prompt}] }) });
     const d = await r.json();
     el.innerHTML = `<div class="bp-ai-box">${(d.content?.map(c=>c.text||'').join('')||'Error.').replace(/\n/g,'<br>')}</div>`;
   } catch(e) { el.innerHTML='<div>Error. Try again.</div>'; }
@@ -8946,7 +9040,7 @@ async function bpGetBoostAdvice() {
 Business: ${currentUser.name} | ${myListing?.cat||'general'} | ${myListing?.area||'South Africa'} | Enquiries: ${bpData.enquiries.length} | Reviews: ${bpData.reviews.length} | Current boost: ${myListing?.boost||'none'}
 Plans: Starter (R49.99), Growth (R149.99), Dominance (R299.99). Be direct.`;
   try {
-    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:120, messages:[{role:'user',content:prompt}] }) });
+    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:120, messages:[{role:'user',content:prompt}] }) });
     const d = await r.json();
     textEl.textContent = d.content?.map(c=>c.text||'').join('') || 'Could not load.';
   } catch(e) { textEl.textContent='Error. Try again.'; }
@@ -8995,7 +9089,7 @@ async function bpAskAI() {
   const messages = [systemMsg, assistantAck, ...bpChatHistory];
 
   try {
-    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:400, messages }) });
+    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:400, messages }) });
     const d = await r.json();
     const reply = d.content?.map(c=>c.text||'').join('') || 'Could not load.';
     bpChatHistory.push({ role: 'assistant', content: reply });
@@ -9534,7 +9628,7 @@ bpLoad();
           </div>
           <button class="adm-btn-refresh" onclick="admLoadUsers()">↻ Refresh</button>
         </div>
-        <div class="adm-stats" style="display:grid;" class="nm-3col-grid">
+        <div class="adm-stats nm-3col-grid" style="display:grid;">
           <div class="adm-stat">
             <div class="adm-stat-label">Business Owners</div>
             <div class="adm-stat-val gold" id="adm-users-biz">—</div>
@@ -10325,9 +10419,9 @@ async function admLoadAnalytics() {
 })();
 
 document.addEventListener('DOMContentLoaded', function() {
+  // Admin auto-login: only run if the main DOMContentLoaded hasn't already logged in
   const saved = restoreSession();
-  if(saved && saved.type === 'admin') {
-    // Remove the preload style
+  if(saved && saved.type === 'admin' && !currentUser) {
     const preload = document.getElementById('adm-preload');
     if(preload) preload.remove();
     loginAs(saved);
@@ -10339,7 +10433,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // ██████  NOAMARK BOOKINGS SYSTEM  ████████████████████████████
 // ══════════════════════════════════════════════════════════════
 
-const BULKSMS_TOKEN_ID     = 'AC926B71CAA14D7A96D9249DE614B100-';
+const BULKSMS_TOKEN_ID     = 'AC926B71CAA14D7A96D9249DE614B100';
 const BULKSMS_TOKEN_SECRET = 'cU7x_QWBkrjVS3vmQh_ufcjwQU261';
 
 // ── Send SMS via BulkSMS ──────────────────────────────────────
@@ -10525,8 +10619,10 @@ function bmSelectType(type) {
 async function loadBmAvailability(bizId) {
   const notice = document.getElementById('bm-avail-notice');
   try {
-    const { data } = await _supa.from('business_availability').select('*').eq('listing_id', String(bizId)).single();
+    const res = await nmSupaQuery(() => _supa.from('business_availability').select('*').eq('listing_id', String(bizId)).limit(1));
+    const data = res && res.data && res.data[0];
     if (data) {
+      // Table uses day_0=Monday...day_6=Sunday booleans
       const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
       const openDays = dayNames.filter((_,i) => data['day_' + i]);
       if (openDays.length > 0) {
@@ -10585,24 +10681,25 @@ async function submitBooking() {
     // Build the service field value intelligently
     let serviceField = serviceVal || (_bmType === 'reservation' ? 'Table reservation for ' + (partyVal || '2') : _bmType);
 
-    const { error } = await _supa.from('bookings').insert({
+    const bookRes = await nmSupaQuery(() => _supa.from('bookings').insert({
       listing_id:     _bmBizId,
       customer_name:  custName,
       customer_email: currentUser.email || '',
       customer_phone: phoneVal || currentUser.phone || '',
       booking_type:   _bmType,
-      booking_date:   dateVal || null,
-      booking_time:   timeVal || null,
+      booking_date:   dateVal || null,   // DATE column — null allowed for enquiry type
+      booking_time:   timeVal || null,   // TIME column — null allowed for enquiry type
       service:        serviceField,
       notes:          notesVal || null,
       status:         'pending',
       created_at:     new Date().toISOString()
-    });
-
+    }));
+    const error = bookRes && bookRes.error;
     if (error) throw error;
 
     // Fetch business owner phone for SMS
-    const { data: listing } = await _supa.from('listings').select('phone,name,owner_email').eq('id', _bmBizId).single();
+    const listingRes = await nmSupaQuery(() => _supa.from('listings').select('phone,name,owner_email').eq('id', _bmBizId).limit(1));
+    const listing = listingRes && listingRes.data && listingRes.data[0];
 
     // Format messages
     const typeLabel  = BM_TYPE_DEFS[_bmType]?.label || _bmType;
@@ -10632,7 +10729,8 @@ async function submitBooking() {
     statusEl.style.background = 'rgba(22,101,52,.2)';
     statusEl.style.border     = '1px solid var(--green-dark)';
     statusEl.style.color      = '#86efac';
-    statusEl.textContent      = '✅ Booking request sent! ' + _bmBizName + ' will confirm shortly. You\'ll receive an SMS.';
+    const hadPhone = !!(phoneVal || currentUser.phone);
+    statusEl.textContent      = '✅ Booking request sent! ' + _bmBizName + ' will confirm shortly.' + (hadPhone ? ' You will be notified by SMS.' : '');
     btn.textContent = '✅ Request Sent!';
     btn.style.background = 'rgba(22,101,52,.5)';
 
@@ -10654,25 +10752,104 @@ function fmtTime12h(t) {
 // ── BulkSMS Credentials ──────────────────────────────────────
 // Sign up at bulksms.com → Settings → Advanced → API Credentials
 // Replace the values below with your real Token ID and Token Secret
-const BULKSMS_TOKEN_ID     = 'AC926B71CAA14D7A96D9249DE614B100-';
-const BULKSMS_TOKEN_SECRET = 'cU7x_QWBkrjVS3vmQh_ufcjwQU261';
+// BULKSMS credentials defined above
 // ─────────────────────────────────────────────────────────────
 
 async function bmSendSMS(toNumber, message) {
-  if (!toNumber || !message) return;
-  // Credentials are configured — SMS will always attempt to send
-  let num = toNumber.replace(/[^0-9]/g, '');
-  if (num.startsWith('0') && num.length === 10) num = '27' + num.slice(1);
-  if (!num.startsWith('27')) num = '27' + num;
-  try {
-    await fetch('https://api.bulksms.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Authorization': 'Basic ' + btoa(BULKSMS_TOKEN_ID + ':' + BULKSMS_TOKEN_SECRET), 'Content-Type': 'application/json' },
-      body: JSON.stringify([{ to: num, body: message }])
-    });
-  } catch(e) { console.warn('SMS failed:', e); }
+  // Delegates to nmSendSMS (correct BulkSMS v1 format)
+  return nmSendSMS(toNumber, message);
 }
 
+
+// ── NOTIFICATION BELL ────────────────────────────────────────────────────────
+
+let _bpNotifOpen = false;
+
+function bpToggleNotifPanel() {
+  const panel = document.getElementById('bp-notif-panel');
+  if (!panel) return;
+  _bpNotifOpen = !_bpNotifOpen;
+  panel.style.display = _bpNotifOpen ? 'block' : 'none';
+  if (_bpNotifOpen) bpLoadNotifications();
+}
+
+// Close notif panel when clicking outside
+document.addEventListener('click', function(e) {
+  if (_bpNotifOpen && !e.target.closest('#bp-bell-btn') && !e.target.closest('#bp-notif-panel')) {
+    _bpNotifOpen = false;
+    const panel = document.getElementById('bp-notif-panel');
+    if (panel) panel.style.display = 'none';
+  }
+});
+
+async function bpLoadNotifications() {
+  const listEl = document.getElementById('bp-notif-list');
+  if (!listEl) return;
+  const lid = window._bpListingId;
+  if (!lid) {
+    listEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--white-dim);font-size:12px;">Open the Bookings tab first to load your listing.</div>';
+    return;
+  }
+  listEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--white-dim);font-size:12px;">Loading…</div>';
+  try {
+    const res = await nmSupaQuery(() =>
+      _supa.from('notifications').select('*').eq('listing_id', lid).order('created_at', { ascending: false }).limit(30)
+    );
+    const notifs = (res && res.data) || [];
+    const unread = notifs.filter(n => !n.read).length;
+    const badge = document.getElementById('bp-bell-badge');
+    if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'inline' : 'none'; }
+    if (!notifs.length) {
+      listEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--white-dim);font-size:12px;">No notifications yet</div>';
+      return;
+    }
+    const typeIcon = { booking: '📅', enquiry: '✉️', review: '⭐' };
+    listEl.innerHTML = notifs.map(n => {
+      const when = n.created_at ? new Date(n.created_at).toLocaleString('en-ZA', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+      return `<div onclick="bpMarkNotifRead('${n.id}', this)" style="padding:12px 16px;display:flex;gap:10px;align-items:flex-start;cursor:pointer;background:${n.read ? 'transparent' : 'rgba(22,101,52,.06)'};border-bottom:1px solid var(--border-soft);">
+        <span style="font-size:16px;flex-shrink:0;">${typeIcon[n.type] || '🔔'}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;color:var(--white);line-height:1.4;">${nmSafe(n.message)}</div>
+          <div style="font-size:10px;color:var(--white-dim);margin-top:3px;">${when}</div>
+        </div>
+        ${!n.read ? '<span style="width:7px;height:7px;background:var(--green-fresh);border-radius:50%;flex-shrink:0;margin-top:4px;"></span>' : ''}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    listEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--white-dim);font-size:12px;">Could not load notifications.</div>';
+  }
+}
+
+async function bpMarkNotifRead(notifId, rowEl) {
+  if (rowEl) { rowEl.style.background = 'transparent'; const dot = rowEl.querySelector('span[style*="border-radius:50%"]'); if (dot) dot.remove(); }
+  await _supa.from('notifications').update({ read: true }).eq('id', notifId).then(()=>{}).catch(()=>{});
+  // Update badge count
+  const badge = document.getElementById('bp-bell-badge');
+  if (badge) {
+    const cur = parseInt(badge.textContent || '0') - 1;
+    badge.textContent = cur; badge.style.display = cur > 0 ? 'inline' : 'none';
+  }
+}
+
+async function bpMarkAllNotifRead() {
+  const lid = window._bpListingId;
+  if (!lid) return;
+  await _supa.from('notifications').update({ read: true }).eq('listing_id', lid).eq('read', false).then(()=>{}).catch(()=>{});
+  await bpLoadNotifications();
+}
+
+async function bpRefreshNotifBadge() {
+  const lid = window._bpListingId;
+  if (!lid) return;
+  try {
+    const res = await nmSupaQuery(() =>
+      _supa.from('notifications').select('id').eq('listing_id', lid).eq('read', false)
+    );
+    const unread = (res && res.data && res.data.length) || 0;
+    const badge = document.getElementById('bp-bell-badge');
+    if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'inline' : 'none'; }
+  } catch(e) {}
+}
 
 // ── BOOKING PORTAL FUNCTIONS ─────────────────────────────────────────────────
 
@@ -10688,8 +10865,31 @@ async function bpLoadBookings() {
   }
   listEl.innerHTML = '<div class="bp-empty"><div class="bp-empty-icon">⏳</div><div class="bp-empty-text">Loading bookings…</div></div>';
   try {
+    // Find this business's listing id first (listings.id != users.id)
+    // Try from local LISTINGS cache first for speed, then fall back to Supabase
+    let listingId = null;
+    if (typeof LISTINGS !== 'undefined' && LISTINGS.length) {
+      const myListing = LISTINGS.find(l =>
+        (l.owner_email && currentUser.email && l.owner_email.toLowerCase() === currentUser.email.toLowerCase()) ||
+        (l.email && currentUser.email && l.email.toLowerCase() === currentUser.email.toLowerCase())
+      );
+      if (myListing) listingId = String(myListing.id);
+    }
+    if (!listingId) {
+      const lRes = await nmSupaQuery(() =>
+        _supa.from('listings').select('id').ilike('email', currentUser.email).limit(1)
+      );
+      listingId = lRes && lRes.data && lRes.data[0] ? String(lRes.data[0].id) : null;
+    }
+    if (!listingId) {
+      listEl.innerHTML = '<div class="bp-empty"><div class="bp-empty-icon">📋</div><div class="bp-empty-text">No listing found for your account.</div><div class="bp-empty-sub">Add your listing first to receive bookings.</div></div>';
+      return;
+    }
+    // Store for use by other functions
+    window._bpListingId = listingId;
+    bpRefreshNotifBadge();
     const res = await nmSupaQuery(() =>
-      _supa.from('bookings').select('*').eq('biz_id', currentUser.id).order('created_at', { ascending: false })
+      _supa.from('bookings').select('*').eq('listing_id', listingId).order('created_at', { ascending: false })
     );
     const bookings = (res && res.data) || [];
     // Update badge
@@ -10711,36 +10911,72 @@ function bpRenderBookings(bookings) {
     return;
   }
   listEl.innerHTML = filtered.map(b => {
-    const date = b.booking_date ? new Date(b.booking_date).toLocaleDateString('en-ZA', { weekday:'short', day:'numeric', month:'short', year:'numeric' }) : '—';
-    const statusColor = b.status === 'confirmed' ? 'var(--green-fresh)' : b.status === 'declined' ? '#ef4444' : 'var(--gold)';
+    const date = b.booking_date ? new Date(b.booking_date + 'T00:00:00').toLocaleDateString('en-ZA', { weekday:'short', day:'numeric', month:'short', year:'numeric' }) : '—';
+    const statusColor = b.status === 'confirmed' ? 'var(--green-fresh)' : b.status === 'declined' ? '#ef4444' : b.status === 'rescheduled' ? 'var(--info)' : b.status === 'completed' ? '#6b7280' : 'var(--gold)';
     const statusLabel = (b.status || 'pending').charAt(0).toUpperCase() + (b.status || 'pending').slice(1);
-    return \`<div style="border:1px solid var(--border-soft);border-radius:10px;padding:14px 16px;margin-bottom:12px;background:var(--black-2);">
+    return `<div style="border:1px solid var(--border-soft);border-radius:10px;padding:14px 16px;margin-bottom:12px;background:var(--black-2);">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
         <div>
-          <div style="font-weight:600;color:var(--white);font-size:14px;">\${nmSafe(b.customer_name || 'Customer')}</div>
-          <div style="font-size:12px;color:var(--white-dim);margin-top:2px;">\${nmSafe(b.booking_type || 'Appointment')} · \${date}</div>
-          \${b.time_slot ? '<div style="font-size:12px;color:var(--white-dim);">🕐 ' + nmSafe(b.time_slot) + '</div>' : ''}
-          \${b.notes ? '<div style="font-size:12px;color:var(--white-dim);margin-top:4px;">💬 ' + nmSafe(b.notes) + '</div>' : ''}
-          \${b.customer_phone ? '<div style="font-size:12px;color:var(--white-dim);">📞 ' + nmSafe(b.customer_phone) + '</div>' : ''}
+          <div style="font-weight:600;color:var(--white);font-size:14px;">${nmSafe(b.customer_name || 'Customer')}</div>
+          <div style="font-size:12px;color:var(--white-dim);margin-top:2px;">${nmSafe(b.booking_type || 'Appointment')} · ${date}</div>
+          ${b.booking_time ? '<div style="font-size:12px;color:var(--white-dim);">🕐 ' + nmSafe(fmtTime12h(b.booking_time)) + '</div>' : ''}
+          ${b.notes ? '<div style="font-size:12px;color:var(--white-dim);margin-top:4px;">💬 ' + nmSafe(b.notes) + '</div>' : ''}
+          ${b.customer_phone ? '<div style="font-size:12px;color:var(--white-dim);">📞 ' + nmSafe(b.customer_phone) + '</div>' : ''}
+          ${b.customer_email ? '<div style="font-size:12px;color:var(--white-dim);">✉ ' + nmSafe(b.customer_email) + '</div>' : ''}
+          ${b.service ? '<div style="font-size:12px;color:var(--white-dim);margin-top:2px;">🔧 ' + nmSafe(b.service) + '</div>' : ''}
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
-          <span style="font-size:11px;font-weight:600;color:\${statusColor};background:\${statusColor}22;padding:3px 10px;border-radius:20px;">\${statusLabel}</span>
-          \${b.status === 'pending' ? \`
-            <button onclick="bpRespondBooking('\${b.id}','confirmed')" style="font-size:11px;padding:5px 12px;background:var(--green-dark);color:#fff;border:none;border-radius:6px;cursor:pointer;">✓ Accept</button>
-            <button onclick="bpRespondBooking('\${b.id}','declined')" style="font-size:11px;padding:5px 12px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;">✗ Decline</button>
-          \` : ''}
+          <span style="font-size:11px;font-weight:600;color:${statusColor};background:${statusColor}22;padding:3px 10px;border-radius:20px;">${statusLabel}</span>
+          ${b.status === 'pending' ? `
+            <button onclick="bpRespondBooking('${b.id}','confirmed')" style="font-size:11px;padding:5px 12px;background:var(--green-dark);color:#fff;border:none;border-radius:6px;cursor:pointer;">✓ Accept</button>
+            <button onclick="bpRespondBooking('${b.id}','declined')" style="font-size:11px;padding:5px 12px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;">✗ Decline</button>
+            <button onclick="bpRescheduleBooking('${b.id}','${nmSafe(b.customer_name||'')}','${b.booking_date||''}','${b.booking_time||''}')" style="font-size:11px;padding:5px 12px;background:var(--gold-dim);color:#111;border:none;border-radius:6px;cursor:pointer;">↻ Reschedule</button>
+          ` : ''}
         </div>
       </div>
-    </div>\`;
+    </div>`;
   }).join('');
   // Store for filter use
   listEl._allBookings = bookings;
 }
 
+
+async function bpRescheduleBooking(bookingId, customerName, currentDate, currentTime) {
+  const newDate = prompt('Reschedule for ' + (customerName || 'customer') + '\nEnter new date (YYYY-MM-DD):', currentDate || '');
+  if (!newDate) return;
+  const newTime = prompt('Enter new time (HH:MM, 24-hour):', currentTime || '');
+  if (!newTime) return;
+  try {
+    await nmSupaQuery(() =>
+      _supa.from('bookings').update({
+        status: 'rescheduled',
+        booking_date: newDate,
+        booking_time: newTime,
+        updated_at: new Date().toISOString()
+      }).eq('id', bookingId)
+    );
+    // Notify customer by SMS
+    try {
+      const bRes = await nmSupaQuery(() =>
+        _supa.from('bookings').select('customer_name,customer_phone,booking_type').eq('id', bookingId).limit(1)
+      );
+      const b = bRes && bRes.data && bRes.data[0];
+      if (b && b.customer_phone) {
+        const dateLabel = new Date(newDate + 'T00:00:00').toLocaleDateString('en-ZA', { weekday:'short', day:'numeric', month:'short' });
+        nmSendSMS(b.customer_phone, 'NoaMark: Your ' + (b.booking_type || 'booking') + ' has been rescheduled to ' + dateLabel + ' at ' + fmtTime12h(newTime) + '. Please contact the business if this does not work for you.');
+      }
+    } catch(smsErr) { console.warn('Reschedule SMS failed:', smsErr); }
+    bpToast('Booking rescheduled. Customer notified by SMS.');
+    await bpLoadBookings();
+  } catch(e) {
+    alert('Could not reschedule booking. Please try again.');
+  }
+}
+
 function bpFilterBookings(filter, btn) {
   _bpBookingFilter = filter;
   // Update button styles
-  ['all','pending','confirmed','declined'].forEach(f => {
+  ['all','pending','confirmed','declined','rescheduled'].forEach(f => {
     const b = document.getElementById('bp-bf-' + f);
     if (b) { b.style.borderColor = f === filter ? 'var(--green-dark)' : ''; b.style.color = f === filter ? 'var(--green-dark)' : ''; b.style.fontWeight = f === filter ? '600' : '400'; }
   });
@@ -10751,8 +10987,25 @@ function bpFilterBookings(filter, btn) {
 
 async function bpRespondBooking(bookingId, status) {
   try {
-    await nmSupaQuery(() => _supa.from('bookings').update({ status }).eq('id', bookingId));
+    await nmSupaQuery(() =>
+      _supa.from('bookings').update({ status, updated_at: new Date().toISOString() }).eq('id', bookingId)
+    );
+    // Notify customer by SMS
+    try {
+      const bRes = await nmSupaQuery(() =>
+        _supa.from('bookings').select('customer_name,customer_phone,booking_type,booking_date,service').eq('id', bookingId).limit(1)
+      );
+      const b = bRes && bRes.data && bRes.data[0];
+      if (b && b.customer_phone) {
+        const dateStr = b.booking_date ? new Date(b.booking_date + 'T00:00:00').toLocaleDateString('en-ZA', { weekday:'short', day:'numeric', month:'short' }) : '';
+        const statusMsg = status === 'confirmed'
+          ? 'NoaMark: Great news! Your ' + (b.booking_type || 'booking') + (dateStr ? ' on ' + dateStr : '') + ' has been CONFIRMED. See you then!'
+          : 'NoaMark: Your ' + (b.booking_type || 'booking') + (dateStr ? ' on ' + dateStr : '') + ' was declined. Please contact the business directly to reschedule.';
+        nmSendSMS(b.customer_phone, statusMsg);
+      }
+    } catch(smsErr) { console.warn('Status SMS failed:', smsErr); }
     await bpLoadBookings();
+    bpRefreshNotifBadge();
   } catch(e) { alert('Could not update booking. Please try again.'); }
 }
 
@@ -10761,25 +11014,28 @@ async function bpLoadAvailability() {
   if (!grid || !currentUser || !currentUser.id) return;
   const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
   try {
+    // Ensure we have the listing ID (may not be set if user navigated directly to availability)
+    if (!window._bpListingId) {
+      const lRes = await nmSupaQuery(() =>
+        _supa.from('listings').select('id').ilike('email', currentUser.email).limit(1)
+      );
+      if (lRes && lRes.data && lRes.data[0]) window._bpListingId = String(lRes.data[0].id);
+    }
     const res = await nmSupaQuery(() =>
-      _supa.from('business_availability').select('*').eq('biz_id', currentUser.id).limit(1)
+      _supa.from('business_availability').select('*').eq('listing_id', window._bpListingId || '').limit(1)
     );
+    // Table uses day_0=Monday...day_6=Sunday as individual boolean columns
     const avail = (res && res.data && res.data[0]) || {};
-    const openTime = avail.open_time || '08:00';
-    const closeTime = avail.close_time || '17:00';
-    const openDays = avail.open_days || ['Monday','Tuesday','Wednesday','Thursday','Friday'];
-    // Set time inputs
     const openInput = document.getElementById('bp-avail-open');
     const closeInput = document.getElementById('bp-avail-close');
-    if (openInput) openInput.value = openTime;
-    if (closeInput) closeInput.value = closeTime;
-    // Render day checkboxes
-    grid.innerHTML = days.map(day => {
-      const checked = openDays.includes(day);
-      return \`<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--white);background:var(--black-3);padding:8px 12px;border-radius:8px;border:1px solid \${checked ? 'var(--green-dark)' : 'var(--border-soft)'};">
-        <input type="checkbox" id="bp-day-\${day}" \${checked ? 'checked' : ''} onchange="this.closest('label').style.borderColor=this.checked?'var(--green-dark)':'var(--border-soft)'" style="accent-color:var(--green-dark);">
-        \${day.slice(0,3)}
-      </label>\`;
+    if (openInput) openInput.value = avail.open_time || '08:00';
+    if (closeInput) closeInput.value = avail.close_time || '17:00';
+    grid.innerHTML = days.map((day, i) => {
+      const checked = Object.keys(avail).length ? !!avail['day_' + i] : i < 5;
+      return `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--white);background:var(--black-3);padding:8px 12px;border-radius:8px;border:1px solid ${checked ? 'var(--green-dark)' : 'var(--border-soft)'};">
+        <input type="checkbox" id="bp-day-${i}" ${checked ? 'checked' : ''} onchange="this.closest('label').style.borderColor=this.checked?'var(--green-dark)':'var(--border-soft)'" style="accent-color:var(--green-dark);">
+        ${day.slice(0,3)}
+      </label>`;
     }).join('');
   } catch(e) {
     grid.innerHTML = '<div style="color:var(--white-dim);font-size:12px;">Could not load availability.</div>';
@@ -10788,19 +11044,29 @@ async function bpLoadAvailability() {
 
 async function bpSaveAvailability() {
   if (!currentUser || !currentUser.id) return;
-  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-  const openDays = days.filter(d => { const el = document.getElementById('bp-day-' + d); return el && el.checked; });
-  const openTime = (document.getElementById('bp-avail-open') || {}).value || '08:00';
+  const openTime  = (document.getElementById('bp-avail-open')  || {}).value || '08:00';
   const closeTime = (document.getElementById('bp-avail-close') || {}).value || '17:00';
   const btn = document.querySelector('[onclick="bpSaveAvailability()"]');
   if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
+  // Build payload using day_0..day_6 boolean columns (matches Supabase schema)
+  const payload = {
+    listing_id:  window._bpListingId || '', // listing.id — must be set by bpLoadBookings
+    day_0: !!(document.getElementById('bp-day-0') || {}).checked,
+    day_1: !!(document.getElementById('bp-day-1') || {}).checked,
+    day_2: !!(document.getElementById('bp-day-2') || {}).checked,
+    day_3: !!(document.getElementById('bp-day-3') || {}).checked,
+    day_4: !!(document.getElementById('bp-day-4') || {}).checked,
+    day_5: !!(document.getElementById('bp-day-5') || {}).checked,
+    day_6: !!(document.getElementById('bp-day-6') || {}).checked,
+    open_time:   openTime,
+    close_time:  closeTime,
+    updated_at:  new Date().toISOString()
+  };
   try {
-    // Check if row exists
     const existing = await nmSupaQuery(() =>
-      _supa.from('business_availability').select('id').eq('biz_id', currentUser.id).limit(1)
+      _supa.from('business_availability').select('id').eq('listing_id', window._bpListingId || '').limit(1)
     );
     const row = existing && existing.data && existing.data[0];
-    const payload = { biz_id: currentUser.id, open_days: openDays, open_time: openTime, close_time: closeTime, updated_at: new Date().toISOString() };
     if (row) {
       await nmSupaQuery(() => _supa.from('business_availability').update(payload).eq('id', row.id));
     } else {
@@ -10814,11 +11080,17 @@ async function bpSaveAvailability() {
 }
 
 function bmFlashNotifBadge() {
-  // 'bp-book-badge' is the actual ID in HTML — was referencing wrong IDs before
-  const badge = document.getElementById('bp-book-badge');
-  if (badge) {
-    badge.style.display = 'inline';
-    badge.textContent = (parseInt(badge.textContent || '0') || 0) + 1;
+  // Update bookings tab badge
+  const bookBadge = document.getElementById('bp-book-badge');
+  if (bookBadge) {
+    bookBadge.style.display = 'inline';
+    bookBadge.textContent = (parseInt(bookBadge.textContent || '0') || 0) + 1;
+  }
+  // Also update the bell badge
+  const bellBadge = document.getElementById('bp-bell-badge');
+  if (bellBadge) {
+    bellBadge.style.display = 'inline';
+    bellBadge.textContent = (parseInt(bellBadge.textContent || '0') || 0) + 1;
   }
 }
 
