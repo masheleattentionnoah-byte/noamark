@@ -1263,7 +1263,32 @@
   .bp-progress-fill{height:100%;background:linear-gradient(to right,var(--green-dark),var(--green-fresh));transition:width .3s;}
   .bp-ai-toast{position:fixed;bottom:32px;right:32px;background:var(--green-dark);color:#fff;padding:14px 20px;font-size:12px;font-weight:600;font-family:var(--font-body);z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;pointer-events:none;max-width:300px;border-left:3px solid var(--gold);}
   .bp-ai-toast.show{transform:translateY(0);opacity:1;}
-  @media(max-width:900px){.bp-sidebar{display:none;}.bp-metrics{grid-template-columns:1fr 1fr;}.bp-2col,.bp-3col,.bp-form-grid{grid-template-columns:1fr;}}
+  @media(max-width:900px){
+    .bp-shell{flex-direction:column;}
+    .bp-sidebar{
+      position:fixed; bottom:0; left:0; right:0; top:auto;
+      width:100%; height:calc(58px + env(safe-area-inset-bottom));
+      padding-bottom:env(safe-area-inset-bottom);
+      flex-direction:row; overflow-x:auto; overflow-y:hidden;
+      -webkit-overflow-scrolling:touch; scrollbar-width:none;
+      border-right:none; border-top:1px solid var(--border-soft);
+      z-index:999;
+    }
+    .bp-sidebar::-webkit-scrollbar{display:none;}
+    .bp-sb-head,.bp-sb-biz,.bp-nav-sec{display:none;}
+    .bp-nav-item{
+      flex-direction:column; align-items:center; justify-content:center;
+      gap:3px; padding:0 14px; height:58px; min-width:64px;
+      font-size:9px; font-weight:600; border-left:none;
+      border-top:2px solid transparent; white-space:nowrap; flex-shrink:0;
+    }
+    .bp-nav-item.active{border-left:none; border-top:2px solid var(--green-dark); background:rgba(22,101,52,.06);}
+    .bp-main{padding-bottom:58px;}
+    .bp-content{padding:20px 16px;}
+    .bp-topbar{padding:16px 16px;flex-wrap:wrap;gap:10px;}
+    .bp-metrics{grid-template-columns:1fr 1fr;}
+    .bp-2col,.bp-3col,.bp-form-grid{grid-template-columns:1fr;}
+  }
 
 </style>
 <!-- Pre-hide home flash: runs instantly before Supabase loads or any paint occurs -->
@@ -5624,6 +5649,15 @@ async function pubSubmitEnquiry(listingId, bizName) {
       read: false,
       created_at: new Date().toISOString()
     }).then(()=>{}).catch(()=>{});
+    // SMS the business owner directly — in-portal notification alone means
+    // they only find out if they happen to log in.
+    try {
+      const listRes = await nmSupaQuery(() => _supa.from('listings').select('phone').eq('id', listingId).limit(1));
+      const ownerPhone = listRes && listRes.data && listRes.data[0] && listRes.data[0].phone;
+      if (ownerPhone) {
+        await nmSendSMS(ownerPhone, 'NoaMark: New enquiry from ' + name + (msg ? ': "' + msg.slice(0,100) + '"' : '') + '. Login to noamark.com to reply.');
+      }
+    } catch(smsErr) { console.warn('Enquiry SMS to business owner failed:', smsErr); }
     if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = '#22c55e'; statusEl.textContent = '✅ Message sent! The business will get back to you.'; setTimeout(() => statusEl.style.display = 'none', 6000); }
     if (btn) { btn.textContent = 'Send Message'; btn.disabled = false; }
   } catch(e) {
@@ -8441,7 +8475,7 @@ async function bpSyncEnquiriesFromSupabase() {
       if (!exists) {
         const d = new Date(e.created_at || Date.now());
         const time = d.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'}) + ', ' + d.toLocaleDateString('en-ZA',{day:'numeric',month:'short'});
-        bpData.enquiries.unshift({ id: e.id, name: e.name, subject: e.subject || 'Customer Enquiry', msg: e.msg, phone: e.phone || '', time, replied: e.replied || false, replyText: e.reply || '' });
+        bpData.enquiries.unshift({ id: e.id, name: e.name, subject: e.subject || 'Customer Enquiry', msg: e.msg, phone: e.phone || '', time, replied: e.replied || false, replyText: e.reply || '', smsSent: e.reply_sms_sent === undefined ? null : !!e.reply_sms_sent });
       }
     });
     bpSave();
@@ -8606,6 +8640,43 @@ function bpEditListing() {
     if(typeof bpToast === 'function') bpToast('✅ Listing loaded — only change what you want to update.');
   }, 300);
 }
+// Fetches the logged-in business owner's OWN listing regardless of status
+// (approved/pending/rejected) — the public LISTINGS array only contains
+// approved listings, so it cannot tell "pending review" apart from
+// "never submitted". This fixes the dashboard wrongly showing "Unlisted"
+// for businesses that are actually awaiting admin approval.
+async function bpFetchMyOwnListing() {
+  if (!currentUser || !currentUser.email) return null;
+  try {
+    const res = await nmSupaQuery(() =>
+      _supa.from('listings').select('*').ilike('owner_email', currentUser.email).limit(1)
+    );
+    const row = res && res.data && res.data[0];
+    if (!row) return null;
+    // Reuse the same shaping logic as loadListingsFromSupabase so downstream
+    // code (bpSyncListingPreview etc.) gets a consistently-shaped object.
+    let parsedPhotos = [];
+    if (row.photo_urls) {
+      try { parsedPhotos = typeof row.photo_urls === 'string' ? JSON.parse(row.photo_urls) : row.photo_urls; }
+      catch(e) { parsedPhotos = []; }
+    }
+    if (parsedPhotos.length === 0 && row.photo_url) parsedPhotos = [row.photo_url];
+    return {
+      id: row.id, name: row.name, owner: row.owner, owner_email: row.owner_email || row.email || '',
+      cat: row.type || 'services', type: row.type || 'services', area: row.area || '', city: row.city || '',
+      province: row.province || '', address: row.address || '', desc: row.description || '',
+      phone: row.phone || '', email: row.email || '', boost: row.boost_tier || 'none',
+      status: row.business_status || 'open', price: row.price_hint || 'Contact for pricing',
+      photo: parsedPhotos[0] || '', photos: parsedPhotos, joinedAt: row.created_at || '',
+      hoursWeekday: row.hours_weekday || '', hoursSat: row.hours_sat || '',
+      approvalStatus: row.status || 'pending'   // 'pending' | 'approved' | 'rejected'
+    };
+  } catch(e) {
+    console.warn('bpFetchMyOwnListing failed:', e);
+    return null;
+  }
+}
+
 function populateBizDashboard() {
   if(!currentUser || currentUser.type !== 'business') return;
   bpLoad();
@@ -8615,22 +8686,66 @@ function populateBizDashboard() {
   document.getElementById('bp-sb-av').textContent = initials;
   document.getElementById('bp-sb-bizname').textContent = currentUser.name;
 
-  // Find listing
-  const myListing = typeof LISTINGS !== 'undefined'
-    ? getMyListing()
-    : null;
+  // Find listing — start with whatever's in the approved-only LISTINGS cache
+  // for instant paint, then verify the real status against Supabase directly
+  // so pending/rejected listings are never mislabeled as "Unlisted".
+  let myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
+  if (myListing) myListing.approvalStatus = 'approved';
 
-  // Live pill
-  const liveEl = document.getElementById('bp-live-pill');
-  if(myListing) {
-    liveEl.className = 'bp-live-pill bp-pill-live';
-    liveEl.textContent = '● Live on Marketplace';
-    document.getElementById('bp-sb-bizsub').textContent = 'Listing active';
-  } else {
-    liveEl.className = 'bp-live-pill bp-pill-offline';
-    liveEl.textContent = '● Not listed';
-    document.getElementById('bp-sb-bizsub').textContent = 'Add your listing';
-  }
+  const renderStatusUI = (listing) => {
+    const liveEl = document.getElementById('bp-live-pill');
+    if (listing && listing.approvalStatus === 'approved') {
+      liveEl.className = 'bp-live-pill bp-pill-live';
+      liveEl.textContent = '● Live on Marketplace';
+      document.getElementById('bp-sb-bizsub').textContent = 'Listing active';
+      document.getElementById('bpm-status').textContent = 'Active';
+      document.getElementById('bpm-status').style.color = 'var(--green-fresh)';
+      document.getElementById('bpm-status-sub').textContent = 'Visible in marketplace';
+    } else if (listing && listing.approvalStatus === 'pending') {
+      liveEl.className = 'bp-live-pill bp-pill-offline';
+      liveEl.textContent = '● Pending Review';
+      document.getElementById('bp-sb-bizsub').textContent = 'Awaiting admin approval';
+      document.getElementById('bpm-status').textContent = 'Pending';
+      document.getElementById('bpm-status').style.color = 'var(--gold-dim)';
+      document.getElementById('bpm-status-sub').textContent = 'Submitted — awaiting admin approval';
+    } else if (listing && listing.approvalStatus === 'rejected') {
+      liveEl.className = 'bp-live-pill bp-pill-offline';
+      liveEl.textContent = '● Listing Rejected';
+      document.getElementById('bp-sb-bizsub').textContent = 'Please update and resubmit';
+      document.getElementById('bpm-status').textContent = 'Rejected';
+      document.getElementById('bpm-status').style.color = 'var(--danger)';
+      document.getElementById('bpm-status-sub').textContent = 'Edit your listing and resubmit for review';
+    } else {
+      liveEl.className = 'bp-live-pill bp-pill-offline';
+      liveEl.textContent = '● Not listed';
+      document.getElementById('bp-sb-bizsub').textContent = 'Add your listing';
+      document.getElementById('bpm-status').textContent = 'Unlisted';
+      document.getElementById('bpm-status').style.color = 'var(--danger)';
+      document.getElementById('bpm-status-sub').textContent = 'Add listing to go live';
+    }
+  };
+
+  renderStatusUI(myListing);
+
+  // Verify against Supabase directly — covers pending/rejected listings
+  // that the approved-only LISTINGS cache can never see.
+  bpFetchMyOwnListing().then(realListing => {
+    if (!realListing) return;
+    if (realListing.approvalStatus !== 'approved' || !myListing) {
+      myListing = realListing;
+      renderStatusUI(myListing);
+      if (myListing.approvalStatus === 'approved') {
+        bpSyncListingPreview(myListing);
+        const boostLabel = myListing.boost === 'dominance' ? '🔥 Dominance'
+                         : myListing.boost === 'growth'    ? '⭐ Growth'
+                         : myListing.boost === 'starter'   ? '🟡 Starter' : 'None';
+        document.getElementById('bpm-boost').textContent = boostLabel;
+        document.getElementById('bpm-boost').style.color = myListing.boost !== 'none' ? 'var(--gold-dim)' : 'var(--white)';
+        document.getElementById('bpm-boost-sub').textContent = myListing.boost !== 'none' ? 'Boost currently active' : 'No boost active';
+      }
+      if (myListing.id) { window._bpListingId = String(myListing.id); bpRefreshNotifBadge(); }
+    }
+  });
 
   // Sync enquiries and reviews from Supabase immediately on portal open
   setTimeout(() => {
@@ -8651,16 +8766,13 @@ function populateBizDashboard() {
   if(newEnqs > 0) { enqBadge.style.display = 'inline'; enqBadge.textContent = newEnqs; }
   else enqBadge.style.display = 'none';
 
-  if(myListing) {
+  if(myListing && myListing.approvalStatus === 'approved') {
     const boostLabel = myListing.boost === 'dominance' ? '🔥 Dominance'
                      : myListing.boost === 'growth'    ? '⭐ Growth'
                      : myListing.boost === 'starter'   ? '🟡 Starter' : 'None';
     document.getElementById('bpm-boost').textContent = boostLabel;
     document.getElementById('bpm-boost').style.color = myListing.boost !== 'none' ? 'var(--gold-dim)' : 'var(--white)';
     document.getElementById('bpm-boost-sub').textContent = myListing.boost !== 'none' ? 'Boost currently active' : 'No boost active';
-    document.getElementById('bpm-status').textContent = 'Active';
-    document.getElementById('bpm-status').style.color = 'var(--green-fresh)';
-    document.getElementById('bpm-status-sub').textContent = 'Visible in marketplace';
     // listing preview
     bpSyncListingPreview(myListing);
     // analytics boost
@@ -8670,10 +8782,6 @@ function populateBizDashboard() {
     if(banBoostSub) banBoostSub.textContent = myListing.boost !== 'none' ? 'Active' : 'No boost';
     document.getElementById('bp-boost-current-val').textContent = boostLabel;
     document.getElementById('bp-boost-current-sub').textContent = myListing.boost !== 'none' ? 'Your boost is currently active' : 'No boost — your listing appears in standard order';
-  } else {
-    document.getElementById('bpm-status').textContent = 'Unlisted';
-    document.getElementById('bpm-status').style.color = 'var(--danger)';
-    document.getElementById('bpm-status-sub').textContent = 'Add listing to go live';
   }
   bpRenderEnquiries();
   bpRenderReviews();
@@ -8785,7 +8893,7 @@ function bpRenderEnquiries(filter = 'all') {
         </div>
         <div class="bp-enq-sub">${nmSafe(e.subject)}</div>
         <div class="bp-enq-msg">"${nmSafe(e.msg)}"</div>
-        ${e.replied && e.replyText ? `<div style="background:rgba(22,101,52,.08);border:1px solid rgba(22,101,52,.15);padding:10px 12px;margin-top:8px;font-size:12px;color:var(--green-fresh);line-height:1.6;"><div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green-fresh);opacity:.6;margin-bottom:3px;">Your reply</div>${nmSafe(e.replyText)}</div>` : ''}
+        ${e.replied && e.replyText ? `<div style="background:rgba(22,101,52,.08);border:1px solid rgba(22,101,52,.15);padding:10px 12px;margin-top:8px;font-size:12px;color:var(--green-fresh);line-height:1.6;"><div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green-fresh);opacity:.6;margin-bottom:3px;display:flex;align-items:center;gap:6px;">Your reply ${e.smsSent === false ? '<span style="color:#fbbf24;opacity:1;">· ⚠ SMS not delivered</span>' : e.smsSent === true ? '<span style="opacity:1;">· ✓ SMS sent</span>' : ''}</div>${nmSafe(e.replyText)}</div>` : ''}
         <div class="bp-enq-actions">
           ${!e.replied ? `<button class="bp-btn bp-btn-g" onclick="bpAIDraftReply('${e.id}')" style="font-size:9px;">✦ AI draft reply</button><button class="bp-btn" onclick="bpToggleReply('${e.id}')" style="font-size:9px;">Reply manually</button>` : ''}
           <button class="bp-btn bp-btn-danger" onclick="bpDeleteEnquiry('${e.id}')" style="font-size:9px;">Delete</button>
@@ -8811,17 +8919,39 @@ async function bpSendReply(id) {
   if(!text) return;
   const idx = bpData.enquiries.findIndex(e => String(e.id) === String(id));
   if(idx < 0) return;
+
+  const enq = bpData.enquiries[idx];
+  const sendBtn = document.querySelector(`#bprb-${id} .bp-btn-g`);
+  if(sendBtn){ sendBtn.textContent = 'Sending…'; sendBtn.disabled = true; }
+
+  // Actually notify the customer — reply text alone in the dashboard never reaches them.
+  let smsResult = { ok: false, reason: 'no phone on file' };
+  if (enq.phone) {
+    const bizName = currentUser?.name || 'the business';
+    smsResult = await nmSendSMS(enq.phone, 'NoaMark: ' + bizName + ' replied to your enquiry: "' + text.slice(0,200) + '" — Reply via WhatsApp or call them directly.');
+  }
+
   bpData.enquiries[idx].replied = true;
   bpData.enquiries[idx].replyText = text;
+  bpData.enquiries[idx].smsSent = !!smsResult.ok;
   bpSave();
   bpRenderEnquiries();
-  bpToast('Reply sent!');
+
+  if (smsResult.ok) {
+    bpToast('✅ Reply sent! Customer notified by SMS.');
+  } else if (!enq.phone) {
+    bpToast('Reply saved. No customer phone number on file — they will only see it if they revisit your listing.');
+  } else {
+    bpToast('⚠ Reply saved, but SMS notification failed to send. Customer was not notified.');
+  }
+
   const n = bpData.enquiries.filter(e=>!e.replied).length;
   const badge = document.getElementById('bp-enq-badge');
   if(badge){ badge.style.display = n>0 ? 'inline' : 'none'; if(n>0) badge.textContent = n; }
-  // Persist reply to Supabase
+  if(sendBtn){ sendBtn.textContent = 'Send reply'; sendBtn.disabled = false; }
+  // Persist reply + delivery status to Supabase
   try {
-    await nmSupaQuery(() => _supa.from('enquiries').update({ replied: true, reply: text }).eq('id', id));
+    await nmSupaQuery(() => _supa.from('enquiries').update({ replied: true, reply: text, reply_sms_sent: !!smsResult.ok }).eq('id', id));
   } catch(e) { console.warn('Reply sync to Supabase failed', e); }
 }
 async function bpAIDraftReply(id) {
@@ -10708,9 +10838,11 @@ async function submitBooking() {
     const smsToBiz   = 'NoaMark: New ' + typeLabel + ' from ' + custName + (dateLabel ? ' on ' + dateLabel + timeLabel : '') + '. Service: ' + serviceField + '. Login to noamark.com to manage.';
     const smsToUser  = 'NoaMark: Hi ' + custName.split(' ')[0] + ', your ' + typeLabel.toLowerCase() + ' at ' + _bmBizName + (dateLabel ? ' on ' + dateLabel + timeLabel : '') + ' was received. The business will confirm shortly.';
 
-    // Send SMS via BulkSMS
-    if (listing?.phone)  bmSendSMS(listing.phone, smsToBiz);
-    if (phoneVal)        bmSendSMS(phoneVal, smsToUser);
+    // Send SMS via BulkSMS — await both so we know if they actually succeeded
+    const [bizSmsResult, userSmsResult] = await Promise.all([
+      listing?.phone ? bmSendSMS(listing.phone, smsToBiz) : Promise.resolve({ ok: false, reason: 'no business phone' }),
+      phoneVal       ? bmSendSMS(phoneVal, smsToUser)     : Promise.resolve({ ok: false, reason: 'no customer phone' })
+    ]);
 
     // Insert in-portal notification
     await _supa.from('notifications').insert({
@@ -10724,13 +10856,15 @@ async function submitBooking() {
     // Flash the notification badge in portal
     bmFlashNotifBadge();
 
-    // Show success
+    // Show success — only claim SMS was sent if it genuinely was
     statusEl.style.display   = 'block';
     statusEl.style.background = 'rgba(22,101,52,.2)';
     statusEl.style.border     = '1px solid var(--green-dark)';
     statusEl.style.color      = '#86efac';
-    const hadPhone = !!(phoneVal || currentUser.phone);
-    statusEl.textContent      = '✅ Booking request sent! ' + _bmBizName + ' will confirm shortly.' + (hadPhone ? ' You will be notified by SMS.' : '');
+    let smsNote = '';
+    if (userSmsResult.ok) smsNote = ' You will be notified by SMS.';
+    else if (phoneVal)    smsNote = ' (SMS notification could not be sent — please check back on the site for updates.)';
+    statusEl.textContent      = '✅ Booking request sent! ' + _bmBizName + ' will confirm shortly.' + smsNote;
     btn.textContent = '✅ Request Sent!';
     btn.style.background = 'rgba(22,101,52,.5)';
 
@@ -10956,6 +11090,7 @@ async function bpRescheduleBooking(bookingId, customerName, currentDate, current
       }).eq('id', bookingId)
     );
     // Notify customer by SMS
+    let smsOk = false;
     try {
       const bRes = await nmSupaQuery(() =>
         _supa.from('bookings').select('customer_name,customer_phone,booking_type').eq('id', bookingId).limit(1)
@@ -10963,10 +11098,11 @@ async function bpRescheduleBooking(bookingId, customerName, currentDate, current
       const b = bRes && bRes.data && bRes.data[0];
       if (b && b.customer_phone) {
         const dateLabel = new Date(newDate + 'T00:00:00').toLocaleDateString('en-ZA', { weekday:'short', day:'numeric', month:'short' });
-        nmSendSMS(b.customer_phone, 'NoaMark: Your ' + (b.booking_type || 'booking') + ' has been rescheduled to ' + dateLabel + ' at ' + fmtTime12h(newTime) + '. Please contact the business if this does not work for you.');
+        const r = await nmSendSMS(b.customer_phone, 'NoaMark: Your ' + (b.booking_type || 'booking') + ' has been rescheduled to ' + dateLabel + ' at ' + fmtTime12h(newTime) + '. Please contact the business if this does not work for you.');
+        smsOk = !!r.ok;
       }
     } catch(smsErr) { console.warn('Reschedule SMS failed:', smsErr); }
-    bpToast('Booking rescheduled. Customer notified by SMS.');
+    bpToast(smsOk ? 'Booking rescheduled. Customer notified by SMS.' : 'Booking rescheduled. ⚠ Customer SMS notification could not be sent.');
     await bpLoadBookings();
   } catch(e) {
     alert('Could not reschedule booking. Please try again.');
@@ -10991,19 +11127,26 @@ async function bpRespondBooking(bookingId, status) {
       _supa.from('bookings').update({ status, updated_at: new Date().toISOString() }).eq('id', bookingId)
     );
     // Notify customer by SMS
+    let smsOk = false, hadPhone = false;
     try {
       const bRes = await nmSupaQuery(() =>
         _supa.from('bookings').select('customer_name,customer_phone,booking_type,booking_date,service').eq('id', bookingId).limit(1)
       );
       const b = bRes && bRes.data && bRes.data[0];
       if (b && b.customer_phone) {
+        hadPhone = true;
         const dateStr = b.booking_date ? new Date(b.booking_date + 'T00:00:00').toLocaleDateString('en-ZA', { weekday:'short', day:'numeric', month:'short' }) : '';
         const statusMsg = status === 'confirmed'
           ? 'NoaMark: Great news! Your ' + (b.booking_type || 'booking') + (dateStr ? ' on ' + dateStr : '') + ' has been CONFIRMED. See you then!'
           : 'NoaMark: Your ' + (b.booking_type || 'booking') + (dateStr ? ' on ' + dateStr : '') + ' was declined. Please contact the business directly to reschedule.';
-        nmSendSMS(b.customer_phone, statusMsg);
+        const r = await nmSendSMS(b.customer_phone, statusMsg);
+        smsOk = !!r.ok;
       }
     } catch(smsErr) { console.warn('Status SMS failed:', smsErr); }
+    const statusLabel = status === 'confirmed' ? 'confirmed' : 'declined';
+    if (smsOk) bpToast('Booking ' + statusLabel + '. Customer notified by SMS.');
+    else if (hadPhone) bpToast('Booking ' + statusLabel + '. ⚠ Customer SMS notification could not be sent.');
+    else bpToast('Booking ' + statusLabel + '. No customer phone on file — not notified.');
     await bpLoadBookings();
     bpRefreshNotifBadge();
   } catch(e) { alert('Could not update booking. Please try again.'); }
