@@ -4570,6 +4570,13 @@ function showBusinessGate(action) {
   document.body.appendChild(modal);
 }
 function showPage(id, cb){
+  // Business owners must never see the public home/explore page — redirect
+  // straight to their portal instead. This closes every leak path (logo click,
+  // stray links, browser navigation) centrally rather than patching each one.
+  if (currentUser && currentUser.type === 'business' && id === 'home') {
+    showPage('marketplace', () => setTimeout(() => showMktView('admin'), 100));
+    return;
+  }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const _pageTarget = document.getElementById('page-' + id);
   if(!_pageTarget){ console.warn('showPage: page not found:', id); return; }
@@ -5102,6 +5109,11 @@ function setCat(cat,btn){
 function showMktView(view, pushHistory){
   // pushHistory defaults to true — pass false when restoring state from popstate
   if(pushHistory === undefined) pushHistory = true;
+  // Business owners must never see the public "explore other businesses" grid —
+  // silently redirect any attempt to land there back to their own portal.
+  if (view === 'main' && currentUser && currentUser.type === 'business') {
+    view = 'admin';
+  }
   if(view === 'admin' && currentUser && currentUser.type === 'admin') {
     setTimeout(()=>{ loadPendingListings(); loadApprovedListings(); }, 300);
   }
@@ -6613,9 +6625,18 @@ document.addEventListener('DOMContentLoaded',()=>{
   const saved = restoreSession();
   if(saved) {
     saved._isRestore = true;
-    // If we're already on a specific page (not home), don't redirect to portal
-    // Only auto-redirect to portal if reloaded from home or no hash
-    if(hashPage && hashPage !== 'home' && hashPage !== '') {
+    // Business owners are ALWAYS sent to their portal on reload — they must
+    // never land on the public home page, marketplace explore grid, or any
+    // other general page, even if that's what the URL hash says. The only
+    // exception is reloading directly on a business *profile* URL (viewing
+    // another listing isn't applicable to them, so this never actually fires
+    // for that case) — every other hashPage gets overridden back to portal.
+    const _isBusinessRestoring = saved.type === 'business';
+    const _onAllowedBizSubView = (hashPage === 'marketplace' && hashView === 'portal');
+    if (_isBusinessRestoring && !_onAllowedBizSubView) {
+      saved._isRestore = true; // force portal redirect regardless of current hash
+    } else if(hashPage && hashPage !== 'home' && hashPage !== '') {
+      // Non-business users: if already on a specific page, don't redirect to portal
       saved._isRestore = false; // suppress portal redirect — user is already on their page
     }
     loginAs(saved);
@@ -7996,7 +8017,7 @@ function loginAs(user) {
 //   guest       → Home, Marketplace  (explorer: just browse)
 const NAV_RULES = {
   'logged-out':  ['home','marketplace','opportunities','learning','videos','plans'],
-  'business':    ['home'],
+  'business':    [], // business owners see ONLY their portal — no home, no marketplace, no explore
   'subscriber':  ['home','marketplace','opportunities','learning','videos'],
   'guest':       ['home','marketplace'],
   'admin':       [], // admin has their own dashboard — no public nav items
@@ -8034,9 +8055,14 @@ function applyRoleNav(user) {
   if(navCta)      navCta.style.display      = '';
 
   if(user && user.type === 'business') {
-    // Business: My Listings only, no upgrade, no dashboard, no sign up CTA
-    if(ddListings)  ddListings.style.display  = 'block';
-    if(navCta)      navCta.style.display      = 'none';
+    // Business: ONLY a direct link back to their own portal — no listings dropdown,
+    // no upgrade, no generic sign-up CTA, nothing that leads to home/explore.
+    if(ddListings)  ddListings.style.display  = 'none';
+    if(navCta) {
+      navCta.textContent = '📊 My Portal';
+      navCta.onclick = () => { showPage('marketplace'); setTimeout(()=>showMktView('admin'),100); };
+      navCta.style.display = '';
+    }
   } else if(user && user.type === 'subscriber') {
     // Learner: Dashboard + Upgrade Plan
     if(ddDashboard) ddDashboard.style.display = 'block';
