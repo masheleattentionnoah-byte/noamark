@@ -6508,8 +6508,12 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Hide all pages first
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
 
-  // Hide all marketplace sub-views
-  ['mkt-profile-view','mkt-boost-view','mkt-add-view','mkt-admin-view'].forEach(id=>{
+  // Hide all marketplace sub-views — including mkt-main-view, which was
+  // previously left untouched here and stayed visible underneath the portal
+  // on reload, causing other businesses to flash/show through the business
+  // dashboard. It is explicitly re-shown below only when the restored view
+  // genuinely is the main public listing grid.
+  ['mkt-main-view','mkt-profile-view','mkt-boost-view','mkt-add-view','mkt-admin-view'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.style.display = 'none';
   });
@@ -6585,15 +6589,18 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
 
   // ── Anti-flash removal strategy ──
-  // For non-profile pages: remove nm-anti-flash now — page structure is ready.
-  // For profile reloads: keep body hidden until the profile actually renders from Supabase,
-  // so the user never sees the marketplace hero/grid flashing before the profile appears.
+  // For non-profile, non-portal pages: remove nm-anti-flash now — page structure is ready.
+  // For profile reloads: keep body hidden until the profile actually renders from Supabase.
+  // For portal (business dashboard) reloads: keep body hidden until the dashboard's real
+  // data (status/listing/boost) is painted — otherwise the empty shell or stale content
+  // can flash before populateBizDashboard() finishes resolving the owner's actual listing.
   const _isProfileReload = (pageToShow === 'marketplace' && hashView === 'profile' && hashBizId);
-  if(!_isProfileReload) {
+  const _isPortalReload  = (pageToShow === 'marketplace' && hashView === 'portal');
+  if(!_isProfileReload && !_isPortalReload) {
     const nmAntiFlash = document.getElementById('nm-anti-flash');
     if(nmAntiFlash) nmAntiFlash.remove();
   }
-  // For profile reloads, nm-anti-flash is removed inside _tryRestoreProfile below.
+  // For profile/portal reloads, nm-anti-flash is removed once their real content is ready, below.
 
   // loadListingsFromSupabase fetches from Supabase then calls populateMarketplace()
   // and renderDashboardStats() itself once data is ready. Calling populateMarketplace()
@@ -6646,6 +6653,28 @@ document.addEventListener('DOMContentLoaded',()=>{
       }
     };
     setTimeout(() => _tryRestoreProfile(15), 300); // try up to 15 times × 400ms = 6s max
+  }
+
+  // Restore the business portal cleanly on reload — wait for the session (currentUser)
+  // to be restored AND the dashboard to actually paint real data before revealing the
+  // page, so the owner never sees a flash of empty fields or stale/wrong content.
+  if(_isPortalReload) {
+    const _tryRestorePortal = (attempts) => {
+      if(currentUser && currentUser.type === 'business') {
+        populateBizDashboard();
+        const nmAntiFlash = document.getElementById('nm-anti-flash');
+        if(nmAntiFlash) nmAntiFlash.remove();
+      } else if(attempts > 0) {
+        setTimeout(() => _tryRestorePortal(attempts - 1), 200);
+      } else {
+        // Session never restored (logged out / expired) — send back to the
+        // main marketplace instead of revealing an empty/broken portal.
+        showMktView('main', false);
+        const nmAntiFlash = document.getElementById('nm-anti-flash');
+        if(nmAntiFlash) nmAntiFlash.remove();
+      }
+    };
+    setTimeout(() => _tryRestorePortal(20), 300); // up to 20 × 200ms = 4s max
   }
 });
 
