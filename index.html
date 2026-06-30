@@ -1161,6 +1161,15 @@
   .bp-nav-item:hover{background:var(--black-3);color:var(--white);}
   .bp-nav-item.active{background:rgba(22,101,52,.08);color:var(--green-dark);border-left-color:var(--green-dark);}
   .bp-nav-badge{margin-left:auto;background:var(--green-dark);color:#fff;border-radius:10px;font-size:9px;padding:2px 7px;font-weight:700;}
+  /* Neutralize the global nav{} tag-selector (position:fixed/top/left/right/etc — meant for the
+     site's main top navbar) so the business portal's <nav> behaves as a normal flex child of
+     .bp-sidebar instead of escaping to the viewport top as its own fixed bar. */
+  .bp-sidebar-nav{
+    position:static !important; top:auto !important; left:auto !important; right:auto !important;
+    z-index:auto !important; background:transparent !important; box-shadow:none !important;
+    border-bottom:none !important; transition:none !important; gap:0 !important;
+    justify-content:flex-start !important; align-items:stretch !important;
+  }
   .bp-main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
   .bp-topbar{display:flex;align-items:center;justify-content:space-between;padding:20px 40px;background:var(--black-2);border-bottom:1px solid var(--border-soft);flex-shrink:0;}
   .bp-topbar-left{}
@@ -1276,9 +1285,9 @@
     }
     .bp-sidebar::-webkit-scrollbar{display:none;}
     .bp-sb-head,.bp-sb-biz,.bp-nav-sec,.bp-sb-footer{display:none;}
-    .bp-sidebar > nav{
-      display:flex; flex-direction:row; align-items:stretch;
-      height:100%; width:100%; padding:0 !important;
+    .bp-sidebar-nav{
+      display:flex !important; flex-direction:row !important; align-items:stretch !important;
+      height:100% !important; width:max-content !important; min-width:100% !important; padding:0 !important;
     }
     .bp-nav-item{
       flex-direction:column; align-items:center; justify-content:center;
@@ -1801,7 +1810,7 @@
         <h3 class="what-card-title">Opportunity Analysis</h3>
         <p class="what-card-body">We break down real business ideas with full startup costs, risk analysis, profit projections, and step-by-step setup guides — tailored for township and village markets.</p>
       </div>
-      <div class="what-card" style="border-color:rgba(22,101,52,.3);cursor:pointer;" onclick="showPage('marketplace')">
+      <div class="what-card" style="border-color:rgba(22,101,52,.3);cursor:pointer;" onclick="if(currentUser&&currentUser.type==='business'){showPage('marketplace',()=>setTimeout(()=>showMktView('admin'),100));}else{showPage('marketplace');}">
         <span class="what-card-icon">📍</span>
         <h3 class="what-card-title" style="color:var(--green-dark);">Local Marketplace</h3>
         <p class="what-card-body">Discover and promote real local businesses in your area. Food, shops, services, beauty, transport — all in one place. List your business free. Boost to reach more customers.</p>
@@ -3468,7 +3477,7 @@
           <div class="bp-sb-bizsub" id="bp-sb-bizsub">Not listed yet</div>
         </div>
       </div>
-      <nav style="flex:1;padding:8px 0;">
+      <nav class="bp-sidebar-nav" style="flex:1;padding:8px 0;">
         <div class="bp-nav-sec">Manage</div>
         <div class="bp-nav-item active" data-bppage="overview">◈ Overview</div>
         <div class="bp-nav-item" data-bppage="mylisting">◉ My Listing</div>
@@ -3483,7 +3492,7 @@
         <div class="bp-nav-item" data-bppage="settings">◉ Settings</div>
       </nav>
       <div class="bp-sb-footer" style="padding:16px 20px;border-top:1px solid var(--border-soft);">
-        <div style="font-size:10px;color:var(--white-dim);cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:6px;" onclick="showMktView('main')">← View Marketplace</div>
+        <div style="font-size:10px;color:var(--white-dim);cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:6px;" onclick="bpViewMyListing()">View My Listing</div>
         <div style="font-size:10px;color:var(--white-dim);cursor:pointer;display:flex;align-items:center;gap:6px;" onclick="showMktView('add')">+ Edit Listing</div>
       </div>
     </div>
@@ -3497,7 +3506,7 @@
         </div>
         <div class="bp-topbar-right" style="flex-wrap:wrap;gap:6px;position:relative;">
           <span class="bp-live-pill bp-pill-offline" id="bp-live-pill">● Not listed</span>
-          <button class="bp-btn" onclick="showMktView('main')" style="font-size:9px;">← Marketplace</button>
+          <button class="bp-btn" onclick="bpViewMyListing()" style="font-size:9px;">👁 View My Listing</button>
           <button class="bp-btn bp-btn-gold" onclick="bpEditListing()" style="font-size:9px;">+ Edit Listing</button>
           <button class="bp-btn bp-btn-g" onclick="showMktView('boost')" style="font-size:9px;">⭐ Boost</button>
           <!-- Notification Bell -->
@@ -3612,7 +3621,7 @@
           </div>
           <div style="display:flex;gap:10px;">
             <button class="bp-btn bp-btn-g" onclick="bpEditListing()">+ Add / Edit My Listing</button>
-            <button class="bp-btn" onclick="showMktView('main')">View Marketplace</button>
+            <button class="bp-btn" onclick="bpViewMyListing()">View My Listing</button>
           </div>
 
           <!-- AI Quick Insights -->
@@ -3648,7 +3657,7 @@
               <div style="display:flex;flex-direction:column;gap:10px;">
                 <button class="bp-btn bp-btn-g" onclick="bpEditListing()" style="justify-content:center;">Edit listing details</button>
                 <button class="bp-btn bp-btn-gold" onclick="bpGoPage('boost');showMktView('boost');" style="justify-content:center;">⭐ Upgrade boost plan</button>
-                <button class="bp-btn" onclick="showMktView('main')" style="justify-content:center;">View on marketplace</button>
+                <button class="bp-btn" onclick="bpViewMyListing()" style="justify-content:center;">View my live listing</button>
                 <button class="bp-btn" onclick="bpGoPage('aitools')" style="justify-content:center;">✦ Open AI tools</button>
               </div>
             </div>
@@ -7701,7 +7710,13 @@ async function handleBizLogin() {
     if (!pwOk) { showAuthError('biz-login-error', '\u274C Incorrect password. Please try again.'); return; }
     loginAs({ type:'business', name:biz.name, owner:biz.name, email:biz.email, plan:'Business', id:biz.id, joinedAt:biz.joinedAt || biz.created_at });
     showAuthSuccess('biz-login-success', '\u2713 Welcome back, ' + biz.name + '!');
-    setTimeout(closeAuth, 900);
+    setTimeout(() => {
+      closeAuth();
+      // Take the business owner straight to their dashboard — never leave them
+      // on the public marketplace/explore page after logging in.
+      showPage('marketplace');
+      setTimeout(() => showMktView('admin'), 100);
+    }, 900);
   } catch(e) {
     showAuthError('biz-login-error', navigator.onLine ? 'Connection error. Please try again.' : 'You appear to be offline. Check your connection.');
   }
@@ -7952,7 +7967,7 @@ function loginAs(user) {
 //   guest       → Home, Marketplace  (explorer: just browse)
 const NAV_RULES = {
   'logged-out':  ['home','marketplace','opportunities','learning','videos','plans'],
-  'business':    ['home','marketplace'],
+  'business':    ['home'],
   'subscriber':  ['home','marketplace','opportunities','learning','videos'],
   'guest':       ['home','marketplace'],
   'admin':       [], // admin has their own dashboard — no public nav items
@@ -8007,9 +8022,14 @@ function applyRoleHomePage(user) {
   const vipBanner     = document.querySelector('.home-vip-banner');
   const roleBanner    = document.getElementById('home-role-banner');
   const mktAddCta     = document.getElementById('mkt-add-biz-cta');
+  const topBizSection = document.getElementById('home-top-businesses-section');
 
   // Hide the marketplace "Own a Business?" CTA for all logged-in users
   if(mktAddCta) mktAddCta.style.display = user ? 'none' : '';
+
+  // Business owners must never see a generic "browse other businesses" section —
+  // their experience is their own dashboard only.
+  if(topBizSection) topBizSection.style.display = (user && user.type === 'business') ? 'none' : '';
 
   if(!user) {
     // Logged out — default public view
@@ -8560,6 +8580,18 @@ function bpGoPage(p) {
 }
 
 // ── EDIT LISTING — pre-fill form with existing data ──
+// Preview ONLY the business owner's own live listing — never the general
+// marketplace browse/search/category grid. Business owners must stay
+// inside their own business world, not see other businesses.
+function bpViewMyListing() {
+  const myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
+  if (!myListing) {
+    bpToast('Add your listing first to preview it live.');
+    return;
+  }
+  showPage('marketplace', () => setTimeout(() => showBizProfile(myListing.id), 100));
+}
+
 function bpEditListing() {
   const myListing = typeof LISTINGS !== 'undefined'
     ? getMyListing()
