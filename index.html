@@ -1275,7 +1275,11 @@
       z-index:999;
     }
     .bp-sidebar::-webkit-scrollbar{display:none;}
-    .bp-sb-head,.bp-sb-biz,.bp-nav-sec{display:none;}
+    .bp-sb-head,.bp-sb-biz,.bp-nav-sec,.bp-sb-footer{display:none;}
+    .bp-sidebar > nav{
+      display:flex; flex-direction:row; align-items:stretch;
+      height:100%; width:100%; padding:0 !important;
+    }
     .bp-nav-item{
       flex-direction:column; align-items:center; justify-content:center;
       gap:3px; padding:0 14px; height:58px; min-width:64px;
@@ -3478,7 +3482,7 @@
         <div class="bp-nav-item" data-bppage="aitools">✦ AI Tools</div>
         <div class="bp-nav-item" data-bppage="settings">◉ Settings</div>
       </nav>
-      <div style="padding:16px 20px;border-top:1px solid var(--border-soft);">
+      <div class="bp-sb-footer" style="padding:16px 20px;border-top:1px solid var(--border-soft);">
         <div style="font-size:10px;color:var(--white-dim);cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:6px;" onclick="showMktView('main')">← View Marketplace</div>
         <div style="font-size:10px;color:var(--white-dim);cursor:pointer;display:flex;align-items:center;gap:6px;" onclick="showMktView('add')">+ Edit Listing</div>
       </div>
@@ -3493,6 +3497,7 @@
         </div>
         <div class="bp-topbar-right" style="flex-wrap:wrap;gap:6px;position:relative;">
           <span class="bp-live-pill bp-pill-offline" id="bp-live-pill">● Not listed</span>
+          <button class="bp-btn" onclick="showMktView('main')" style="font-size:9px;">← Marketplace</button>
           <button class="bp-btn bp-btn-gold" onclick="bpEditListing()" style="font-size:9px;">+ Edit Listing</button>
           <button class="bp-btn bp-btn-g" onclick="showMktView('boost')" style="font-size:9px;">⭐ Boost</button>
           <!-- Notification Bell -->
@@ -10563,24 +10568,20 @@ document.addEventListener('DOMContentLoaded', function() {
 // ██████  NOAMARK BOOKINGS SYSTEM  ████████████████████████████
 // ══════════════════════════════════════════════════════════════
 
-const BULKSMS_TOKEN_ID     = 'AC926B71CAA14D7A96D9249DE614B100';
-const BULKSMS_TOKEN_SECRET = 'cU7x_QWBkrjVS3vmQh_ufcjwQU261';
-
-// ── Send SMS via BulkSMS ──────────────────────────────────────
+// ── Send SMS via our secure server-side proxy (/api/send-sms) ──
+// BulkSMS credentials live only in Vercel environment variables now,
+// never in this file or the browser. See /api/send-sms.js
 async function nmSendSMS(toNumber, message) {
   try {
     const raw = (toNumber || '').replace(/[^0-9]/g, '');
     if (!raw || raw.length < 9) return { ok: false, reason: 'bad number' };
-    const e164 = raw.startsWith('0') ? '+27' + raw.slice(1)
-               : raw.startsWith('27') ? '+' + raw
-               : raw.startsWith('+') ? raw : '+27' + raw;
-    const creds = btoa(BULKSMS_TOKEN_ID + ':' + BULKSMS_TOKEN_SECRET);
-    const res = await fetch('https://api.bulksms.com/v1/messages', {
+    const res = await fetch('/api/send-sms', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + creds },
-      body: JSON.stringify({ to: e164, body: message, routingGroup: 'STANDARD' })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: toNumber, message })
     });
-    return { ok: res.ok, status: res.status };
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok && data.ok === true, status: res.status };
   } catch(e) {
     console.warn('SMS send failed:', e);
     return { ok: false, reason: e.message };
@@ -10868,6 +10869,21 @@ async function submitBooking() {
     btn.textContent = '✅ Request Sent!';
     btn.style.background = 'rgba(22,101,52,.5)';
 
+    // Auto-close the modal after a short pause so the user can read the confirmation
+    setTimeout(() => {
+      closeBookingModal();
+      // Reset for next time it's opened
+      btn.disabled = false;
+      btn.textContent = '📅 CONFIRM BOOKING REQUEST';
+      btn.style.background = 'var(--green-dark)';
+      statusEl.style.display = 'none';
+      const dateEl = document.getElementById('bm-date'); if (dateEl) dateEl.value = '';
+      const timeEl = document.getElementById('bm-time'); if (timeEl) timeEl.value = '';
+      const svcEl  = document.getElementById('bm-service'); if (svcEl) svcEl.value = '';
+      const notesEl= document.getElementById('bm-notes'); if (notesEl) notesEl.value = '';
+      const phoneEl= document.getElementById('bm-cust-phone'); if (phoneEl) phoneEl.value = '';
+    }, 1800);
+
   } catch (err) {
     console.error('Booking error:', err);
     btn.disabled = false;
@@ -10884,9 +10900,8 @@ function fmtTime12h(t) {
 }
 
 // ── BulkSMS Credentials ──────────────────────────────────────
-// Sign up at bulksms.com → Settings → Advanced → API Credentials
-// Replace the values below with your real Token ID and Token Secret
-// BULKSMS credentials defined above
+// Credentials live ONLY in Vercel env vars (BULKSMS_TOKEN_ID,
+// BULKSMS_TOKEN_SECRET) read by /api/send-sms.js. Nothing here.
 // ─────────────────────────────────────────────────────────────
 
 async function bmSendSMS(toNumber, message) {
