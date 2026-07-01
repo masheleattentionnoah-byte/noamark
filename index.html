@@ -6386,7 +6386,7 @@ async function loadPendingListings() {
     window._pendingListingsMap = {};
     data.forEach(l => { window._pendingListingsMap[l.id] = l; });
     tbody.innerHTML = data.map(l => `
-      <tr>
+      <tr id="adm-pending-row-${l.id}">
         <td style="font-weight:600;">${l.name}</td>
         <td>${l.owner || '—'}</td>
         <td>${l.type || '—'}</td>
@@ -6394,8 +6394,9 @@ async function loadPendingListings() {
         <td>${l.phone || '—'}<br><span style="font-size:11px;color:var(--white-dim);">${l.email || ''}</span></td>
         <td>
           <button class="admin-action-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${l.id}')">👁 Review</button><br>
-          <button class="admin-action-btn approve" onclick="adminAction(this,'approve','${l.id}')">✓ Approve</button>
-          <button class="admin-action-btn reject" onclick="adminAction(this,'reject','${l.id}')">✗ Reject</button>
+          <button class="admin-action-btn approve" style="margin-bottom:4px;" onclick="adminAction(this,'approve','${l.id}')">✓ Approve</button>
+          <button class="admin-action-btn reject" style="margin-bottom:4px;" onclick="adminAction(this,'reject','${l.id}')">✗ Reject</button><br>
+          <button class="admin-action-btn" style="background:rgba(220,38,38,.15);color:#f87171;border:1px solid rgba(220,38,38,.3);font-size:11px;" onclick="admDeleteListing('${l.id}', this)">🗑 Delete Permanently</button>
         </td>
       </tr>
     `).join('');
@@ -6417,12 +6418,15 @@ async function loadApprovedListings() {
       return;
     }
     tbody.innerHTML = data.map(l => `
-      <tr>
+      <tr id="adm-row-${l.id}">
         <td style="font-weight:600;">${l.name}</td>
         <td>${l.type || '—'}</td>
         <td>${l.area || '—'}</td>
         <td><span style="color:${l.boost_tier==='pro'?'var(--gold)':l.boost_tier==='dominance'?'var(--gold)':'var(--white-dim)'};">${l.boost_tier || 'free'}</span></td>
-        <td><button class="admin-action-btn reject" onclick="adminAction(this,'reject','${l.id}')">Remove</button></td>
+        <td>
+          <button class="admin-action-btn reject" style="margin-bottom:4px;" onclick="adminAction(this,'reject','${l.id}')">✗ Reject</button><br>
+          <button class="admin-action-btn" style="background:rgba(220,38,38,.15);color:#f87171;border:1px solid rgba(220,38,38,.3);font-size:11px;" onclick="admDeleteListing('${l.id}', this)">🗑 Delete Permanently</button>
+        </td>
       </tr>
     `).join('');
   } catch(e) {
@@ -8787,6 +8791,16 @@ async function bpFetchMyOwnListing() {
       status: row.business_status || 'open', price: row.price_hint || 'Contact for pricing',
       photo: parsedPhotos[0] || '', photos: parsedPhotos, joinedAt: row.created_at || '',
       hoursWeekday: row.hours_weekday || '', hoursSat: row.hours_sat || '',
+      hoursSun:     row.hours_sun || '',
+      whatsapp:     row.whatsapp || '',
+      landmark:     row.landmark || '',
+      walkins:      row.walkins || '',
+      priceHint:    row.price_hint || '',
+      facebook:     row.facebook || '',
+      instagram:    row.instagram || '',
+      years:        row.years || '',
+      payments:     row.payments || '',
+      menu:         (() => { try { return typeof row.menu === 'string' ? JSON.parse(row.menu) : (row.menu || []); } catch(e) { return []; } })(),
       approvalStatus: row.status || 'pending'   // 'pending' | 'approved' | 'rejected'
     };
   } catch(e) {
@@ -10386,21 +10400,34 @@ async function admRejectListing(id, btn) {
 }
 
 async function admDeleteListing(id, btn) {
-  if(!confirm('Permanently delete this listing? This cannot be undone.')) return;
+  if(!confirm('Permanently delete this listing and ALL related enquiries, bookings and reviews? This cannot be undone.')) return;
   const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = '⏳ Deleting...'; btn.style.opacity = '.6';
   try {
+    // Must delete related records first or Supabase will throw a
+    // foreign key constraint error (enquiries_listing_id_fkey etc.)
+    await nmSupaQuery(() => _supa.from('enquiries').delete().eq('listing_id', id));
+    await nmSupaQuery(() => _supa.from('bookings').delete().eq('listing_id', id));
+    await nmSupaQuery(() => _supa.from('notifications').delete().eq('listing_id', id));
+    await nmSupaQuery(() => _supa.from('reviews').delete().eq('listing_id', id));
+    // Now safe to delete the listing itself
     const { error } = await nmSupaQuery(() => _supa.from('listings').delete().eq('id', id));
     if(error) throw error;
-    // Remove the row from the table immediately
+    // Remove the row immediately from the UI
     const row = btn.closest('tr');
-    if(row) { row.style.opacity = '0'; row.style.transition = 'opacity .4s'; setTimeout(()=>row.remove(), 400); }
-    admLoadOverview();
-    loadListingsFromSupabase(true);
+    if(row) { row.style.opacity = '0'; row.style.transition = 'opacity .3s'; setTimeout(()=>row.remove(), 300); }
+    // Reload all relevant tabs and stats
+    setTimeout(() => {
+      admLoadOverview();
+      loadListingsFromSupabase(true);
+      if(typeof loadPendingListings === 'function') loadPendingListings();
+      if(typeof loadApprovedListings === 'function') loadApprovedListings();
+    }, 350);
+    bpToast('✅ Listing and all related data deleted permanently.');
   } catch(e) {
     console.error('Delete error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
-    alert('Error deleting. Check your Supabase connection and try again.');
+    alert('Delete failed. Run this in Supabase SQL Editor:\n\nDELETE FROM enquiries WHERE listing_id = \'' + id + '\';\nDELETE FROM bookings WHERE listing_id = \'' + id + '\';\nDELETE FROM notifications WHERE listing_id = \'' + id + '\';\nDELETE FROM reviews WHERE listing_id = \'' + id + '\';\nDELETE FROM listings WHERE id = \'' + id + '\';');
   }
 }
 
