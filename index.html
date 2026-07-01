@@ -5967,8 +5967,27 @@ async function submitBusiness(){
 
   if(window._editingListingId) {
     // EDIT MODE — start with existing saved photos
-    const existing = LISTINGS.find(l => l.id === window._editingListingId);
-    let savedUrls = existing ? (existing.photos || (existing.photo ? [existing.photo] : [])) : [];
+    // Cannot use LISTINGS.find() here because LISTINGS only contains approved
+    // listings — pending/rejected listings would return null and wipe all photos.
+    // Fetch the real current photo data directly from Supabase instead.
+    let savedUrls = [];
+    try {
+      const existingRes = await nmSupaQuery(() =>
+        _supa.from('listings').select('photo_url,photo_urls').eq('id', window._editingListingId).limit(1)
+      );
+      const existingRow = existingRes && existingRes.data && existingRes.data[0];
+      if (existingRow) {
+        if (existingRow.photo_urls) {
+          try { savedUrls = typeof existingRow.photo_urls === 'string' ? JSON.parse(existingRow.photo_urls) : existingRow.photo_urls; }
+          catch(e) { savedUrls = []; }
+        }
+        if (savedUrls.length === 0 && existingRow.photo_url) savedUrls = [existingRow.photo_url];
+      }
+    } catch(e) {
+      // Fallback to approved LISTINGS cache if Supabase fetch fails
+      const existing = LISTINGS.find(l => l.id === window._editingListingId);
+      savedUrls = existing ? (existing.photos || (existing.photo ? [existing.photo] : [])) : [];
+    }
 
     // Build list of saved URLs minus removed ones
     const keptUrls = savedUrls.filter((_, i) => !window._removedPhotoIndexes.has(i));
@@ -8647,15 +8666,22 @@ function bpViewMyListing() {
   showPage('marketplace', () => setTimeout(() => showBizProfile(myListing.id), 100));
 }
 
-function bpEditListing() {
-  const myListing = typeof LISTINGS !== 'undefined'
-    ? getMyListing()
-    : null;
-
-  // Open the add/edit view
+async function bpEditListing() {
+  // Show the form immediately so the user sees something happening
   showMktView('add');
 
-  if (!myListing) return; // No listing yet — just open blank form
+  // getMyListing() only searches the approved-only LISTINGS array — if the
+  // listing is pending or rejected it returns null and the form opens blank,
+  // then submits as INSERT instead of UPDATE (so no changes are ever saved).
+  // Use bpFetchMyOwnListing() instead which queries Supabase directly and
+  // returns the listing regardless of its approval status.
+  let myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
+  if (!myListing) {
+    // Try fetching directly from Supabase — covers pending/rejected listings
+    myListing = await bpFetchMyOwnListing();
+  }
+
+  if (!myListing) return; // Genuinely no listing — leave form blank for new submission
 
   // Pre-fill fields after a short delay to let the DOM render
   setTimeout(() => {
