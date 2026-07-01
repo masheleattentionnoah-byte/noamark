@@ -6133,17 +6133,25 @@ async function submitBusiness(){
     price_hint: priceHint,
     owner_email: currentUser ? currentUser.email : email  // critical: used to match bookings/portal to this listing
   };
+  const isEditMode = !!listingId;
   try {
     if(listingId) {
       // UPDATE existing listing — keep status as-is (don't reset to pending)
-      await nmSupaQuery(() => _supa.from('listings').update(listingPayload).eq('id', listingId));
+      const { error: updateErr } = await nmSupaQuery(() => _supa.from('listings').update(listingPayload).eq('id', listingId));
+      if (updateErr) throw updateErr;
     } else {
       // INSERT new listing — set status to pending for review
       listingPayload.status = 'pending';
       const { data: listingData, error } = await nmSupaQuery(() => _supa.from('listings').insert(listingPayload).select());
+      if (error) throw error;
       if(listingData && listingData[0]) listingId = listingData[0].id;
     }
-  } catch(e){ console.warn('Supabase listing save failed', e); }
+  } catch(e) {
+    console.error('Supabase listing save failed:', e);
+    if(submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Listing'; submitBtn.style.opacity = '1'; }
+    alert('Save failed: ' + (e.message || 'Unknown error') + '\n\nPlease check your internet connection and try again.');
+    return; // Stop here — don't show false success
+  }
   // Store the listing ID in the current session for reliable lookup
   if(listingId && currentUser) {
     currentUser.listingId = listingId;
@@ -6166,21 +6174,26 @@ async function submitBusiness(){
     })
   }).then(r=>{
     if(submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Listing'; submitBtn.style.opacity = '1'; }
-    if(r.ok){
-      showMktView('main');
-      // Show success message
-      const toast = document.createElement('div');
-      toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#166534;color:#fff;padding:20px 32px;border-radius:4px;font-size:14px;font-weight:500;z-index:9999;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.4);max-width:90vw;';
-      toast.innerHTML = '✅ Listing submitted successfully!<br><span style="font-size:12px;opacity:.85;">Your business will be reviewed and approved within 24 hours. We will contact you at ' + phone + '.</span>';
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 6000);
-      ['biz_name','biz_cat','biz_type','biz_desc','biz_years','biz_address','biz_area','biz_city','biz_province','biz_landmark','biz_hours_weekday','biz_hours_sat','biz_hours_sun','biz_status','biz_price_hint','biz_menu','biz_owner','biz_phone','biz_whatsapp','biz_email','biz_facebook','biz_instagram'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-      // Reset photo tracking state for next use
-      window._replacedPhotos = {};
-      window._removedPhotoIndexes = new Set();
-      nextStep(1);
+    // Show correct message depending on whether this was an edit or new submission
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#166534;color:#fff;padding:20px 32px;border-radius:4px;font-size:14px;font-weight:500;z-index:9999;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.4);max-width:90vw;';
+    if (isEditMode) {
+      toast.innerHTML = '✅ Listing updated successfully!<br><span style="font-size:12px;opacity:.85;">Your changes have been saved.</span>';
     } else {
-      alert('There was an issue submitting. Please contact support@noamark.com');
+      toast.innerHTML = '✅ Listing submitted successfully!<br><span style="font-size:12px;opacity:.85;">Your business will be reviewed and approved within 24 hours. We will contact you at ' + phone + '.</span>';
+    }
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+    // Clear form fields
+    ['biz_name','biz_cat','biz_type','biz_desc','biz_years','biz_address','biz_area','biz_city','biz_province','biz_landmark','biz_hours_weekday','biz_hours_sat','biz_hours_sun','biz_status','biz_price_hint','biz_menu','biz_owner','biz_phone','biz_whatsapp','biz_email','biz_facebook','biz_instagram'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    window._replacedPhotos = {};
+    window._removedPhotoIndexes = new Set();
+    if (isEditMode) {
+      // After editing — go back to the business portal, not the public marketplace
+      showPage('marketplace');
+      setTimeout(() => { showMktView('admin'); populateBizDashboard(); loadListingsFromSupabase(true); }, 200);
+    } else {
+      nextStep(1);
     }
   }).catch(()=>{
     if(submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Listing'; submitBtn.style.opacity = '1'; }
