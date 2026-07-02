@@ -4620,9 +4620,20 @@ window.addEventListener('popstate', function(e) {
 
   // PRIORITY 0: Business owners must NEVER be sent to the homepage or public
   // marketplace by the back button — intercept immediately and keep them in
-  // their portal. Without this, pressing back navigates through history states
-  // that predate the portal view and drops them on the public homepage.
-  if (currentUser && currentUser.type === 'business') {
+  // their portal. Read session directly from localStorage (synchronous) because
+  // currentUser may not be set yet when popstate fires early in page load.
+  const _getSessionRole = () => {
+    try {
+      const sessions = JSON.parse(localStorage.getItem('nm_sessions_v2') || '{}');
+      const fp = window.DEVICE_FP || Object.keys(sessions)[0];
+      const s = sessions[fp];
+      if (!s || !s.user) return null;
+      if (Date.now() - s.savedAt > 30 * 24 * 60 * 60 * 1000) return null;
+      return s.user.type || null;
+    } catch(e) { return null; }
+  };
+  const _sessionRole = (currentUser && currentUser.type) || _getSessionRole();
+  if (_sessionRole === 'business') {
     const state = e.state || {};
     const isPortal = state.nmPage === 'marketplace' && state.nmView === 'admin';
     if (!isPortal) {
@@ -4762,7 +4773,7 @@ window.addEventListener('popstate', function(e) {
         if(id === 'dashboard') renderDashboardStats();
         if(id === 'home') {
           // Business owners must never land on the homepage — send to portal
-          if (currentUser && currentUser.type === 'business') {
+          if (_sessionRole === 'business') {
             history.pushState({ nmPage: 'marketplace', nmView: 'admin' }, '', '#marketplace/portal');
             showPage('marketplace');
             setTimeout(() => showMktView('admin', false), 100);
@@ -4780,7 +4791,7 @@ window.addEventListener('popstate', function(e) {
     }
   } else {
     // PRIORITY 6: No state — landed on a pre-SPA entry (Instagram/Google/external link).
-    if (currentUser && currentUser.type === 'business') {
+    if (_sessionRole === 'business') {
       history.pushState({ nmPage: 'marketplace', nmView: 'admin' }, '', '#marketplace/portal');
       showPage('marketplace');
       setTimeout(() => showMktView('admin', false), 100);
