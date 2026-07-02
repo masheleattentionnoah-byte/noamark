@@ -6131,26 +6131,49 @@ async function submitBusiness(){
     facebook, instagram,
     menu: JSON.stringify(menuItems),
     price_hint: priceHint,
-    owner_email: currentUser ? currentUser.email : email  // critical: used to match bookings/portal to this listing
   };
+  // owner_email links the listing to the business portal.
+  // Only include it if the column exists — we try it and catch the error if not.
+  // Run the SQL: ALTER TABLE listings ADD COLUMN IF NOT EXISTS owner_email text;
+  // to add it permanently and remove this guard.
+  const ownerEmailVal = currentUser ? currentUser.email : email;
   const isEditMode = !!listingId;
   try {
     if(listingId) {
-      // UPDATE existing listing — keep status as-is (don't reset to pending)
-      const { error: updateErr } = await nmSupaQuery(() => _supa.from('listings').update(listingPayload).eq('id', listingId));
+      // UPDATE existing listing — try with owner_email, fall back without it
+      let updateErr;
+      ({ error: updateErr } = await nmSupaQuery(() =>
+        _supa.from('listings').update({ ...listingPayload, owner_email: ownerEmailVal }).eq('id', listingId)
+      ));
+      if (updateErr && updateErr.message && updateErr.message.includes('owner_email')) {
+        // Column doesn't exist yet — retry without it
+        ({ error: updateErr } = await nmSupaQuery(() =>
+          _supa.from('listings').update(listingPayload).eq('id', listingId)
+        ));
+      }
       if (updateErr) throw updateErr;
     } else {
       // INSERT new listing — set status to pending for review
       listingPayload.status = 'pending';
-      const { data: listingData, error } = await nmSupaQuery(() => _supa.from('listings').insert(listingPayload).select());
-      if (error) throw error;
+      let insertPayload = { ...listingPayload, owner_email: ownerEmailVal };
+      let insertErr, listingData;
+      ({ data: listingData, error: insertErr } = await nmSupaQuery(() =>
+        _supa.from('listings').insert(insertPayload).select()
+      ));
+      if (insertErr && insertErr.message && insertErr.message.includes('owner_email')) {
+        // Column doesn't exist — retry without it
+        ({ data: listingData, error: insertErr } = await nmSupaQuery(() =>
+          _supa.from('listings').insert(listingPayload).select()
+        ));
+      }
+      if (insertErr) throw insertErr;
       if(listingData && listingData[0]) listingId = listingData[0].id;
     }
   } catch(e) {
     console.error('Supabase listing save failed:', e);
     if(submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Listing'; submitBtn.style.opacity = '1'; }
-    alert('Save failed: ' + (e.message || 'Unknown error') + '\n\nPlease check your internet connection and try again.');
-    return; // Stop here — don't show false success
+    alert('Save failed: ' + (e.message || 'Unknown error') + '\n\nPlease try again.');
+    return;
   }
   // Store the listing ID in the current session for reliable lookup
   if(listingId && currentUser) {
@@ -8783,9 +8806,16 @@ async function bpEditListing() {
 async function bpFetchMyOwnListing() {
   if (!currentUser || !currentUser.email) return null;
   try {
-    const res = await nmSupaQuery(() =>
+    // Search by owner_email first, fall back to email column
+    // (owner_email may not exist in all schema versions)
+    let res = await nmSupaQuery(() =>
       _supa.from('listings').select('*').ilike('owner_email', currentUser.email).limit(1)
     );
+    if (!res || !res.data || res.data.length === 0) {
+      res = await nmSupaQuery(() =>
+        _supa.from('listings').select('*').ilike('email', currentUser.email).limit(1)
+      );
+    }
     const row = res && res.data && res.data[0];
     if (!row) return null;
     // Reuse the same shaping logic as loadListingsFromSupabase so downstream
@@ -10982,7 +11012,7 @@ async function submitBooking() {
     if (error) throw error;
 
     // Fetch business owner phone for SMS
-    const listingRes = await nmSupaQuery(() => _supa.from('listings').select('phone,name,owner_email').eq('id', _bmBizId).limit(1));
+    const listingRes = await nmSupaQuery(() => _supa.from('listings').select('phone,name,owner_email,email').eq('id', _bmBizId).limit(1));
     const listing = listingRes && listingRes.data && listingRes.data[0];
 
     // Format messages
