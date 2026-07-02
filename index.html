@@ -7750,7 +7750,8 @@ async function handleBizSignup() {
   try {
     await saveUserToSupabase({ name, email, password:pass, role:'business' });
   } catch(e) {
-    showAuthError('biz-signup-error', '❌ Could not save your account. Please check your connection and try again.');
+    console.error('Signup save error:', e);
+    showAuthError('biz-signup-error', '❌ Could not save your account: ' + (e.message || 'Unknown error'));
     NM_USERS.businesses = NM_USERS.businesses.filter(b => b.email.toLowerCase() !== email.toLowerCase());
     return;
   }
