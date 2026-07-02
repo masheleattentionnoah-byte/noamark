@@ -8987,10 +8987,9 @@ function bpSyncListingPreview(l) {
   }
 }
 
-function bpRenderMyListing() {
-  const myListing = typeof LISTINGS !== 'undefined'
-    ? getMyListing()
-    : null;
+async function bpRenderMyListing() {
+  let myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
+  if (!myListing) myListing = await bpFetchMyOwnListing();
   const el = document.getElementById('bp-listing-full-preview');
   if(!el) return;
   if(myListing) {
@@ -11356,7 +11355,7 @@ async function bpLoadAvailability() {
   if (!grid || !currentUser || !currentUser.id) return;
   const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
   try {
-    // Ensure we have the listing ID (may not be set if user navigated directly to availability)
+    // Ensure we have the listing ID
     if (!window._bpListingId) {
       const lRes = await nmSupaQuery(() =>
         _supa.from('listings').select('id').ilike('email', currentUser.email).limit(1)
@@ -11366,19 +11365,69 @@ async function bpLoadAvailability() {
     const res = await nmSupaQuery(() =>
       _supa.from('business_availability').select('*').eq('listing_id', window._bpListingId || '').limit(1)
     );
-    // Table uses day_0=Monday...day_6=Sunday as individual boolean columns
-    const avail = (res && res.data && res.data[0]) || {};
-    const openInput = document.getElementById('bp-avail-open');
+    const avail = (res && res.data && res.data[0]) || null;
+    const openInput  = document.getElementById('bp-avail-open');
     const closeInput = document.getElementById('bp-avail-close');
-    if (openInput) openInput.value = avail.open_time || '08:00';
-    if (closeInput) closeInput.value = avail.close_time || '17:00';
-    grid.innerHTML = days.map((day, i) => {
-      const checked = Object.keys(avail).length ? !!avail['day_' + i] : i < 5;
-      return `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--white);background:var(--black-3);padding:8px 12px;border-radius:8px;border:1px solid ${checked ? 'var(--green-dark)' : 'var(--border-soft)'};">
-        <input type="checkbox" id="bp-day-${i}" ${checked ? 'checked' : ''} onchange="this.closest('label').style.borderColor=this.checked?'var(--green-dark)':'var(--border-soft)'" style="accent-color:var(--green-dark);">
-        ${day.slice(0,3)}
-      </label>`;
-    }).join('');
+
+    if (avail) {
+      // Use saved availability record
+      if (openInput)  openInput.value  = avail.open_time  || '08:00';
+      if (closeInput) closeInput.value = avail.close_time || '17:00';
+      grid.innerHTML = days.map((day, i) => {
+        const checked = !!avail['day_' + i];
+        return `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--white);background:var(--black-3);padding:8px 12px;border-radius:8px;border:1px solid ${checked ? 'var(--green-dark)' : 'var(--border-soft)'};">
+          <input type="checkbox" id="bp-day-${i}" ${checked ? 'checked' : ''} onchange="this.closest('label').style.borderColor=this.checked?'var(--green-dark)':'var(--border-soft)'" style="accent-color:var(--green-dark);">
+          ${day.slice(0,3)}
+        </label>`;
+      }).join('');
+    } else {
+      // No saved availability yet — pre-populate from listing signup hours
+      // so the business owner doesn't have to enter their hours twice.
+      let openTime = '08:00', closeTime = '17:00';
+      let satOpen = false, sunOpen = false;
+      try {
+        const listRes = await nmSupaQuery(() =>
+          _supa.from('listings').select('hours_weekday,hours_sat,hours_sun').eq('id', window._bpListingId || '').limit(1)
+        );
+        const listing = listRes && listRes.data && listRes.data[0];
+        if (listing) {
+          // Parse time from "8:00am - 8:00pm" or "08:00 - 20:00" format
+          const parseOpen = (str) => {
+            if (!str) return null;
+            const m = str.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+            if (!m) return null;
+            let h = parseInt(m[1]), min = m[2];
+            if (m[3] && m[3].toLowerCase() === 'pm' && h !== 12) h += 12;
+            if (m[3] && m[3].toLowerCase() === 'am' && h === 12) h = 0;
+            return String(h).padStart(2,'0') + ':' + min;
+          };
+          const parseClose = (str) => {
+            if (!str) return null;
+            const parts = str.split('-');
+            const closePart = parts[parts.length - 1].trim();
+            return parseOpen(closePart);
+          };
+          if (listing.hours_weekday) {
+            openTime  = parseOpen(listing.hours_weekday)  || openTime;
+            closeTime = parseClose(listing.hours_weekday) || closeTime;
+          }
+          satOpen = !!(listing.hours_sat && listing.hours_sat.trim() && listing.hours_sat.trim().toLowerCase() !== 'closed');
+          sunOpen = !!(listing.hours_sun && listing.hours_sun.trim() && listing.hours_sun.trim().toLowerCase() !== 'closed');
+        }
+      } catch(e) { /* use defaults */ }
+
+      if (openInput)  openInput.value  = openTime;
+      if (closeInput) closeInput.value = closeTime;
+      // Mon-Fri always open by default, Sat/Sun based on listing hours
+      const defaults = [true, true, true, true, true, satOpen, sunOpen];
+      grid.innerHTML = days.map((day, i) => {
+        const checked = defaults[i];
+        return `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--white);background:var(--black-3);padding:8px 12px;border-radius:8px;border:1px solid ${checked ? 'var(--green-dark)' : 'var(--border-soft)'};">
+          <input type="checkbox" id="bp-day-${i}" ${checked ? 'checked' : ''} onchange="this.closest('label').style.borderColor=this.checked?'var(--green-dark)':'var(--border-soft)'" style="accent-color:var(--green-dark);">
+          ${day.slice(0,3)}
+        </label>`;
+      }).join('');
+    }
   } catch(e) {
     grid.innerHTML = '<div style="color:var(--white-dim);font-size:12px;">Could not load availability.</div>';
   }
