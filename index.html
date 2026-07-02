@@ -4618,7 +4618,26 @@ function showPage(id, cb){
 // ── BACK BUTTON HANDLER — handles every case professionally ──
 window.addEventListener('popstate', function(e) {
 
-  // PRIORITY 1: Gate modal open → close it, stay on page
+  // PRIORITY 0: Business owners must NEVER be sent to the homepage or public
+  // marketplace by the back button — intercept immediately and keep them in
+  // their portal. Without this, pressing back navigates through history states
+  // that predate the portal view and drops them on the public homepage.
+  if (currentUser && currentUser.type === 'business') {
+    const state = e.state || {};
+    const isPortal = state.nmPage === 'marketplace' && state.nmView === 'admin';
+    if (!isPortal) {
+      // Don't navigate away — push a clean portal state back on top
+      history.pushState({ nmPage: 'marketplace', nmView: 'admin' }, '', '#marketplace/portal');
+      // Make sure the portal view is actually showing
+      const mktPage = document.getElementById('page-marketplace');
+      if(mktPage) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        mktPage.classList.add('active');
+      }
+      showMktView('admin', false);
+      return;
+    }
+  }
   const gateOverlay = document.getElementById('gate-overlay');
   if(gateOverlay && gateOverlay.classList.contains('active')) {
     closeGate();
@@ -4742,8 +4761,14 @@ window.addEventListener('popstate', function(e) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         if(id === 'dashboard') renderDashboardStats();
         if(id === 'home') {
+          // Business owners must never land on the homepage — send to portal
+          if (currentUser && currentUser.type === 'business') {
+            history.pushState({ nmPage: 'marketplace', nmView: 'admin' }, '', '#marketplace/portal');
+            showPage('marketplace');
+            setTimeout(() => showMktView('admin', false), 100);
+            return;
+          }
           // Re-push home so pressing back again never exits the app.
-          // Use replaceState if URL is already #home to avoid stacking identical entries.
           if(window.location.hash === '#home' || window.location.hash === '') {
             history.replaceState({ nmPage: 'home', nmView: 'main' }, '', '#home');
           } else {
@@ -4755,9 +4780,13 @@ window.addEventListener('popstate', function(e) {
     }
   } else {
     // PRIORITY 6: No state — landed on a pre-SPA entry (Instagram/Google/external link).
+    if (currentUser && currentUser.type === 'business') {
+      history.pushState({ nmPage: 'marketplace', nmView: 'admin' }, '', '#marketplace/portal');
+      showPage('marketplace');
+      setTimeout(() => showMktView('admin', false), 100);
+      return;
+    }
     // pushState (not replaceState) so home sits ON TOP of the unknown entry.
-    // This means pressing back again goes to the unknown entry, fires this handler again,
-    // and keeps the user inside the app indefinitely.
     history.pushState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const home = document.getElementById('page-home');
