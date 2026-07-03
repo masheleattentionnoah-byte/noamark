@@ -2144,7 +2144,7 @@
             <div style="width:36px;height:36px;background:#f0fdf4;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">💳</div>
             <h3 style="font-size:15px;font-weight:700;color:#111827;">Payments &amp; What You're Paying For</h3>
           </div>
-          <p style="font-size:14px;color:#4b5563;line-height:1.8;">NoaMark generates revenue in two ways: (1) Business owners may purchase paid <strong>Boost packages</strong> (Starter, Growth, Dominance, or monthly Premium) to feature their listing more prominently in search results and category pages. (2) Learners may purchase access to paid business education content and courses. All payments on NoaMark are processed securely through Payfast, a registered South African payment service provider. NoaMark does not store your card details.</p>
+          <p style="font-size:14px;color:#4b5563;line-height:1.8;">NoaMark generates revenue in two ways: (1) Business owners may purchase paid <strong>Boost packages</strong> (Starter, Growth, Dominance, or monthly Premium) to feature their listing more prominently in search results and category pages. (2) Learners may purchase access to paid business education content and courses. All payments on NoaMark are processed securely through a registered South African payment service provider. NoaMark does not store your card details.</p>
         </div>
         <div style="padding-bottom:24px;border-bottom:1px solid #f1f5f9;">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
@@ -2871,7 +2871,7 @@
         <div class="form-benefit"><div class="form-benefit-dot"></div><div class="form-benefit-text">Built for South African entrepreneurs</div></div>
         <div style="margin-top:48px;padding:28px;border:1px solid var(--border);background:var(--black);">
           <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;">Payment Options</p>
-          <p style="font-size:13px;color:var(--white-dim);line-height:1.7;">We accept EFT, PayFast, credit/debit card, and SnapScan. After registration, our team will contact you to complete your membership setup.</p>
+          <p style="font-size:13px;color:var(--white-dim);line-height:1.7;">We accept EFT, credit/debit card, and SnapScan. After registration, our team will contact you to complete your membership setup.</p>
         </div>
       </div>
       <div class="subscribe-right">
@@ -3845,7 +3845,7 @@
                 <button class="bp-btn bp-btn-gold" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Pro','R329.99/month')">👑 Select Pro</button>
               </div>
             </div>
-            <p style="font-size:11px;color:var(--white-dim);margin-top:16px;line-height:1.6;">To activate a plan, contact us after selecting: <a href="mailto:support@noamark.com" style="color:var(--gold-dim);">support@noamark.com</a> · <a href="tel:+27634189749" style="color:var(--gold-dim);">+27 63 418 9749</a>. Payment via EFT, PayFast, or SnapScan.</p>
+            <p style="font-size:11px;color:var(--white-dim);margin-top:16px;line-height:1.6;">To activate a plan, contact us after selecting: <a href="mailto:support@noamark.com" style="color:var(--gold-dim);">support@noamark.com</a> · <a href="tel:+27634189749" style="color:var(--gold-dim);">+27 63 418 9749</a>. Payment via EFT or SnapScan.</p>
           </div>
         </div>
 
@@ -6275,7 +6275,7 @@ async function submitBusiness(){
 
 // ── BOOST HANDLER ──
 function handleBoost(type,price,duration){
-  alert('🚀 '+type+' Boost selected ('+price+' / '+duration+').\n\nTo activate: contact us at support@noamark.com or +27 63 418 9749 with your business name and we will set this up for you.\n\nPayment: EFT, PayFast, or SnapScan.');
+  alert('🚀 '+type+' Boost selected ('+price+' / '+duration+').\n\nTo activate: contact us at support@noamark.com or +27 63 418 9749 with your business name and we will set this up for you.\n\nPayment: EFT or SnapScan.');
 }
 
 // ── ADMIN ACTIONS ──
@@ -7390,21 +7390,21 @@ async function nmVerifyPassword(password, storedStr) {
 }
 
 // ════════════════════════════════════════════════════════════
-// ⑨  PAYFAST — Real SA payment gateway integration
-//    Builds a self-submitting PayFast form for boost purchases.
-//    On return, PayFast posts ITN (Instant Transaction Notification)
+// ⑨  PAYMENT GATEWAY — Real SA payment gateway integration
+//    Builds a self-submitting payment form for boost purchases.
+//    On return, the gateway posts ITN (Instant Transaction Notification)
 //    to your server; here we also poll Supabase for the boost_tier
-//    update that your PayFast webhook should write.
+//    update that your payment webhook should write.
 // ════════════════════════════════════════════════════════════
-const PAYFAST_CONFIG = {
-  // ⚠️ Replace with your real PayFast merchant credentials before going live
+const PAYMENT_CONFIG = {
+  // ⚠️ Replace with your real merchant credentials before going live
   merchant_id:  '10000100',          // sandbox merchant id
   merchant_key: '46f0cd694581a',     // sandbox merchant key
-  passphrase:   'payfast_passphrase', // set in PayFast dashboard
+  passphrase:   'payment_passphrase', // set in gateway dashboard
   sandbox: true,                     // change to false in production
 };
 
-function nmPayfastBoost(planKey, planName, amount, listingId) {
+function nmProcessBoost(planKey, planName, amount, listingId) {
   if (!currentUser || currentUser.type !== 'business') {
     bpToast('Please log in as a business to boost.');
     return;
@@ -7414,7 +7414,7 @@ function nmPayfastBoost(planKey, planName, amount, listingId) {
     return;
   }
 
-  const baseUrl = PAYFAST_CONFIG.sandbox
+  const baseUrl = PAYMENT_CONFIG.sandbox
     ? 'https://sandbox.payfast.co.za/eng/process'
     : 'https://www.payfast.co.za/eng/process';
 
@@ -7422,13 +7422,13 @@ function nmPayfastBoost(planKey, planName, amount, listingId) {
   const paymentRef = 'NM-' + planKey.toUpperCase() + '-' + (listingId || 'UNK') + '-' + Date.now();
 
   const fields = {
-    merchant_id:  PAYFAST_CONFIG.merchant_id,
-    merchant_key: PAYFAST_CONFIG.merchant_key,
+    merchant_id:  PAYMENT_CONFIG.merchant_id,
+    merchant_key: PAYMENT_CONFIG.merchant_key,
     // return_url must be your live domain — adjust before production
     return_url:   window.location.origin + window.location.pathname + '?boost_return=1&plan=' + planKey + '&listing=' + (listingId || ''),
     cancel_url:   window.location.origin + window.location.pathname + '?boost_cancel=1',
     // notify_url must be a publicly reachable HTTPS endpoint (your Vercel API route)
-    notify_url:   window.location.origin + '/api/payfast-notify',
+    notify_url:   window.location.origin + '/api/payment-notify',
     name_first:   (currentUser.name || 'Business').split(' ')[0],
     name_last:    (currentUser.name || 'Owner').split(' ').slice(1).join(' ') || 'Owner',
     email_address: currentUser.email || '',
@@ -7456,13 +7456,13 @@ function nmPayfastBoost(planKey, planName, amount, listingId) {
   });
 
   // Show a user-friendly overlay before redirecting
-  bpToast('🔒 Redirecting to PayFast secure payment...');
+  bpToast('🔒 Redirecting to secure payment...');
   document.body.appendChild(form);
   setTimeout(() => form.submit(), 800);
 }
 
-// Handle PayFast return — check URL params and update boost status optimistically
-(function handlePayfastReturn() {
+// Handle payment return — check URL params and update boost status optimistically
+(function handlePaymentReturn() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('boost_return') === '1') {
     const plan    = params.get('plan') || '';
@@ -7470,7 +7470,7 @@ function nmPayfastBoost(planKey, planName, amount, listingId) {
     // Remove query string to keep URL clean
     history.replaceState({}, '', window.location.pathname);
     // Execute after DOM + session load
-    const _doPayfastReturn = async () => {
+    const _doPaymentReturn = async () => {
       await new Promise(r => setTimeout(r, 1200));
       if (plan && listing) {
         try {
@@ -7483,20 +7483,20 @@ function nmPayfastBoost(planKey, planName, amount, listingId) {
       setTimeout(() => { if (typeof loadListingsFromSupabase === 'function') loadListingsFromSupabase(); }, 2000);
     };
     if (document.readyState === 'loading') {
-      window.addEventListener('DOMContentLoaded', _doPayfastReturn);
+      window.addEventListener('DOMContentLoaded', _doPaymentReturn);
     } else {
-      _doPayfastReturn();
+      _doPaymentReturn();
     }
   }
   if (params.get('boost_cancel') === '1') {
     history.replaceState({}, '', window.location.pathname);
-    const _doPayfastCancel = () => {
+    const _doPaymentCancel = () => {
       setTimeout(() => bpToast('Payment cancelled. Your listing was not charged.'), 1200);
     };
     if (document.readyState === 'loading') {
-      window.addEventListener('DOMContentLoaded', _doPayfastCancel);
+      window.addEventListener('DOMContentLoaded', _doPaymentCancel);
     } else {
-      _doPayfastCancel();
+      _doPaymentCancel();
     }
   }
 })();
@@ -9500,28 +9500,16 @@ function bpRenderSettings() {
   loadNotifPrefs();
 }
 
-// ── BOOST SELECT — Real PayFast payment ──
+// ── BOOST SELECT — currently manual activation (online checkout temporarily disabled) ──
 function bpSelectBoost(plan, price) {
   if (!currentUser || currentUser.type !== 'business') {
     bpToast('Please log in as a business owner to purchase a boost.');
     return;
   }
-  // Map plan names to PayFast-safe keys and amounts
-  const planMap = {
-    'Starter':   { key: 'starter',   amount: '49.99'  },
-    'Growth':    { key: 'growth',    amount: '99.99'  },
-    'Dominance': { key: 'dominance', amount: '199.99' },
-    'Pro':       { key: 'pro',       amount: '329.99' },
-  };
-  const planInfo = planMap[plan] || { key: plan.toLowerCase(), amount: String(price).replace(/[^0-9.]/g,'') };
-
-  // Find the current user's listing ID for the ITN callback
-  const myListing = typeof LISTINGS !== 'undefined'
-    ? getMyListing()
-    : null;
-  const listingId = myListing ? myListing.id : '';
-
-  nmPayfastBoost(planInfo.key, plan, planInfo.amount, listingId);
+  // NOTE: Online checkout is temporarily disabled while a new payment gateway
+  // is being integrated. Re-enable by restoring the nmProcessBoost(...) call
+  // below once the new gateway is live.
+  alert('🚀 ' + plan + ' Boost selected (' + price + ').\n\nTo activate: contact us at support@noamark.com or +27 63 418 9749 with your business name and we will set this up for you.\n\nPayment: EFT or SnapScan.');
 }
 
 // ── TOAST ──
@@ -9930,7 +9918,7 @@ bpLoad();
         <div class="adm-topbar">
           <div>
             <div class="adm-page-title">Revenue Overview</div>
-            <div class="adm-page-sub">Active boost tiers — revenue confirmed only after PayFast payment</div>
+            <div class="adm-page-sub">Active boost tiers — revenue confirmed only after payment</div>
           </div>
           <button class="adm-btn-refresh" onclick="admLoadRevenue()">↻ Refresh</button>
         </div>
@@ -10536,7 +10524,7 @@ async function admLoadRevenue() {
     const dom = boosted.filter(l => l.boost_tier === 'dominance');
     const growth = boosted.filter(l => l.boost_tier === 'growth');
     const starter = boosted.filter(l => l.boost_tier === 'starter');
-    const estRevenue = 0; // Revenue only counts once payment is confirmed via PayFast ITN callback
+    const estRevenue = 0; // Revenue only counts once payment is confirmed via ITN callback
 
     const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
     set('adm-rev-boosted', boosted.length);
