@@ -3296,10 +3296,51 @@
       <!-- STEP 3: OPERATING HOURS -->
       <div class="onboard-form-panel" id="step-3">
         <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:48px;">
-          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:32px;">Step 3 — Operating Hours *</p>
-          <div class="form-group"><label class="form-label">Weekdays (Mon–Fri) *</label><input type="text" class="form-input" id="biz_hours_weekday" placeholder="e.g. 07:00 – 18:00 or Closed"></div>
-          <div class="form-group"><label class="form-label">Saturday *</label><input type="text" class="form-input" id="biz_hours_sat" placeholder="e.g. 08:00 – 15:00 or Closed"></div>
-          <div class="form-group"><label class="form-label">Sunday & Public Holidays *</label><input type="text" class="form-input" id="biz_hours_sun" placeholder="e.g. 09:00 – 13:00 or Closed"></div>
+          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:8px;">Step 3 — Operating Hours *</p>
+          <p style="font-size:11px;color:var(--white-dim);margin-bottom:28px;">Pick your exact opening and closing times — these will be used exactly as set, everywhere on NoaMark (your listing, your dashboard, and your booking calendar).</p>
+
+          <div class="form-group">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <label class="form-label" style="margin-bottom:0;">Weekdays (Mon–Fri) *</label>
+              <label style="font-size:11px;font-weight:400;color:var(--white-dim);display:flex;align-items:center;gap:6px;cursor:pointer;">
+                <input type="checkbox" id="biz_hours_weekday_closed" onchange="nmToggleDayClosed('weekday')"> Closed weekdays
+              </label>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;" id="biz_hours_weekday_row">
+              <input type="time" class="form-input" id="biz_hours_weekday_open" value="08:00" style="flex:1;">
+              <span style="color:var(--white-dim);font-size:12px;flex-shrink:0;">to</span>
+              <input type="time" class="form-input" id="biz_hours_weekday_close" value="17:00" style="flex:1;">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <label class="form-label" style="margin-bottom:0;">Saturday *</label>
+              <label style="font-size:11px;font-weight:400;color:var(--white-dim);display:flex;align-items:center;gap:6px;cursor:pointer;">
+                <input type="checkbox" id="biz_hours_sat_closed" onchange="nmToggleDayClosed('sat')"> Closed on Saturdays
+              </label>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;" id="biz_hours_sat_row">
+              <input type="time" class="form-input" id="biz_hours_sat_open" value="08:00" style="flex:1;">
+              <span style="color:var(--white-dim);font-size:12px;flex-shrink:0;">to</span>
+              <input type="time" class="form-input" id="biz_hours_sat_close" value="13:00" style="flex:1;">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <label class="form-label" style="margin-bottom:0;">Sunday & Public Holidays *</label>
+              <label style="font-size:11px;font-weight:400;color:var(--white-dim);display:flex;align-items:center;gap:6px;cursor:pointer;">
+                <input type="checkbox" id="biz_hours_sun_closed" onchange="nmToggleDayClosed('sun')"> Closed Sundays
+              </label>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;" id="biz_hours_sun_row">
+              <input type="time" class="form-input" id="biz_hours_sun_open" value="09:00" style="flex:1;">
+              <span style="color:var(--white-dim);font-size:12px;flex-shrink:0;">to</span>
+              <input type="time" class="form-input" id="biz_hours_sun_close" value="13:00" style="flex:1;">
+            </div>
+          </div>
+
           <div class="form-group"><label class="form-label">Current Status *</label>
             <select class="form-input" id="biz_status">
               <option value="">Select...</option>
@@ -5887,6 +5928,63 @@ function previewMedia(input, previewId, type, maxFiles){
   });
 }
 
+// ── OPERATING HOURS TIME PICKERS (Step 3) ──
+// Dims and disables the open/close time inputs for a day when "Closed" is checked.
+function nmToggleDayClosed(day) {
+  const closedEl = document.getElementById('biz_hours_' + day + '_closed');
+  const row = document.getElementById('biz_hours_' + day + '_row');
+  if (!closedEl || !row) return;
+  const isClosed = closedEl.checked;
+  row.style.opacity = isClosed ? '0.4' : '1';
+  row.querySelectorAll('input').forEach(inp => { inp.disabled = isClosed; });
+}
+
+// Builds the exact "HH:MM - HH:MM" (or "Closed") string that gets saved to the
+// listing and later parsed back out for the business-portal availability tab —
+// using type="time" inputs guarantees this is always a clean 24-hour value,
+// so it can never drift from what's shown on the dashboard.
+function nmGetHoursString(prefix) {
+  const closedEl = document.getElementById('biz_hours_' + prefix + '_closed');
+  if (closedEl && closedEl.checked) return 'Closed';
+  const openEl  = document.getElementById('biz_hours_' + prefix + '_open');
+  const closeEl = document.getElementById('biz_hours_' + prefix + '_close');
+  const openVal  = openEl  && openEl.value  ? openEl.value  : '';
+  const closeVal = closeEl && closeEl.value ? closeEl.value : '';
+  if (!openVal || !closeVal) return '';
+  return openVal + ' - ' + closeVal;
+}
+
+// Restores existing saved hours text into the time pickers when editing a
+// listing. Handles both the new clean "08:00 - 17:00" format and legacy
+// free-text entries (e.g. "09h00 - 21h00", "8:00am - 6:00pm") so older
+// listings edit cleanly too.
+function nmSetHoursInputs(prefix, text) {
+  const openEl   = document.getElementById('biz_hours_' + prefix + '_open');
+  const closeEl  = document.getElementById('biz_hours_' + prefix + '_close');
+  const closedEl = document.getElementById('biz_hours_' + prefix + '_closed');
+  if (!text || !text.trim()) return;
+  if (text.trim().toLowerCase() === 'closed') {
+    if (closedEl) { closedEl.checked = true; nmToggleDayClosed(prefix); }
+    return;
+  }
+  if (closedEl) { closedEl.checked = false; nmToggleDayClosed(prefix); }
+  const parseTime = (str) => {
+    if (!str) return null;
+    const m = str.match(/(\d{1,2})[:h](\d{2})\s*(am|pm)?/i);
+    if (!m) return null;
+    let h = parseInt(m[1], 10);
+    const min = m[2];
+    if (m[3] && m[3].toLowerCase() === 'pm' && h !== 12) h += 12;
+    if (m[3] && m[3].toLowerCase() === 'am' && h === 12) h = 0;
+    return String(h).padStart(2, '0') + ':' + min;
+  };
+  const parts = text.split('-');
+  const openVal  = parseTime(parts[0]);
+  const closeVal = parts.length > 1 ? parseTime(parts.slice(1).join('-')) : null;
+  if (openEl && openVal)   openEl.value  = openVal;
+  if (closeEl && closeVal) closeEl.value = closeVal;
+}
+
 function nextStep(n){
   if(n === 4) { setTimeout(menuBuilderInit, 50); }
   if(n === 5) { setTimeout(applyStep5Labels, 50); }
@@ -5922,13 +6020,13 @@ function nextStep(n){
     },
     // Goes to step 4 — leaving step 3 (Operating Hours)
     4:()=>{
-      const wd=document.getElementById('biz_hours_weekday').value.trim();
-      const sat=document.getElementById('biz_hours_sat').value.trim();
-      const sun=document.getElementById('biz_hours_sun').value.trim();
+      const wd=nmGetHoursString('weekday');
+      const sat=nmGetHoursString('sat');
+      const sun=nmGetHoursString('sun');
       const status=document.getElementById('biz_status').value;
-      if(!wd){alert('Please enter your Weekday hours.');return false;}
-      if(!sat){alert('Please enter your Saturday hours.');return false;}
-      if(!sun){alert('Please enter your Sunday / Public Holiday hours.');return false;}
+      if(!wd){alert('Please set your Weekday opening and closing times.');return false;}
+      if(!sat){alert('Please set your Saturday hours, or mark it as Closed.');return false;}
+      if(!sun){alert('Please set your Sunday / Public Holiday hours, or mark it as Closed.');return false;}
       if(!status){alert('Please select your current status.');return false;}
       return true;
     },
@@ -5988,9 +6086,9 @@ async function submitBusiness(){
   const desc=document.getElementById('biz_desc').value.trim();
   const type=document.getElementById('biz_type').value.trim();
   const years=document.getElementById('biz_years').value;
-  const hoursWD=document.getElementById('biz_hours_weekday').value.trim();
-  const hoursSat=document.getElementById('biz_hours_sat').value.trim();
-  const hoursSun=document.getElementById('biz_hours_sun').value.trim();
+  const hoursWD=nmGetHoursString('weekday');
+  const hoursSat=nmGetHoursString('sat');
+  const hoursSun=nmGetHoursString('sun');
   const status=document.getElementById('biz_status').value;
   const priceHint=document.getElementById('biz_price_hint').value.trim();
   const menu=document.getElementById('biz_menu').value.trim();
@@ -6229,6 +6327,14 @@ async function submitBusiness(){
     currentUser.listingId = listingId;
     saveSession(currentUser);
   }
+  // Keep the account's owner name in sync with what was just saved on the
+  // listing, so Account Details never shows a stale or missing owner name.
+  if (owner && currentUser && currentUser.type === 'business') {
+    currentUser.owner = owner;
+    saveSession(currentUser);
+    try { await saveUserToSupabase({ name: currentUser.name, email: currentUser.email, owner: owner, role: 'business' }); }
+    catch(e) { console.warn('Owner name sync failed', e); }
+  }
   // Clear editing mode
   window._editingListingId = null;
 
@@ -6257,7 +6363,11 @@ async function submitBusiness(){
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 5000);
     // Clear form fields
-    ['biz_name','biz_cat','biz_type','biz_desc','biz_years','biz_address','biz_area','biz_city','biz_province','biz_landmark','biz_hours_weekday','biz_hours_sat','biz_hours_sun','biz_status','biz_price_hint','biz_menu','biz_owner','biz_phone','biz_whatsapp','biz_email','biz_facebook','biz_instagram'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['biz_name','biz_cat','biz_type','biz_desc','biz_years','biz_address','biz_area','biz_city','biz_province','biz_landmark','biz_status','biz_price_hint','biz_menu','biz_owner','biz_phone','biz_whatsapp','biz_email','biz_facebook','biz_instagram'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['biz_hours_weekday_open','biz_hours_sat_open','biz_hours_sun_open'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='08:00';});
+    ['biz_hours_weekday_close','biz_hours_sat_close','biz_hours_sun_close'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='17:00';});
+    ['biz_hours_weekday_closed','biz_hours_sat_closed','biz_hours_sun_closed'].forEach(id=>{const el=document.getElementById(id);if(el){el.checked=false;}});
+    ['weekday','sat','sun'].forEach(day=>{ if(typeof nmToggleDayClosed==='function') nmToggleDayClosed(day); });
     window._replacedPhotos = {};
     window._removedPhotoIndexes = new Set();
     if (isEditMode) {
@@ -6586,6 +6696,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   const hashPage = hashParts[0] || 'home';           // e.g. 'marketplace'
   const hashView = hashParts[1] || 'main';           // e.g. 'boost'
   const hashBizId = hashParts[2] || null;            // e.g. '123' for profile
+  const hashBpPage = hashParts[2] || 'overview';      // e.g. 'settings' for portal (same slot, different meaning)
 
   // Valid page IDs that exist in the DOM
   const validPages = ['home','about','contact','terms','privacy','faqs',
@@ -6791,6 +6902,10 @@ document.addEventListener('DOMContentLoaded',()=>{
     const _tryRestorePortal = (attempts) => {
       if(currentUser && currentUser.type === 'business') {
         populateBizDashboard();
+        // Restore the exact tab (Settings, Bookings, My Listing, etc.) the
+        // owner was on before refreshing — bpGoPage also re-syncs the hash.
+        const validBpPages = ['overview','mylisting','enquiries','bookings','reviews','boost','analytics','aitools','settings'];
+        bpGoPage(validBpPages.includes(hashBpPage) ? hashBpPage : 'overview');
         const nmAntiFlash = document.getElementById('nm-anti-flash');
         if(nmAntiFlash) nmAntiFlash.remove();
       } else if(attempts > 0) {
@@ -7544,6 +7659,17 @@ async function saveUserToSupabase(user) {
     if (!payload.id) payload.id = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16));
     result = await nmSupaQuery(() => _supa.from('users').insert(payload));
   }
+  // If the 'owner' column doesn't exist yet in the users table, don't let that
+  // break account creation/login — retry once without it. Run this SQL in
+  // Supabase to add it permanently and get real owner-name saving/repair:
+  //   ALTER TABLE users ADD COLUMN IF NOT EXISTS owner text;
+  if (result && result.error && result.error.message && /owner/i.test(result.error.message) && 'owner' in payload) {
+    const payloadNoOwner = { ...payload };
+    delete payloadNoOwner.owner;
+    result = existingRow
+      ? await nmSupaQuery(() => _supa.from('users').update(payloadNoOwner).eq('id', existingRow.id))
+      : await nmSupaQuery(() => _supa.from('users').insert(payloadNoOwner));
+  }
   if (result && result.error) throw new Error(result.error.message || 'Supabase save failed');
   return result;
 }
@@ -7797,7 +7923,7 @@ async function handleBizSignup() {
   // and login from another device will fail the password check.
   showAuthError('biz-signup-error', 'Creating your account…');
   try {
-    await saveUserToSupabase({ name, email, password:pass, role:'business' });
+    await saveUserToSupabase({ name, owner, email, password:pass, role:'business' });
   } catch(e) {
     console.error('Signup save error:', e);
     showAuthError('biz-signup-error', '❌ Could not save your account: ' + (e.message || 'Unknown error'));
@@ -8745,6 +8871,11 @@ function bpGoPage(p) {
   if(p === 'enquiries') bpSyncEnquiriesFromSupabase();
   if(p === 'reviews') bpSyncReviewsFromSupabase();
   if(p === 'bookings') { bpLoadBookings().then(() => bpLoadAvailability()); }
+
+  // Remember which dashboard tab is active in the URL, so refreshing the page
+  // returns to this exact tab instead of resetting to Overview.
+  // replaceState (not pushState) — switching tabs shouldn't add back-button stops.
+  history.replaceState({ nmPage: 'marketplace', nmView: 'admin', nmBpPage: p }, '', '#marketplace/portal/' + p);
 }
 
 // ── EDIT LISTING — pre-fill form with existing data ──
@@ -8795,13 +8926,13 @@ async function bpEditListing() {
     setVal('biz_facebook',      myListing.facebook);
     setVal('biz_instagram',     myListing.instagram);
     setVal('biz_price_hint',    myListing.priceHint || myListing.price);
-    setVal('biz_hours_weekday', myListing.hoursWeekday);
-    setVal('biz_hours_sat',     myListing.hoursSat);
-    setVal('biz_hours_sun',     myListing.hoursSun);
+    nmSetHoursInputs('weekday', myListing.hoursWeekday);
+    nmSetHoursInputs('sat',     myListing.hoursSat);
+    nmSetHoursInputs('sun',     myListing.hoursSun);
     setVal('biz_walkins',       myListing.walkins);
     setVal('biz_years',         myListing.years);
     setVal('biz_status',        myListing.status || 'open');
-    setVal('biz_owner',         currentUser.owner || currentUser.name);
+    setVal('biz_owner',         myListing.owner || currentUser.owner || '');
 
     // Pre-fill menu items
     if(myListing.menu && myListing.menu.length > 0) {
@@ -9489,14 +9620,34 @@ function bpRenderAnalytics() {
 }
 
 // ── SETTINGS ──
-function bpRenderSettings() {
+async function bpRenderSettings() {
   if(!currentUser) return;
   const d = new Date(currentUser.joinedAt || Date.now());
   document.getElementById('bps-name').textContent = currentUser.name || '—';
-  document.getElementById('bps-owner').textContent = currentUser.owner || '—';
   document.getElementById('bps-email').textContent = currentUser.email || '—';
   document.getElementById('bps-plan').textContent = currentUser.plan || 'Free Listing';
   document.getElementById('bps-joined').textContent = d.toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'});
+
+  // Owner name: accounts created before the signup fix never had this saved,
+  // so it silently fell back to showing the business name instead. If it's
+  // still missing, or matches the business name exactly (the old broken
+  // fallback), pull the real owner name from the listing's "Owner Full Name"
+  // field and repair the account so this never needs fixing again.
+  let ownerName = currentUser.owner;
+  if (!ownerName || ownerName.trim().toLowerCase() === (currentUser.name || '').trim().toLowerCase()) {
+    let myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
+    if (!myListing && typeof bpFetchMyOwnListing === 'function') {
+      try { myListing = await bpFetchMyOwnListing(); } catch(e) { /* ignore */ }
+    }
+    if (myListing && myListing.owner && myListing.owner.trim()) {
+      ownerName = myListing.owner.trim();
+      currentUser.owner = ownerName;
+      saveSession(currentUser);
+      try { await saveUserToSupabase({ name: currentUser.name, email: currentUser.email, owner: ownerName, role: 'business' }); }
+      catch(e) { console.warn('Owner name repair failed', e); }
+    }
+  }
+  document.getElementById('bps-owner').textContent = ownerName || '—';
   loadNotifPrefs();
 }
 
@@ -11435,7 +11586,7 @@ async function bpLoadAvailability() {
           // Parse time from "8:00am - 8:00pm" or "08:00 - 20:00" format
           const parseOpen = (str) => {
             if (!str) return null;
-            const m = str.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+            const m = str.match(/(\d{1,2})[:h](\d{2})\s*(am|pm)?/i);
             if (!m) return null;
             let h = parseInt(m[1]), min = m[2];
             if (m[3] && m[3].toLowerCase() === 'pm' && h !== 12) h += 12;
