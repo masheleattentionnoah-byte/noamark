@@ -4637,14 +4637,23 @@ window.addEventListener('popstate', function(e) {
     const state = e.state || {};
     const isPortal = state.nmPage === 'marketplace' && state.nmView === 'admin';
     if (!isPortal) {
-      // Don't navigate away — push a clean portal state back on top
+      // Instantly hide homepage and any other page that might flash
+      // BEFORE any rendering can happen — this eliminates the visual flash
+      const homeEl = document.getElementById('page-home');
+      if (homeEl) homeEl.style.visibility = 'hidden';
+      document.querySelectorAll('.page').forEach(p => {
+        if (p.id !== 'page-marketplace') { p.classList.remove('active'); p.style.visibility = ''; }
+      });
+      // Push portal state back on top
       history.pushState({ nmPage: 'marketplace', nmView: 'admin' }, '', '#marketplace/portal');
-      // Make sure the portal view is actually showing
       const mktPage = document.getElementById('page-marketplace');
       if(mktPage) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         mktPage.classList.add('active');
+        mktPage.style.visibility = '';
       }
+      // Restore homepage visibility for future use
+      if (homeEl) setTimeout(() => { homeEl.style.visibility = ''; }, 50);
       showMktView('admin', false);
       return;
     }
@@ -7858,7 +7867,7 @@ async function handleBizLogin() {
     }
     const pwOk = await nmVerifyPassword(pass, biz.password);
     if (!pwOk) { showAuthError('biz-login-error', '\u274C Incorrect password. Please try again.'); return; }
-    loginAs({ type:'business', name:biz.name, owner:biz.name, email:biz.email, plan:'Business', id:biz.id, joinedAt:biz.joinedAt || biz.created_at });
+    loginAs({ type:'business', name:biz.name, owner:biz.owner || biz.name, email:biz.email, plan:'Business', id:biz.id, joinedAt:biz.joinedAt || biz.created_at });
     showAuthSuccess('biz-login-success', '\u2713 Welcome back, ' + biz.name + '!');
     setTimeout(() => {
       closeAuth();
@@ -8576,8 +8585,12 @@ function submitContactForm(){
 const BP_API = '/api/claude';
 let bpData = { enquiries: [], reviews: [], enhancedDesc: '' };
 
-function bpSave() { try { localStorage.setItem('nm_bp_data', JSON.stringify(bpData)); } catch(e){} }
-function bpLoad() { try { const d = localStorage.getItem('nm_bp_data'); if(d) bpData = {...bpData, ...JSON.parse(d)}; } catch(e){} }
+function _bpKey() { return 'nm_bp_data_' + (window._bpListingId || (currentUser && currentUser.id) || 'default'); }
+function bpSave() { try { localStorage.setItem(_bpKey(), JSON.stringify(bpData)); } catch(e){} }
+function bpLoad() {
+  bpData = { enquiries: [], reviews: [], enhancedDesc: '' };
+  try { const d = localStorage.getItem(_bpKey()); if(d) bpData = { ...bpData, ...JSON.parse(d) }; } catch(e){}
+}
 
 async function bpSyncEnquiries() {
   if(!currentUser) return;
