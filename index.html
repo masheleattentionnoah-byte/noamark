@@ -1750,28 +1750,28 @@
         <div class="hero-stat-card">
           <div class="hero-stat-icon">📍</div>
           <div class="hero-stat-info">
-            <div class="hero-stat-num" id="stat-businesses">0</div>
+            <div class="hero-stat-num" id="stat-businesses">···</div>
             <div class="hero-stat-label">Businesses Listed</div>
           </div>
         </div>
         <div class="hero-stat-card">
           <div class="hero-stat-icon">🔥</div>
           <div class="hero-stat-info">
-            <div class="hero-stat-num"><span class="hero-stat-live-dot"></span><span id="stat-open">0</span></div>
+            <div class="hero-stat-num"><span class="hero-stat-live-dot"></span><span id="stat-open">···</span></div>
             <div class="hero-stat-label">Open Right Now</div>
           </div>
         </div>
         <div class="hero-stat-card">
           <div class="hero-stat-icon">⭐</div>
           <div class="hero-stat-info">
-            <div class="hero-stat-num" id="stat-reviews">0</div>
+            <div class="hero-stat-num" id="stat-reviews">···</div>
             <div class="hero-stat-label">Customer Reviews</div>
           </div>
         </div>
         <div class="hero-stat-card">
           <div class="hero-stat-icon">👥</div>
           <div class="hero-stat-info">
-            <div class="hero-stat-num" id="stat-visitors">0</div>
+            <div class="hero-stat-num" id="stat-visitors">···</div>
             <div class="hero-stat-label">Visitors This Month</div>
           </div>
         </div>
@@ -6954,6 +6954,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   // directly here would run before listings are loaded and show an empty grid.
   loadListingsFromSupabase();
   renderHomeBoosted();
+  nmLoadQuickBusinessCounts();
   nmLoadGlobalStats();
   nmTrackVisit();
   loadNotifPrefs();
@@ -7049,11 +7050,18 @@ function renderHomeBoosted(){
   // Get only boosted listings, sorted by boost tier
   const boosted = getSortedListings(LISTINGS).filter(l => l.boost !== 'none').slice(0, 4);
 
-  // Update hero stat counters — all real numbers, no placeholders
+  // Update hero stat counters — all real numbers, no placeholders.
+  // Only touch these once LISTINGS actually has data: this function is also called
+  // immediately on page load (before the async fetch resolves), and overwriting the
+  // placeholder with LISTINGS.length === 0 at that point is what caused the page to
+  // flash a false "0" instead of the real number. nmLoadQuickBusinessCounts() handles
+  // the fast initial number; this just keeps it in sync once full data is in.
   const statBiz  = document.getElementById('stat-businesses');
   const statOpen = document.getElementById('stat-open');
-  if(statBiz)  statBiz.textContent  = LISTINGS.length.toLocaleString('en-ZA');
-  if(statOpen) statOpen.textContent = LISTINGS.filter(l => l.status === 'open').length.toLocaleString('en-ZA');
+  if (LISTINGS.length > 0) {
+    if(statBiz)  statBiz.textContent  = LISTINGS.length.toLocaleString('en-ZA');
+    if(statOpen) statOpen.textContent = LISTINGS.filter(l => l.status === 'open').length.toLocaleString('en-ZA');
+  }
 
   if(boosted.length === 0){
     if(empty) empty.style.display = 'block';
@@ -7099,6 +7107,66 @@ function renderHomeBoosted(){
     card.onclick = () => showPage('marketplace', () => setTimeout(() => showBizProfile(biz.id), 100));
     grid.appendChild(card);
   });
+}
+
+// ── HOME STATS: fast business counts (runs BEFORE the heavy listings fetch) ──
+// Two speed tricks:
+// 1. Instantly show the last known numbers from localStorage (if we have them)
+//    while the fresh numbers load in the background — the visitor never sees "0"
+//    or a blank placeholder on a repeat visit, even on a slow connection.
+// 2. Run both counts in PARALLEL (Promise.all) instead of one after another, and
+//    use a short 4s timeout (vs the old 8s) so a bad connection fails fast instead
+//    of leaving the page hanging.
+const NM_STAT_CACHE_KEY = 'nm_stat_cache_v1';
+function nmShowCachedStats() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(NM_STAT_CACHE_KEY) || 'null');
+    if (!cached) return;
+    const statBiz  = document.getElementById('stat-businesses');
+    const statOpen = document.getElementById('stat-open');
+    if (statBiz  && typeof cached.biz  === 'number') statBiz.textContent  = cached.biz.toLocaleString('en-ZA');
+    if (statOpen && typeof cached.open === 'number') statOpen.textContent = cached.open.toLocaleString('en-ZA');
+  } catch(e) { /* corrupt cache, ignore */ }
+}
+async function nmLoadQuickBusinessCounts() {
+  const statBiz  = document.getElementById('stat-businesses');
+  const statOpen = document.getElementById('stat-open');
+  if (!statBiz && !statOpen) return;
+
+  // Show whatever we last knew, immediately — no network wait.
+  nmShowCachedStats();
+
+  // Hard 1-second visual cutoff: if there was no cache AND the real number still
+  // hasn't arrived by 1s, stop showing the loading dots — a stuck "···" past 1s
+  // reads as broken. Clear it to a blank space instead; the real number still
+  // fills in silently the moment the request actually completes, whenever that is.
+  setTimeout(() => {
+    if (statBiz  && statBiz.textContent  === '···') statBiz.textContent  = '';
+    if (statOpen && statOpen.textContent === '···') statOpen.textContent = '';
+  }, 1000);
+
+  try {
+    const [bizResult, openResult] = await Promise.all([
+      nmSupaQuery(() => _supa.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'approved'), 2, 4000),
+      nmSupaQuery(() => _supa.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'approved').eq('business_status', 'open'), 2, 4000)
+    ]);
+    const bizCount  = bizResult  && !bizResult.error  ? bizResult.count  : null;
+    const openCount = openResult && !openResult.error ? openResult.count : null;
+
+    if (statBiz  && typeof bizCount  === 'number') statBiz.textContent  = bizCount.toLocaleString('en-ZA');
+    if (statOpen && typeof openCount === 'number') statOpen.textContent = openCount.toLocaleString('en-ZA');
+
+    // Cache whatever we successfully got, so next visit starts from real data instantly.
+    if (typeof bizCount === 'number' || typeof openCount === 'number') {
+      try {
+        const prev = JSON.parse(localStorage.getItem(NM_STAT_CACHE_KEY) || '{}');
+        localStorage.setItem(NM_STAT_CACHE_KEY, JSON.stringify({
+          biz:  typeof bizCount  === 'number' ? bizCount  : prev.biz,
+          open: typeof openCount === 'number' ? openCount : prev.open
+        }));
+      } catch(e) { /* localStorage unavailable, skip caching */ }
+    }
+  } catch(e) { console.warn('Quick business count failed:', e); }
 }
 
 // ── HOME STATS: reviews + visitors (real counts only, no placeholders) ──
