@@ -496,6 +496,9 @@
   .listing-rating .star{color:var(--gold);}
   .listing-rating.no-reviews{color:var(--white-dim);font-weight:500;}
   .listing-verified-tag{font-size:10px;font-weight:700;color:#22C55E;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);padding:2px 7px;border-radius:20px;vertical-align:middle;white-space:nowrap;}
+  .near-me-btn:hover{background:rgba(212,175,55,.1);}
+  .near-me-btn.near-me-active{background:var(--gold);color:#111827!important;border-color:var(--gold);}
+  .near-me-btn:disabled{opacity:.6;cursor:wait;}
   .listing-quick-actions{display:flex;gap:8px;margin-bottom:12px;}
   .listing-quick-btn{flex:1;text-align:center;font-size:11px;font-weight:700;padding:8px 6px;border-radius:6px;text-decoration:none;transition:filter .15s;}
   .listing-quick-btn.call{background:rgba(63,131,248,0.12);color:#63b3ed;border:1px solid rgba(63,131,248,0.3);}
@@ -3073,9 +3076,10 @@
   <div id="mkt-sort-bar" style="display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--black-2);border-bottom:1px solid var(--border-soft);flex-wrap:wrap;overflow-x:auto;width:100%;box-sizing:border-box;">
     <span style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);white-space:nowrap;">Sort by:</span>
     <button class="sort-btn active" onclick="setSort('ranking',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--gold);background:var(--gold);color:#111827;cursor:pointer;transition:all .3s;">🏆 Ranking</button>
-    <button class="sort-btn" onclick="setSort('distance',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;">📍 Distance</button>
+    <button class="sort-btn" data-sort="distance" onclick="setSort('distance',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;">📍 Distance</button>
     <button class="sort-btn" onclick="setSort('rating',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;">⭐ Rating</button>
     <button class="sort-btn" onclick="setSort('newest',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;">🆕 Newest</button>
+    <button class="near-me-btn" onclick="nmUseNearMe(this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);cursor:pointer;transition:all .3s;margin-left:auto;white-space:nowrap;">📍 Near Me Now</button>
   </div>
 
   <!-- MAIN LISTINGS -->
@@ -5020,6 +5024,8 @@ async function loadListingsFromSupabase(force = false) {
           province:     l.province || '',
           address:      l.address || '',
           landmark:     l.landmark || '',
+          lat:          (typeof l.latitude === 'number') ? l.latitude : null,
+          lng:          (typeof l.longitude === 'number') ? l.longitude : null,
           desc:         l.description || '',
           phone:        l.phone || '',
           whatsapp:     l.whatsapp || l.phone || '',
@@ -5113,6 +5119,80 @@ function nmGetWaNumber(biz) {
   return raw.startsWith('0') ? '27' + raw.slice(1) : raw.startsWith('27') ? raw : '27' + raw;
 }
 
+// ── NEAR ME NOW ──────────────────────────────────────────────────────────
+// Stores the user's browser-reported coordinates once they opt in via the
+// "Near Me Now" button. null until then — every distance calculation must
+// check for this before computing anything.
+window._userLat = null;
+window._userLng = null;
+
+// Haversine great-circle distance in km between two lat/lng points.
+function nmHaversineKm(lat1, lng1, lat2, lng2){
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// Returns the distance in km from the user to a listing, or null if either
+// the user hasn't shared location or the listing has no geocoded coordinates.
+function nmDistanceToBiz(biz){
+  if(window._userLat === null || window._userLng === null) return null;
+  if(typeof biz.lat !== 'number' || typeof biz.lng !== 'number') return null;
+  return nmHaversineKm(window._userLat, window._userLng, biz.lat, biz.lng);
+}
+
+function nmFormatDistance(km){
+  if(km < 1) return Math.round(km * 1000) + 'm away';
+  return km.toFixed(1) + 'km away';
+}
+
+// Called by the "Near Me Now" button. Asks for geolocation permission,
+// stores the result, switches to distance sort, and re-renders.
+function nmUseNearMe(btn){
+  if(!navigator.geolocation){
+    nmToast('Location services are not supported on this browser.');
+    return;
+  }
+  const originalText = btn.textContent;
+  btn.textContent = '📍 Locating…';
+  btn.disabled = true;
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      window._userLat = pos.coords.latitude;
+      window._userLng = pos.coords.longitude;
+      btn.textContent = '📍 Near Me ✓';
+      btn.disabled = false;
+      btn.classList.add('near-me-active');
+      // Switch to distance sort so the nearest businesses surface immediately
+      const distBtn = document.querySelector('.sort-btn[data-sort="distance"]');
+      if(distBtn) setSort('distance', distBtn);
+      else populateMarketplace();
+    },
+    err => {
+      btn.textContent = originalText;
+      btn.disabled = false;
+      if(err.code === err.PERMISSION_DENIED){
+        nmToast('Location access was denied — showing all businesses instead.');
+      } else {
+        nmToast('Could not get your location. Please try again.');
+      }
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+  );
+}
+
+// Small non-blocking toast — falls back to alert if the toast container
+// used elsewhere in the app isn't present for some reason.
+function nmToast(msg){
+  const el = document.createElement('div');
+  el.textContent = msg;
+  el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:12px 22px;border-radius:8px;font-size:13px;font-family:var(--font-body);z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:90vw;text-align:center;';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 3500);
+}
+
 function renderCard(biz){
   const boostClass=biz.boost==='dominance'?'boosted-dominance':biz.boost==='growth'?'boosted-growth':'';
   const badge=biz.boost==='dominance'
@@ -5139,7 +5219,7 @@ function renderCard(biz){
       <div class="listing-cat">${getCatLabel(biz.cat)}</div>
       <h3 class="listing-name">${nmSafe(biz.name)} ${verifiedHTML}</h3>
       ${ratingHTML}
-      <div class="listing-location">📍 ${nmSafe(biz.area)}</div>
+      <div class="listing-location">📍 ${nmSafe(biz.area)}${(() => { const d = nmDistanceToBiz(biz); return d !== null ? ` · <span style="color:var(--gold);">${nmFormatDistance(d)}</span>` : ''; })()}</div>
       <div class="listing-price">💰 ${biz.price}</div>
       ${(phoneDigits || waNumber) ? quickActionsHTML : ''}
       <button class="listing-cta">View Details →</button>
@@ -5188,6 +5268,20 @@ function getSortedByMode(list){
   if(currentSort==='newest') return [...list].sort((a,b)=>new Date(b.joinedAt||0)-new Date(a.joinedAt||0));
   if(currentSort==='rating') return [...list].sort((a,b)=>(b.rating||0)-(a.rating||0));
   if(currentSort==='distance'){
+    // Real GPS distance once the user has shared their location via "Near Me Now".
+    // Listings without geocoded coordinates sort to the bottom rather than
+    // being dropped, so newly-added un-geocoded businesses stay visible.
+    if(window._userLat !== null && window._userLng !== null){
+      return [...list].sort((a,b)=>{
+        const da = nmDistanceToBiz(a);
+        const db = nmDistanceToBiz(b);
+        if(da === null && db === null) return 0;
+        if(da === null) return 1;
+        if(db === null) return -1;
+        return da - db;
+      });
+    }
+    // No location shared yet — fall back to alphabetical-by-area as before.
     return [...list].sort((a,b)=>(a.area||'').localeCompare(b.area||''));
   }
   return list;
@@ -6396,6 +6490,27 @@ async function submitBusiness(){
     menuItems.push({ item: m.name.trim(), price: m.price.trim(), photo: itemPhotoUrl });
   }
 
+  // ── GEOCODE THE ADDRESS ──
+  // Turns the free-text address/area/city/province into real coordinates so
+  // "Near Me Now" and distance sorting have something to calculate against.
+  // Never blocks submission — if geocoding fails, the listing still saves,
+  // it just won't show a distance until it's geocoded later.
+  if(submitBtn) submitBtn.textContent = '⏳ Locating your business...';
+  let geocoded = { latitude: null, longitude: null };
+  try {
+    const geoRes = await fetch('/api/geocode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address, area, city, province })
+    });
+    if(geoRes.ok) {
+      const geoData = await geoRes.json();
+      if(typeof geoData.latitude === 'number' && typeof geoData.longitude === 'number') {
+        geocoded = geoData;
+      }
+    }
+  } catch(e) { console.warn('Geocoding failed, listing will save without coordinates', e); }
+
   // Save listing to Supabase — UPDATE if editing, INSERT if new
   if(submitBtn) submitBtn.textContent = '⏳ Saving your listing...';
   let listingId = window._editingListingId || null;
@@ -6405,6 +6520,7 @@ async function submitBusiness(){
     photo_urls: JSON.stringify(photoUrls),
     email, whatsapp: wa, city, province,
     address, landmark,
+    latitude: geocoded.latitude, longitude: geocoded.longitude,
     hours_weekday: hoursWD, hours_sat: hoursSat, hours_sun: hoursSun,
     business_status: status, years,
     payments, walkins,
@@ -6431,6 +6547,14 @@ async function submitBusiness(){
           _supa.from('listings').update(listingPayload).eq('id', listingId)
         ));
       }
+      if (updateErr && updateErr.message && (updateErr.message.includes('latitude') || updateErr.message.includes('longitude'))) {
+        // latitude/longitude columns don't exist yet (SQL migration not run) —
+        // retry without coordinates so the listing still saves.
+        const { latitude, longitude, ...payloadNoCoords } = { ...listingPayload, owner_email: ownerEmailVal };
+        ({ error: updateErr } = await nmSupaQuery(() =>
+          _supa.from('listings').update(payloadNoCoords).eq('id', listingId)
+        ));
+      }
       if (updateErr) throw updateErr;
     } else {
       // INSERT new listing — set status to pending for review
@@ -6444,6 +6568,14 @@ async function submitBusiness(){
         // Column doesn't exist — retry without it
         ({ data: listingData, error: insertErr } = await nmSupaQuery(() =>
           _supa.from('listings').insert(listingPayload).select()
+        ));
+      }
+      if (insertErr && insertErr.message && (insertErr.message.includes('latitude') || insertErr.message.includes('longitude'))) {
+        // latitude/longitude columns don't exist yet (SQL migration not run) —
+        // retry without coordinates so the listing still saves.
+        const { latitude, longitude, ...payloadNoCoords } = insertPayload;
+        ({ data: listingData, error: insertErr } = await nmSupaQuery(() =>
+          _supa.from('listings').insert(payloadNoCoords).select()
         ));
       }
       if (insertErr) throw insertErr;
