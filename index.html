@@ -5726,19 +5726,28 @@ function nmBuildHoursHTML(biz){
 // Facebook/Instagram are collected at signup but were never rendered
 // anywhere on the public profile. Normalizes whatever format the owner
 // typed in (full URL, bare "facebook.com/x", or "@handle") into a working link.
-function nmNormalizeFacebookUrl(raw){
+// Extracts just the actual handle/page-name from whatever the business owner
+// typed — a bare handle, "@handle", a full pasted URL, or even a handle with
+// stray spaces or extra text around it. Returns '' if nothing usable is found.
+function nmExtractSocialHandle(raw, domainPattern){
   if(!raw) return '';
-  const trimmed = raw.trim();
-  if(/^https?:\/\//i.test(trimmed)) return trimmed;
-  if(/facebook\.com/i.test(trimmed)) return 'https://' + trimmed.replace(/^\/+/, '');
-  return 'https://facebook.com/' + trimmed.replace(/^@/, '');
+  const s = raw.trim();
+  // If they pasted a full URL (with or without https://, with or without www.),
+  // pull the actual username out of the path rather than trusting the rest.
+  const domainMatch = s.match(new RegExp(domainPattern + '\\/?([^\\/?#\\s]+)', 'i'));
+  if(domainMatch) return domainMatch[1];
+  // Otherwise: strip a leading @, then take only the first "word" — guards
+  // against someone typing a display name like "Shlomane Fashion Store"
+  // instead of the actual handle, which would otherwise break the URL.
+  return s.replace(/^@/, '').trim().split(/\s+/)[0] || '';
+}
+function nmNormalizeFacebookUrl(raw){
+  const handle = nmExtractSocialHandle(raw, 'facebook\\.com');
+  return handle ? `https://facebook.com/${encodeURIComponent(handle)}` : '';
 }
 function nmNormalizeInstagramUrl(raw){
-  if(!raw) return '';
-  const trimmed = raw.trim();
-  if(/^https?:\/\//i.test(trimmed)) return trimmed;
-  if(/instagram\.com/i.test(trimmed)) return 'https://' + trimmed.replace(/^\/+/, '');
-  return 'https://instagram.com/' + trimmed.replace(/^@/, '');
+  const handle = nmExtractSocialHandle(raw, 'instagram\\.com');
+  return handle ? `https://instagram.com/${encodeURIComponent(handle)}` : '';
 }
 function nmBuildSocialHTML(biz){
   const fbUrl = nmNormalizeFacebookUrl(biz.facebook);
