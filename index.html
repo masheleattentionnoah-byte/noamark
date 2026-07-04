@@ -5691,6 +5691,68 @@ function menuBuilderInit() {
   }
 }
 
+// ── OPENING HOURS DISPLAY ────────────────────────────────────────────────
+// Businesses already collect hours_weekday/hours_sat/hours_sun at signup
+// (e.g. "08:00 - 17:00" or "Closed"), but the public profile only ever
+// showed a single Open/Closed badge. This renders the full weekly
+// breakdown and highlights whichever row matches today.
+function nmBuildHoursHTML(biz){
+  const rows = [
+    { label: 'Mon – Fri', value: biz.hoursWeekday, isToday: d => d >= 1 && d <= 5 },
+    { label: 'Saturday',  value: biz.hoursSat,     isToday: d => d === 6 },
+    { label: 'Sunday & Public Holidays', value: biz.hoursSun, isToday: d => d === 0 },
+  ];
+  if(!rows.some(r => r.value)) return ''; // nothing collected — don't show an empty card
+
+  const todayIdx = new Date().getDay(); // 0=Sun ... 6=Sat, based on the visitor's local time
+  const rowsHTML = rows.map(r => {
+    const isToday = r.isToday(todayIdx);
+    const display = r.value
+      ? (r.value.trim().toLowerCase() === 'closed' ? 'Closed' : nmSafe(r.value))
+      : '—';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;${isToday ? 'font-weight:700;color:var(--gold);' : 'color:var(--white-soft);'}border-bottom:1px solid var(--border-soft);font-size:13px;">
+      <span>${r.label}${isToday ? ' <span style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;opacity:.7;">· Today</span>' : ''}</span>
+      <span>${display}</span>
+    </div>`;
+  }).join('');
+
+  return `<div style="background:var(--black-2);border:1px solid var(--border-soft);padding:28px;margin-bottom:16px;">
+    <div class="biz-section-title">Opening Hours</div>
+    <div>${rowsHTML}</div>
+  </div>`;
+}
+
+// ── SOCIAL MEDIA LINKS ────────────────────────────────────────────────────
+// Facebook/Instagram are collected at signup but were never rendered
+// anywhere on the public profile. Normalizes whatever format the owner
+// typed in (full URL, bare "facebook.com/x", or "@handle") into a working link.
+function nmNormalizeFacebookUrl(raw){
+  if(!raw) return '';
+  const trimmed = raw.trim();
+  if(/^https?:\/\//i.test(trimmed)) return trimmed;
+  if(/facebook\.com/i.test(trimmed)) return 'https://' + trimmed.replace(/^\/+/, '');
+  return 'https://facebook.com/' + trimmed.replace(/^@/, '');
+}
+function nmNormalizeInstagramUrl(raw){
+  if(!raw) return '';
+  const trimmed = raw.trim();
+  if(/^https?:\/\//i.test(trimmed)) return trimmed;
+  if(/instagram\.com/i.test(trimmed)) return 'https://' + trimmed.replace(/^\/+/, '');
+  return 'https://instagram.com/' + trimmed.replace(/^@/, '');
+}
+function nmBuildSocialHTML(biz){
+  const fbUrl = nmNormalizeFacebookUrl(biz.facebook);
+  const igUrl = nmNormalizeInstagramUrl(biz.instagram);
+  if(!fbUrl && !igUrl) return '';
+  return `<div style="background:var(--black-2);border:1px solid var(--border-soft);padding:28px;margin-bottom:16px;">
+    <div class="biz-section-title">Follow</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      ${fbUrl ? `<a href="${fbUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#1877F2;text-decoration:none;padding:12px 16px;background:rgba(24,119,242,.05);border:1px solid rgba(24,119,242,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#1877F2'" onmouseout="this.style.borderColor='rgba(24,119,242,.2)'">📘 Facebook</a>` : ''}
+      ${igUrl ? `<a href="${igUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#E1306C;text-decoration:none;padding:12px 16px;background:rgba(225,48,108,.05);border:1px solid rgba(225,48,108,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#E1306C'" onmouseout="this.style.borderColor='rgba(225,48,108,.2)'">📸 Instagram</a>` : ''}
+    </div>
+  </div>`;
+}
+
 function showBizProfile(id){
   // Coerce both sides to string so UUID strings and numeric IDs both match
   const biz=LISTINGS.find(b=>String(b.id)===String(id));if(!biz)return;
@@ -5820,12 +5882,14 @@ function showBizProfile(id){
               ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#25D366;text-decoration:none;padding:12px 16px;background:rgba(37,211,102,.05);border:1px solid rgba(37,211,102,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#25D366'" onmouseout="this.style.borderColor='rgba(37,211,102,.2)'">💬 WhatsApp</a>` : ''}
             </div>
           </div>
+          ${nmBuildHoursHTML(biz)}
           <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:28px;margin-bottom:16px;">
             <div class="biz-section-title">Location</div>
             <div style="font-size:14px;color:var(--white-soft);margin-bottom:16px;">📍 ${nmSafe(biz.area)}</div>
             <a href="${googleMapsUrl}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#4285F4;text-decoration:none;padding:12px 16px;background:rgba(66,133,244,.05);border:1px solid rgba(66,133,244,.2);margin-bottom:10px;transition:border-color .3s;" onmouseover="this.style.borderColor='#4285F4'" onmouseout="this.style.borderColor='rgba(66,133,244,.2)'">📍 View on Google Maps</a>
             <a href="${boltUrl}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#34E0A1;text-decoration:none;padding:12px 16px;background:rgba(52,224,161,.05);border:1px solid rgba(52,224,161,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#34E0A1'" onmouseout="this.style.borderColor='rgba(52,224,161,.2)'">🚗 Get a Bolt Here</a>
           </div>
+          ${nmBuildSocialHTML(biz)}
           ${!currentUser ? `<div style="background:linear-gradient(135deg,rgba(212,175,55,.05),rgba(11,13,16,.8));border:1px solid rgba(212,175,55,.2);padding:28px;text-align:center;">
             <p style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:8px;">Own a Business?</p>
             <p style="font-size:12px;color:var(--white-dim);margin-bottom:16px;line-height:1.6;">Get listed and reach customers in your community.</p>
