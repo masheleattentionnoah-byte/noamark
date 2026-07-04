@@ -20,38 +20,44 @@ export default async function handler(req, res) {
   try {
     const { address, area, city, province } = req.body || {};
 
-    const parts = [address, area, city, province, 'South Africa'].filter(Boolean);
-    if (parts.length < 2) {
+    if (![address, area, city, province].some(Boolean)) {
       return res.status(400).json({ error: 'Not enough address information to geocode' });
     }
-    const query = parts.join(', ');
 
-    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=za&q=${encodeURIComponent(query)}`;
-
-    const response = await fetch(url, {
-      headers: {
-        // Nominatim requires a real identifying User-Agent — replace the
-        // contact email below if support@ ever changes.
-        'User-Agent': 'NoaMark/1.0 (support@noamark.com)',
-      },
-    });
-
-    if (!response.ok) {
-      return res.status(502).json({ error: 'Geocoding service unavailable' });
+    async function tryQuery(parts) {
+      const query = parts.filter(Boolean).join(', ');
+      if (!query) return null;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=za&q=${encodeURIComponent(query)}`;
+      const response = await fetch(url, {
+        headers: {
+          // Nominatim requires a real identifying User-Agent — replace the
+          // contact email below if support@ ever changes.
+          'User-Agent': 'NoaMark/1.0 (support@noamark.com)',
+        },
+      });
+      if (!response.ok) return null;
+      const results = await response.json();
+      if (!Array.isArray(results) || results.length === 0) return null;
+      return { latitude: parseFloat(results[0].lat), longitude: parseFloat(results[0].lon) };
     }
 
-    const results = await response.json();
+    // Try the full address first (most precise), then fall back to
+    // progressively broader queries — many South African townships and
+    // villages aren't mapped at street level, but the area/town usually is.
+    // Approximate beats nothing for "Near Me Now" purposes.
+    let result = await tryQuery([address, area, city, province, 'South Africa']);
+    if (!result) result = await tryQuery([area, city, province, 'South Africa']);
+    if (!result) result = await tryQuery([city, province, 'South Africa']);
 
-    if (!Array.isArray(results) || results.length === 0) {
-      // Not an error — the address just couldn't be matched. The listing
-      // will save without coordinates and can be re-geocoded later.
+    if (!result) {
+      // Not an error — the address just couldn't be matched at any level.
+      // The listing will save without coordinates and can be re-geocoded later.
       return res.status(200).json({ latitude: null, longitude: null, matched: false });
     }
 
-    const { lat, lon } = results[0];
     return res.status(200).json({
-      latitude: parseFloat(lat),
-      longitude: parseFloat(lon),
+      latitude: result.latitude,
+      longitude: result.longitude,
       matched: true,
     });
   } catch (err) {
