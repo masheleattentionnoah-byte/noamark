@@ -4613,6 +4613,11 @@ function showBoostThenList(){
 }
 
 // ── BUSINESS GATE — prompt non-business users to register ──
+function closeBusinessGate() {
+  const modal = document.getElementById('biz-gate-modal');
+  if (modal) modal.remove();
+  nmLockBodyScroll(false);
+}
 function showBusinessGate(action) {
   // Remove any existing gate modal
   const existing = document.getElementById('biz-gate-modal');
@@ -4624,23 +4629,29 @@ function showBusinessGate(action) {
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
   modal.innerHTML = `
     <div style="background:#0f1612;border:1px solid rgba(34,197,94,0.25);border-radius:16px;padding:48px 40px;max-width:460px;width:100%;text-align:center;position:relative;">
-      <button onclick="document.getElementById('biz-gate-modal').remove()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:#6b7280;font-size:20px;cursor:pointer;line-height:1;">✕</button>
+      <button onclick="closeBusinessGate()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:#6b7280;font-size:20px;cursor:pointer;line-height:1;">✕</button>
       <div style="font-size:40px;margin-bottom:16px;">🏪</div>
       <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#22c55e;margin-bottom:12px;">Business Account Required</p>
       <h3 style="font-family:'Poppins',sans-serif;font-size:26px;font-weight:700;color:#fff;margin-bottom:12px;">You need a Business account to ${actionLabel}</h3>
       <p style="font-size:13px;color:#9ca3af;line-height:1.7;margin-bottom:32px;">Create a free Business account to list your business, manage your profile, and boost your visibility on NoaMark.</p>
       <div style="display:flex;flex-direction:column;gap:12px;">
-        <button onclick="document.getElementById('biz-gate-modal').remove();openAuth('business')" style="background:#166534;color:#fff;border:none;padding:16px 28px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;transition:background .2s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#166534'">
+        <button onclick="closeBusinessGate();openAuth('business')" style="background:#166534;color:#fff;border:none;padding:16px 28px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;transition:background .2s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#166534'">
           Create Free Business Account →
         </button>
-        <button onclick="document.getElementById('biz-gate-modal').remove();openAuth('business')" style="background:transparent;color:#9ca3af;border:1px solid #374151;padding:14px 28px;border-radius:8px;font-size:13px;cursor:pointer;font-family:'Poppins',sans-serif;">
+        <button onclick="closeBusinessGate();openAuth('business')" style="background:transparent;color:#9ca3af;border:1px solid #374151;padding:14px 28px;border-radius:8px;font-size:13px;cursor:pointer;font-family:'Poppins',sans-serif;">
           Already have an account? Log In
         </button>
       </div>
     </div>`;
   // Close on backdrop click
-  modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
+  modal.addEventListener('click', e => { if(e.target === modal) closeBusinessGate(); });
   document.body.appendChild(modal);
+  // Lock the page behind it (mobile-safe — plain overflow:hidden lets touch
+  // scrolling bleed through on iOS/Android) and register a history entry so
+  // the phone's back button closes this modal instead of leaving the site
+  // or doing nothing.
+  nmLockBodyScroll(true);
+  history.pushState({ nmPage: 'biz-gate', nmView: 'modal' }, '', window.location.href);
 }
 function showPage(id, cb){
   // Business owners must never see the public home/explore page — redirect
@@ -4735,6 +4746,12 @@ window.addEventListener('popstate', function(e) {
   if(gateOverlay && gateOverlay.classList.contains('active')) {
     closeGate();
     history.pushState(e.state || { nmPage: 'marketplace', nmView: 'main' }, '', window.location.href);
+    return;
+  }
+  const bizGateModal = document.getElementById('biz-gate-modal');
+  if(bizGateModal) {
+    closeBusinessGate();
+    history.pushState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
     return;
   }
 
