@@ -6971,7 +6971,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   // directly here would run before listings are loaded and show an empty grid.
   loadListingsFromSupabase();
   renderHomeBoosted();
-  nmLoadQuickBusinessCounts();
+  nmShowCachedStats();
   nmLoadGlobalStats();
   nmTrackVisit();
   loadNotifPrefs();
@@ -7071,13 +7071,18 @@ function renderHomeBoosted(){
   // Only touch these once LISTINGS actually has data: this function is also called
   // immediately on page load (before the async fetch resolves), and overwriting the
   // placeholder with LISTINGS.length === 0 at that point is what caused the page to
-  // flash a false "0" instead of the real number. nmLoadQuickBusinessCounts() handles
-  // the fast initial number; this just keeps it in sync once full data is in.
+  // flash a false "0" instead of the real number. nmShowCachedStats() shows the last
+  // known numbers instantly on load; this keeps them in sync once real data is in,
+  // and refreshes the cache for next time — using data already being fetched anyway,
+  // no extra Supabase calls.
   const statBiz  = document.getElementById('stat-businesses');
   const statOpen = document.getElementById('stat-open');
   if (LISTINGS.length > 0) {
+    const openCount = LISTINGS.filter(l => l.status === 'open').length;
     if(statBiz)  statBiz.textContent  = LISTINGS.length.toLocaleString('en-ZA');
-    if(statOpen) statOpen.textContent = LISTINGS.filter(l => l.status === 'open').length.toLocaleString('en-ZA');
+    if(statOpen) statOpen.textContent = openCount.toLocaleString('en-ZA');
+    nmCacheStat('biz', LISTINGS.length);
+    nmCacheStat('open', openCount);
   }
 
   if(boosted.length === 0){
@@ -7126,65 +7131,48 @@ function renderHomeBoosted(){
   });
 }
 
-// ── HOME STATS: fast business counts (runs BEFORE the heavy listings fetch) ──
-// Two speed tricks:
-// 1. Instantly show the last known numbers from localStorage (if we have them)
-//    while the fresh numbers load in the background — the visitor never sees "0"
-//    or a blank placeholder on a repeat visit, even on a slow connection.
-// 2. Run both counts in PARALLEL (Promise.all) instead of one after another, and
-//    use a short 4s timeout (vs the old 8s) so a bad connection fails fast instead
-//    of leaving the page hanging.
+// ── HOME STATS CACHE — instant display from last known values, zero network cost ──
+// IMPORTANT: this does NOT make any new Supabase calls. Earlier we tried a dedicated
+// "fast count" query to speed up the businesses number, but an exact count query is
+// actually MORE expensive for the database than a normal fetch, and running it
+// alongside everything else was starving out the real listings/reviews fetches,
+// causing marketplace to show empty and reviews/visitors to hang. Removed entirely.
+// Instead: show the last known numbers instantly from localStorage (free), then let
+// the numbers update naturally once the data that was ALREADY being fetched anyway
+// (listings, reviews, visits) comes back — no additional load on Supabase at all.
 const NM_STAT_CACHE_KEY = 'nm_stat_cache_v1';
 function nmShowCachedStats() {
   try {
     const cached = JSON.parse(localStorage.getItem(NM_STAT_CACHE_KEY) || 'null');
     if (!cached) return;
-    const statBiz  = document.getElementById('stat-businesses');
-    const statOpen = document.getElementById('stat-open');
-    if (statBiz  && typeof cached.biz  === 'number') statBiz.textContent  = cached.biz.toLocaleString('en-ZA');
-    if (statOpen && typeof cached.open === 'number') statOpen.textContent = cached.open.toLocaleString('en-ZA');
+    const map = { biz: 'stat-businesses', open: 'stat-open', reviews: 'stat-reviews', visitors: 'stat-visitors' };
+    Object.keys(map).forEach(k => {
+      const el = document.getElementById(map[k]);
+      if (el && typeof cached[k] === 'number') el.textContent = cached[k].toLocaleString('en-ZA');
+    });
   } catch(e) { /* corrupt cache, ignore */ }
 }
-async function nmLoadQuickBusinessCounts() {
-  const statBiz  = document.getElementById('stat-businesses');
-  const statOpen = document.getElementById('stat-open');
-  if (!statBiz && !statOpen) return;
-
-  // Show whatever we last knew, immediately — no network wait.
-  nmShowCachedStats();
-
-  // Hard 1-second visual cutoff: if there was no cache AND the real number still
-  // hasn't arrived by 1s, stop showing the loading dots — a stuck "···" past 1s
-  // reads as broken. Clear it to a blank space instead; the real number still
-  // fills in silently the moment the request actually completes, whenever that is.
-  setTimeout(() => {
-    if (statBiz  && statBiz.textContent  === '···') statBiz.textContent  = '';
-    if (statOpen && statOpen.textContent === '···') statOpen.textContent = '';
-  }, 1000);
-
+function nmCacheStat(key, value) {
+  if (typeof value !== 'number') return;
   try {
-    const [bizResult, openResult] = await Promise.all([
-      nmSupaQuery(() => _supa.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'approved'), 2, 4000),
-      nmSupaQuery(() => _supa.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'approved').eq('business_status', 'open'), 2, 4000)
-    ]);
-    const bizCount  = bizResult  && !bizResult.error  ? bizResult.count  : null;
-    const openCount = openResult && !openResult.error ? openResult.count : null;
-
-    if (statBiz  && typeof bizCount  === 'number') statBiz.textContent  = bizCount.toLocaleString('en-ZA');
-    if (statOpen && typeof openCount === 'number') statOpen.textContent = openCount.toLocaleString('en-ZA');
-
-    // Cache whatever we successfully got, so next visit starts from real data instantly.
-    if (typeof bizCount === 'number' || typeof openCount === 'number') {
-      try {
-        const prev = JSON.parse(localStorage.getItem(NM_STAT_CACHE_KEY) || '{}');
-        localStorage.setItem(NM_STAT_CACHE_KEY, JSON.stringify({
-          biz:  typeof bizCount  === 'number' ? bizCount  : prev.biz,
-          open: typeof openCount === 'number' ? openCount : prev.open
-        }));
-      } catch(e) { /* localStorage unavailable, skip caching */ }
-    }
-  } catch(e) { console.warn('Quick business count failed:', e); }
+    const prev = JSON.parse(localStorage.getItem(NM_STAT_CACHE_KEY) || '{}');
+    prev[key] = value;
+    localStorage.setItem(NM_STAT_CACHE_KEY, JSON.stringify(prev));
+  } catch(e) { /* localStorage unavailable, skip caching */ }
 }
+// Stops any hero stat number from being stuck on the "···" loading dots forever
+// if a fetch fails or times out — clears it to blank after a few seconds instead,
+// which reads as "not shown" rather than "broken".
+function nmClearStuckLoadingDots(elId, delayMs) {
+  setTimeout(() => {
+    const el = document.getElementById(elId);
+    if (el && el.textContent === '···') el.textContent = '';
+  }, delayMs);
+}
+nmClearStuckLoadingDots('stat-businesses', 4000);
+nmClearStuckLoadingDots('stat-open', 4000);
+nmClearStuckLoadingDots('stat-reviews', 4000);
+nmClearStuckLoadingDots('stat-visitors', 4000);
 
 // ── HOME STATS: reviews + visitors (real counts only, no placeholders) ──
 async function nmLoadGlobalStats() {
@@ -7194,7 +7182,9 @@ async function nmLoadGlobalStats() {
   try {
     if (statReviews) {
       const { data } = await nmSupaQuery(() => _supa.from('reviews').select('id'));
-      statReviews.textContent = (data ? data.length : 0).toLocaleString('en-ZA');
+      const n = data ? data.length : 0;
+      statReviews.textContent = n.toLocaleString('en-ZA');
+      nmCacheStat('reviews', n);
     }
     if (statVisitors) {
       const startOfMonth = new Date();
@@ -7207,7 +7197,11 @@ async function nmLoadGlobalStats() {
       // (0 visitors reads as "nobody comes here", which is worse than not showing it).
       const card = statVisitors.closest('.hero-stat-card');
       if (error) { if (card) card.style.display = 'none'; }
-      else { statVisitors.textContent = (data ? data.length : 0).toLocaleString('en-ZA'); }
+      else {
+        const n = data ? data.length : 0;
+        statVisitors.textContent = n.toLocaleString('en-ZA');
+        nmCacheStat('visitors', n);
+      }
     }
   } catch(e) { console.warn('Home stats load failed:', e); }
 }
