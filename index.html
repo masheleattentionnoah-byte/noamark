@@ -495,6 +495,13 @@
   .listing-rating{font-size:12px;color:var(--white);font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:5px;}
   .listing-rating .star{color:var(--gold);}
   .listing-rating.no-reviews{color:var(--white-dim);font-weight:500;}
+  .listing-verified-tag{font-size:10px;font-weight:700;color:#22C55E;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);padding:2px 7px;border-radius:20px;vertical-align:middle;white-space:nowrap;}
+  .listing-quick-actions{display:flex;gap:8px;margin-bottom:12px;}
+  .listing-quick-btn{flex:1;text-align:center;font-size:11px;font-weight:700;padding:8px 6px;border-radius:6px;text-decoration:none;transition:filter .15s;}
+  .listing-quick-btn.call{background:rgba(63,131,248,0.12);color:#63b3ed;border:1px solid rgba(63,131,248,0.3);}
+  .listing-quick-btn.call:hover{filter:brightness(1.3);}
+  .listing-quick-btn.wa{background:rgba(37,211,102,0.12);color:#25D366;border:1px solid rgba(37,211,102,0.3);}
+  .listing-quick-btn.wa:hover{filter:brightness(1.15);}
   .listing-price{font-size:12px;color:var(--success);font-weight:600;letter-spacing:.5px;margin-bottom:16px;}
   .listing-cta{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gold);border:1px solid rgba(212,175,55,.25);padding:10px 16px;display:inline-block;transition:all .3s;background:transparent;cursor:pointer;}
   .listing-card:hover .listing-cta{background:var(--gold);color:#111827;border-color:var(--gold);}
@@ -5010,6 +5017,7 @@ async function loadListingsFromSupabase(force = false) {
           photo:        parsedPhotos[0] || '',
           photos:       parsedPhotos,
           rating:       l.rating || 0,
+          verified:     l.verified || false,
           joinedAt:     l.created_at || '',
           priceHint:    l.price_hint || '',
           hoursWeekday: l.hours_weekday || '',
@@ -5080,6 +5088,14 @@ function getCatLabel(cat){
   return m[cat]||cat;
 }
 
+// Normalizes a SA phone number into international format for wa.me links.
+// Shared by the listing card quick-actions and the profile page's WhatsApp button.
+function nmGetWaNumber(biz) {
+  const raw = (biz.whatsapp || biz.phone || '').replace(/[^0-9]/g, '');
+  if (raw.length < 9) return '';
+  return raw.startsWith('0') ? '27' + raw.slice(1) : raw.startsWith('27') ? raw : '27' + raw;
+}
+
 function renderCard(biz){
   const boostClass=biz.boost==='dominance'?'boosted-dominance':biz.boost==='growth'?'boosted-growth':'';
   const badge=biz.boost==='dominance'
@@ -5092,14 +5108,23 @@ function renderCard(biz){
   const ratingHTML = (biz.reviewCount > 0)
     ? `<div class="listing-rating"><span class="star">⭐</span> ${biz.rating.toFixed(1)} <span style="color:var(--white-dim);font-weight:400;">(${biz.reviewCount} review${biz.reviewCount===1?'':'s'})</span></div>`
     : `<div class="listing-rating no-reviews">🆕 New listing</div>`;
+  const verifiedHTML = biz.verified ? `<span class="listing-verified-tag" title="Verified by NoaMark">✅ Verified</span>` : '';
+  const waNumber = nmGetWaNumber(biz);
+  const phoneDigits = (biz.phone || '').replace(/[^0-9]/g, '');
+  const quickActionsHTML = `
+    <div class="listing-quick-actions">
+      ${phoneDigits ? `<a href="tel:${phoneDigits}" onclick="event.stopPropagation()" class="listing-quick-btn call">📞 Call</a>` : ''}
+      ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" onclick="event.stopPropagation()" class="listing-quick-btn wa">💬 WhatsApp</a>` : ''}
+    </div>`;
   return `<div class="listing-card ${boostClass}" onclick="showBizProfile('${biz.id}')">
     <div class="listing-img">${biz.photo ? `<img src="${biz.photo}" alt="${nmSafe(biz.name)}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none'">` : ''}<div class="listing-img-bg" style="${biz.photo ? 'display:none;' : ''}">${biz.emoji}</div>${badge}${statusBadge}</div>
     <div class="listing-info">
       <div class="listing-cat">${getCatLabel(biz.cat)}</div>
-      <h3 class="listing-name">${nmSafe(biz.name)}</h3>
+      <h3 class="listing-name">${nmSafe(biz.name)} ${verifiedHTML}</h3>
       ${ratingHTML}
       <div class="listing-location">📍 ${nmSafe(biz.area)}</div>
       <div class="listing-price">💰 ${biz.price}</div>
+      ${(phoneDigits || waNumber) ? quickActionsHTML : ''}
       <button class="listing-cta">View Details →</button>
     </div>
   </div>`;
@@ -10175,8 +10200,8 @@ bpLoad();
           <div class="adm-card-title">Live Listings</div>
           <div style="overflow-x:auto;">
             <table class="adm-table">
-              <thead><tr><th>Business</th><th>Category</th><th>Area</th><th>Boost</th><th>Owner</th><th>Action</th></tr></thead>
-              <tbody id="adm-approved-tbody"><tr><td colspan="6" class="adm-empty">Loading...</td></tr></tbody>
+              <thead><tr><th>Business</th><th>Category</th><th>Area</th><th>Boost</th><th>Owner</th><th>Verified</th><th>Action</th></tr></thead>
+              <tbody id="adm-approved-tbody"><tr><td colspan="7" class="adm-empty">Loading...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -10715,13 +10740,19 @@ async function admLoadApprovals() {
       const em   = nmSafe(l.email||'—');
       const bt   = nmSafe(l.boost_tier||'free');
       if(type === 'pending') return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${own}</td><td>${tp}</td><td>${ar}, ${ci}</td><td>${ph}</td><td style="font-size:11px;">${em}</td><td>${bt}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')">👁 Review</button><br><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">✗ Reject</button></td></tr>`;
-      if(type === 'approved') return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${bt}</td><td>${own}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')">👁 View</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">Remove</button></td></tr>`;
+      if(type === 'approved') {
+        const vBadge = l.verified ? '<span style="color:#22C55E;font-weight:700;">✅ Verified</span>' : '<span style="color:rgba(255,255,255,.4);">Not verified</span>';
+        const vBtn = l.verified
+          ? `<button class="adm-btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.15);" onclick="admToggleVerified('${id}',true,this)">Remove Verified</button>`
+          : `<button class="adm-btn" style="background:rgba(34,197,94,.15);color:#22C55E;border:1px solid rgba(34,197,94,.3);" onclick="admToggleVerified('${id}',false,this)">✅ Mark Verified</button>`;
+        return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${bt}</td><td>${own}</td><td>${vBadge}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')">👁 View</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">Remove</button><br>${vBtn}</td></tr>`;
+      }
       return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${own}</td><td><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)" style="margin-bottom:4px;">Re-approve</button><br><button class="adm-btn adm-btn-reject" onclick="admDeleteListing('${id}',this)" style="background:rgba(220,38,38,.2);color:#f87171;border-color:rgba(220,38,38,.4);">🗑 Delete Permanently</button></td></tr>`;
     };
 
     const tables = {
       'adm-pending-tbody': {data: pending, type: 'pending', cols: 8},
-      'adm-approved-tbody': {data: approved, type: 'approved', cols: 6},
+      'adm-approved-tbody': {data: approved, type: 'approved', cols: 7},
       'adm-rejected-tbody': {data: rejected, type: 'rejected', cols: 5},
     };
 
@@ -10730,6 +10761,20 @@ async function admLoadApprovals() {
       if(el) el.innerHTML = data.length === 0 ? `<tr><td colspan="${cols}" class="adm-empty">No ${type} listings.</td></tr>` : data.map(l => renderRow(l, type)).join('');
     });
   } catch(e) { console.warn('Approvals load failed', e); }
+}
+
+async function admToggleVerified(id, currentlyVerified, btn) {
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
+  try {
+    const { error } = await nmSupaQuery(() => _supa.from('listings').update({verified: !currentlyVerified}).eq('id', id));
+    if(error) throw error;
+    setTimeout(()=>{ admLoadApprovals(); loadListingsFromSupabase(true); }, 400);
+  } catch(e) {
+    console.error('Verify toggle error:', e);
+    btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
+    alert('Error updating verified status. Make sure the "verified" column exists on your listings table.');
+  }
 }
 
 async function admApproveListing(id, btn) {
