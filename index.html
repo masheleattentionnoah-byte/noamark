@@ -5290,6 +5290,34 @@ function switchGalleryPhoto(thumb, url, index) {
 let _lbPhotos = [];
 let _lbIndex  = 0;
 
+// ── SCROLL LOCK (used by the lightbox and other full-screen overlays) ──
+// Plain `overflow:hidden` on <body> doesn't reliably stop the page behind a
+// fixed overlay from scrolling on mobile (iOS/Android both still let touch
+// gestures bleed through). Pinning the body with position:fixed at its
+// current scroll offset is the technique that actually blocks it everywhere,
+// and restoring the exact scroll position on unlock prevents the page from
+// jumping when the overlay closes.
+let _nmScrollLockY = 0;
+function nmLockBodyScroll(lock) {
+  if (lock) {
+    _nmScrollLockY = window.scrollY || window.pageYOffset || 0;
+    document.body.style.position = 'fixed';
+    document.body.style.top = '-' + _nmScrollLockY + 'px';
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+  } else {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    document.body.style.overflow = '';
+    window.scrollTo(0, _nmScrollLockY);
+  }
+}
+
 function nmLbOpen(photos, index) {
   if(!photos || photos.length === 0) return;
   _lbPhotos = photos;
@@ -5298,6 +5326,7 @@ function nmLbOpen(photos, index) {
   if(!lb) return;
   lb.classList.add('open');
   nmLbShow();
+  nmLockBodyScroll(true);
   // Keyboard nav — remove first to prevent stacking
   document.removeEventListener('keydown', nmLbKey);
   document.addEventListener('keydown', nmLbKey);
@@ -5306,6 +5335,10 @@ function nmLbOpen(photos, index) {
   lb.removeEventListener('touchend',   nmLbTouchEnd);
   lb.addEventListener('touchstart', nmLbTouchStart, { passive: true });
   lb.addEventListener('touchend',   nmLbTouchEnd,   { passive: true });
+  // Block the background page from scrolling on touch-drag over the lightbox,
+  // while still allowing the swipe-to-navigate gesture to work normally.
+  lb.removeEventListener('touchmove', nmLbTouchMove, { passive: false });
+  lb.addEventListener('touchmove', nmLbTouchMove, { passive: false });
   // Push history so phone back button closes lightbox, not the page.
   // Include the bizId in both the state AND the URL so reload/back always knows which profile to restore.
   const _lbBizId = window._currentProfileBizId || null;
@@ -5339,12 +5372,19 @@ function nmLbClose() {
   const lb = document.getElementById('nm-lightbox');
   if(lb) lb.classList.remove('open');
   document.removeEventListener('keydown', nmLbKey);
+  nmLockBodyScroll(false);
 }
 
 // ── TOUCH SWIPE for lightbox ──
 let _lbTouchX = null;
 function nmLbTouchStart(e) {
   _lbTouchX = e.changedTouches[0].clientX;
+}
+function nmLbTouchMove(e) {
+  // Prevent the page behind the lightbox from scrolling while swiping over
+  // the photo. { passive: false } on the listener is required for this
+  // preventDefault() to actually take effect.
+  e.preventDefault();
 }
 function nmLbTouchEnd(e) {
   if(_lbTouchX === null) return;
