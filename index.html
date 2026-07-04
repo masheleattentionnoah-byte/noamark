@@ -1374,23 +1374,25 @@
   display: flex; flex-direction: column; gap: 12px; width: 340px;
 }
 .hero-stat-card {
-  background: #fff; border-radius: 12px; padding: 18px 22px;
+  background: #0B0D10; border-radius: 12px; padding: 18px 22px;
   display: flex; align-items: center; gap: 16px;
-  box-shadow: 0 2px 12px rgba(22,101,52,0.08); border: 1px solid #e8f5e9;
-  transition: box-shadow .2s;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.25); border: 1px solid rgba(244,196,48,0.15);
+  transition: box-shadow .2s, border-color .2s;
 }
-.hero-stat-card:hover { box-shadow: 0 4px 20px rgba(22,101,52,0.14); }
+.hero-stat-card:hover { box-shadow: 0 12px 36px rgba(0,0,0,0.35); border-color: rgba(244,196,48,0.4); }
 .hero-stat-icon { font-size: 28px; flex-shrink: 0; }
-.hero-stat-info {}
-.hero-stat-num { font-size: 26px; font-weight: 800; color: #166534; line-height: 1; }
-.hero-stat-label { font-size: 11px; color: #6b7280; margin-top: 2px; }
+.hero-stat-info { position: relative; }
+.hero-stat-num { font-size: 26px; font-weight: 800; color: var(--gold); line-height: 1; }
+.hero-stat-label { font-size: 11px; color: rgba(255,255,255,0.55); margin-top: 2px; }
+.hero-stat-live-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:#22C55E; margin-right:5px; animation: heroLivePulse 1.8s ease-in-out infinite; }
+@keyframes heroLivePulse { 0%,100%{opacity:1;} 50%{opacity:.35;} }
 .hero-cta-card {
-  background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border-radius: 12px;
+  background: linear-gradient(135deg, #0B0D10, #14171d); border-radius: 12px;
   padding: 18px 22px; display: flex; align-items: center; gap: 14px;
-  border: 1.5px solid #bbf7d0; cursor: pointer; transition: all .2s;
+  border: 1.5px solid rgba(244,196,48,0.3); cursor: pointer; transition: all .2s;
   font-size: 22px;
 }
-.hero-cta-card:hover { border-color: #166534; box-shadow: 0 4px 16px rgba(22,101,52,0.12); }
+.hero-cta-card:hover { border-color: var(--gold); box-shadow: 0 8px 24px rgba(244,196,48,0.15); }
 
 /* ── HOME PAGE SPECIFIC STYLES ── */
 .home-hero {
@@ -1726,30 +1728,33 @@
           </div>
         </div>
         <div class="hero-stat-card">
-          <div class="hero-stat-icon">⭐</div>
+          <div class="hero-stat-icon">🔥</div>
           <div class="hero-stat-info">
-            <div class="hero-stat-num" id="stat-boosted">0</div>
-            <div class="hero-stat-label">Featured Listings</div>
+            <div class="hero-stat-num"><span class="hero-stat-live-dot"></span><span id="stat-open">0</span></div>
+            <div class="hero-stat-label">Open Right Now</div>
           </div>
         </div>
         <div class="hero-stat-card">
-          <div class="hero-stat-icon">🏘️</div>
+          <div class="hero-stat-icon">⭐</div>
           <div class="hero-stat-info">
-            <div class="hero-stat-num">7</div>
-            <div class="hero-stat-label">Categories</div>
+            <div class="hero-stat-num" id="stat-reviews">0</div>
+            <div class="hero-stat-label">Customer Reviews</div>
           </div>
         </div>
-        <div class="hero-stat-card" style="flex-direction:column;text-align:center;justify-content:center;padding:22px 16px;">
-          <div style="font-size:32px;font-weight:800;color:#166534;margin-bottom:8px;">S.A</div>
-          <div style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280;">South Africa Focused</div>
+        <div class="hero-stat-card">
+          <div class="hero-stat-icon">👥</div>
+          <div class="hero-stat-info">
+            <div class="hero-stat-num" id="stat-visitors">0</div>
+            <div class="hero-stat-label">Visitors This Month</div>
+          </div>
         </div>
         <div class="hero-cta-card" onclick="showBoostThenList()">
           <span>🏪</span>
           <div>
-            <div style="font-size:13px;font-weight:700;color:#166534;">List Your Business Free</div>
-            <div style="font-size:11px;color:#6b7280;margin-top:2px;">Reach customers in your area</div>
+            <div style="font-size:13px;font-weight:700;color:var(--gold);">List Your Business Free</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.55);margin-top:2px;">Reach customers in your area</div>
           </div>
-          <span style="color:#166534;font-size:18px;margin-left:auto;">→</span>
+          <span style="color:var(--gold);font-size:18px;margin-left:auto;">→</span>
         </div>
       </div>
     </div>
@@ -6878,6 +6883,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   // directly here would run before listings are loaded and show an empty grid.
   loadListingsFromSupabase();
   renderHomeBoosted();
+  nmLoadGlobalStats();
+  nmTrackVisit();
   loadNotifPrefs();
 
   // ── Auto-restore session from device fingerprint ──
@@ -6971,11 +6978,11 @@ function renderHomeBoosted(){
   // Get only boosted listings, sorted by boost tier
   const boosted = getSortedListings(LISTINGS).filter(l => l.boost !== 'none').slice(0, 4);
 
-  // Update hero stat counters
-  const statBiz = document.getElementById('stat-businesses');
-  const statBoost = document.getElementById('stat-boosted');
-  if(statBiz) statBiz.textContent = LISTINGS.length;
-  if(statBoost) statBoost.textContent = boosted.length;
+  // Update hero stat counters — all real numbers, no placeholders
+  const statBiz  = document.getElementById('stat-businesses');
+  const statOpen = document.getElementById('stat-open');
+  if(statBiz)  statBiz.textContent  = LISTINGS.length.toLocaleString('en-ZA');
+  if(statOpen) statOpen.textContent = LISTINGS.filter(l => l.status === 'open').length.toLocaleString('en-ZA');
 
   if(boosted.length === 0){
     if(empty) empty.style.display = 'block';
@@ -7021,6 +7028,42 @@ function renderHomeBoosted(){
     card.onclick = () => showPage('marketplace', () => setTimeout(() => showBizProfile(biz.id), 100));
     grid.appendChild(card);
   });
+}
+
+// ── HOME STATS: reviews + visitors (real counts only, no placeholders) ──
+async function nmLoadGlobalStats() {
+  const statReviews  = document.getElementById('stat-reviews');
+  const statVisitors = document.getElementById('stat-visitors');
+  if (!statReviews && !statVisitors) return;
+  try {
+    if (statReviews) {
+      const { data } = await nmSupaQuery(() => _supa.from('reviews').select('id'));
+      statReviews.textContent = (data ? data.length : 0).toLocaleString('en-ZA');
+    }
+    if (statVisitors) {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0,0,0,0);
+      const { data, error } = await nmSupaQuery(() =>
+        _supa.from('site_visits').select('id').gte('created_at', startOfMonth.toISOString())
+      );
+      // If the site_visits table doesn't exist yet, hide this stat rather than show 0
+      // (0 visitors reads as "nobody comes here", which is worse than not showing it).
+      const card = statVisitors.closest('.hero-stat-card');
+      if (error) { if (card) card.style.display = 'none'; }
+      else { statVisitors.textContent = (data ? data.length : 0).toLocaleString('en-ZA'); }
+    }
+  } catch(e) { console.warn('Home stats load failed:', e); }
+}
+
+// Counts one real visit per browser session (tab) — not per page reload/navigation —
+// so the number reflects actual distinct visits, not inflated by normal browsing.
+async function nmTrackVisit() {
+  try {
+    if (sessionStorage.getItem('nm_visit_logged')) return;
+    sessionStorage.setItem('nm_visit_logged', '1');
+    await nmSupaQuery(() => _supa.from('site_visits').insert({ created_at: new Date().toISOString() }));
+  } catch(e) { /* table may not exist yet — fail silently, don't block the site */ }
 }
 
 // ── SUBSCRIBE HANDLER ──
