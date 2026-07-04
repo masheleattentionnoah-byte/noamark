@@ -812,7 +812,24 @@
     .home-hero-right {
       flex: none !important;
       width: 100% !important;
-      display: none !important;
+    }
+    .hero-stats-panel {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 10px !important;
+      width: 100% !important;
+    }
+    .hero-stat-card {
+      padding: 14px 12px !important;
+      gap: 10px !important;
+    }
+    .hero-stat-icon { font-size: 22px !important; }
+    .hero-stat-num { font-size: 20px !important; }
+    .hero-stat-label { font-size: 9px !important; }
+    .hero-cta-card {
+      grid-column: 1 / -1 !important;
+      padding: 14px 16px !important;
+      font-size: 18px !important;
     }
     .home-search-bar {
       flex-direction: column !important;
