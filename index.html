@@ -5213,7 +5213,7 @@ function nmActivateNearMe(btn, isAutoRestore){
         }
       }
     },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+    { enableHighAccuracy: false, timeout: isAutoRestore ? 5000 : 8000, maximumAge: 300000 }
   );
 }
 
