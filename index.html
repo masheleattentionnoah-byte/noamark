@@ -460,6 +460,33 @@
 
   /* ── LISTING CARD ── */
   .listing-card{background:var(--black-2);border:1px solid var(--border-soft);overflow:hidden;cursor:pointer;transition:all .35s;position:relative;}
+
+  /* ── SUBTLE MOTION ──────────────────────────────────────────────
+     Small, quick animations only — nothing flashy. A gentle fade+rise
+     when cards/listings appear, and a light press-down on buttons so
+     taps/clicks feel acknowledged. Both respect reduced-motion. */
+  @keyframes nmFadeInUp{
+    from{opacity:0;transform:translateY(14px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+  .nm-card-in{animation:nmFadeInUp .45s ease both;}
+  @media (prefers-reduced-motion: reduce){
+    .nm-card-in{animation:none;}
+  }
+  button,.btn-ghost,.btn-primary,.listing-cta,.home-search-btn,.home-btn-explore,.home-btn-add,
+  .listing-quick-btn,.form-submit,.sort-btn,.transport-sub-btn,.near-me-btn{
+    transition:transform .15s ease,all .3s;
+  }
+  button:active,.btn-ghost:active,.btn-primary:active,.listing-cta:active,.home-search-btn:active,
+  .home-btn-explore:active,.home-btn-add:active,.listing-quick-btn:active,.form-submit:active,
+  .sort-btn:active,.transport-sub-btn:active,.near-me-btn:active{
+    transform:scale(.96);
+  }
+  @media (prefers-reduced-motion: reduce){
+    button:active,.btn-ghost:active,.btn-primary:active,.listing-cta:active,.home-search-btn:active,
+    .home-btn-explore:active,.home-btn-add:active,.listing-quick-btn:active,.form-submit:active,
+    .sort-btn:active,.transport-sub-btn:active,.near-me-btn:active{ transform:none; }
+  }
   .listing-card:hover{border-color:var(--gold-dim);transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,.4);}
   .listing-card.boosted-dominance{border-color:rgba(212,175,55,.5);box-shadow:0 0 0 1px rgba(212,175,55,.2),0 0 32px rgba(212,175,55,.08);}
   .listing-card.boosted-growth{border-color:rgba(212,175,55,.25);}
@@ -1729,9 +1756,9 @@
   <!-- HERO -->
   <div class="home-hero">
     <div class="home-hero-left">
-      <div class="home-hero-tag">DISCOVER. CONNECT. GROW.</div>
-      <h1 class="home-hero-h1">Find Great Businesses<br><span class="green">Near You</span></h1>
-      <p class="home-hero-sub">Discover local businesses, compare prices,<br>see menus and connect instantly.</p>
+      <div class="home-hero-tag">DISCOVER EVERYTHING NEARBY</div>
+      <h1 class="home-hero-h1">Whatever You Need<br><span class="green">It's Near You</span></h1>
+      <p class="home-hero-sub">Restaurants, barbers, mechanics, plumbers, accommodation, deals and more — every local business around you, in one place.</p>
       <div class="home-search-bar">
         <div class="home-search-field">
           <span class="si">🔍</span>
@@ -1748,6 +1775,7 @@
         <button class="home-btn-add" onclick="showBoostThenList()">🏪 Add Your Business</button>
       </div>
     </div>
+
     <div class="home-hero-right">
       <div class="hero-stats-panel">
         <div class="hero-stat-card">
@@ -3493,6 +3521,7 @@
           <div class="form-group"><label class="form-label">Email Address *</label><input type="email" class="form-input" id="biz_email" placeholder="youremail@example.com"></div>
           <div class="form-group"><label class="form-label">Facebook Page <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(optional)</span></label><input type="text" class="form-input" id="biz_facebook" placeholder="Paste your Facebook page link" oninput="nmValidateSocialField('biz_facebook','facebook')"><p style="font-size:11px;color:var(--white-dim);margin-top:6px;line-height:1.5;">💡 On Facebook, open your Page → tap <b>Share</b> → <b>Copy Link</b> → paste it here. This makes sure it links to the right page.</p><div id="biz_facebook_feedback" style="font-size:11px;margin-top:4px;font-weight:600;"></div></div>
           <div class="form-group"><label class="form-label">Instagram Handle <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(optional)</span></label><input type="text" class="form-input" id="biz_instagram" placeholder="Paste your Instagram profile link" oninput="nmValidateSocialField('biz_instagram','instagram')"><p style="font-size:11px;color:var(--white-dim);margin-top:6px;line-height:1.5;">💡 On Instagram, open your profile → tap <b>Share Profile</b> → <b>Copy Link</b> → paste it here. This makes sure it links to the right account.</p><div id="biz_instagram_feedback" style="font-size:11px;margin-top:4px;font-weight:600;"></div></div>
+          <div class="form-group"><label class="form-label">Website <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(optional — leave blank if you don't have one)</span></label><input type="text" class="form-input" id="biz_website" placeholder="e.g. www.yourbusiness.co.za" oninput="nmValidateWebsiteField('biz_website')"><div id="biz_website_feedback" style="font-size:11px;margin-top:4px;font-weight:600;"></div></div>
           <div style="display:flex;gap:12px;">
             <button class="btn-ghost" onclick="nextStep(5)" style="flex:1;padding:16px;">← Back</button>
             <button class="form-submit" onclick="nextStep(7)" style="flex:2;margin-top:0;">Continue →</button>
@@ -5042,6 +5071,7 @@ async function loadListingsFromSupabase(force = false) {
           email:        l.email || '',
           facebook:     l.facebook || '',
           instagram:    l.instagram || '',
+          website:      l.website || '',
           emoji:        '🏪',
           boost:        l.boost_tier || 'none',
           status:       l.business_status || 'open',
@@ -5287,8 +5317,11 @@ function nmToast(msg, durationMs = 3500){
   setTimeout(()=>el.remove(), durationMs);
 }
 
-function renderCard(biz){
+function renderCard(biz, idx){
   const boostClass=biz.boost==='dominance'?'boosted-dominance':biz.boost==='growth'?'boosted-growth':'';
+  // Subtle staggered entrance — cap the delay so a long list doesn't make the
+  // last cards feel slow to appear; cards beyond ~10th all animate together.
+  const delayStyle = `style="animation-delay:${Math.min((idx||0)*45,450)}ms"`;
   const badge=biz.boost==='dominance'
     ?'<div class="listing-boost-badge boost-dominance-badge">🔥 Dominance</div>'
     :biz.boost==='growth'
@@ -5307,7 +5340,7 @@ function renderCard(biz){
       ${phoneDigits ? `<a href="tel:${phoneDigits}" onclick="event.stopPropagation()" class="listing-quick-btn call">📞 Call</a>` : ''}
       ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" onclick="event.stopPropagation()" class="listing-quick-btn wa">💬 WhatsApp</a>` : ''}
     </div>`;
-  return `<div class="listing-card ${boostClass}" onclick="showBizProfile('${biz.id}')">
+  return `<div class="listing-card ${boostClass} nm-card-in" ${delayStyle} onclick="showBizProfile('${biz.id}')">
     <div class="listing-img">${biz.photo ? `<img src="${biz.photo}" alt="${nmSafe(biz.name)}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none'">` : ''}<div class="listing-img-bg" style="${biz.photo ? 'display:none;' : ''}">${biz.emoji}</div>${badge}${statusBadge}${biz.logo ? `<div style="position:absolute;bottom:12px;left:12px;width:60px;height:60px;border-radius:50%;border:3px solid #fff;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.15);background:#fff;"><img src="${biz.logo}" alt="${nmSafe(biz.name)} logo" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.parentElement.style.display='none'"></div>` : ''}</div>
     <div class="listing-info">
       <div class="listing-cat">${getCatLabel(biz.cat)}</div>
@@ -5434,13 +5467,13 @@ function populateMarketplace(){
     if(empty) empty.style.display='none';
     if(featured.length>0){
       if(featSec) featSec.style.display='block';
-      if(featGrid) featGrid.innerHTML=featured.map(renderCard).join('');
+      if(featGrid) featGrid.innerHTML=featured.map((b,i)=>renderCard(b,i)).join('');
     } else {
       if(featSec) featSec.style.display='none';
     }
     if(latest.length>0){
       if(latestSec) latestSec.style.display='block';
-      if(latestGrid) latestGrid.innerHTML=latest.map(renderCard).join('');
+      if(latestGrid) latestGrid.innerHTML=latest.map((b,i)=>renderCard(b,i)).join('');
     } else {
       // All results are in featured — hide the Latest section cleanly
       if(latestSec) latestSec.style.display='none';
@@ -5862,6 +5895,37 @@ function nmNormalizeInstagramUrl(raw){
   const handle = nmExtractSocialHandle(raw, 'instagram\\.com');
   return handle ? `https://instagram.com/${encodeURIComponent(handle)}` : '';
 }
+// Website is genuinely optional — plenty of small businesses don't have one.
+// Accepts with or without a scheme/www ("yourbiz.co.za", "www.yourbiz.co.za",
+// "https://yourbiz.co.za") and normalizes to a safe, absolute https:// link.
+// Deliberately lenient (just needs a dot and no spaces) since we're not
+// verifying the site exists, only that it's a plausible URL to link out to.
+function nmNormalizeWebsiteUrl(raw){
+  const s = (raw || '').trim();
+  if(!s) return '';
+  if(/\s/.test(s)) return '';
+  const withScheme = /^https?:\/\//i.test(s) ? s : `https://${s}`;
+  try {
+    const u = new URL(withScheme);
+    if(!u.hostname || !u.hostname.includes('.')) return '';
+    return u.href;
+  } catch(e) { return ''; }
+}
+function nmValidateWebsiteField(inputId){
+  const input = document.getElementById(inputId);
+  const feedback = document.getElementById(inputId + '_feedback');
+  if(!input || !feedback) return;
+  const raw = input.value.trim();
+  if(!raw) { feedback.textContent = ''; return; }
+  const url = nmNormalizeWebsiteUrl(raw);
+  if(url) {
+    feedback.style.color = '#22C55E';
+    feedback.textContent = `✓ Will link to ${url}`;
+  } else {
+    feedback.style.color = '#EF4444';
+    feedback.textContent = `⚠ That doesn't look like a valid website address.`;
+  }
+}
 
 // Live feedback as the business owner types/pastes into the Facebook/Instagram
 // fields on the signup form — uses the exact same validation the profile page
@@ -5889,10 +5953,12 @@ function nmBuildSocialHTML(biz){
   try {
     const fbUrl = nmNormalizeFacebookUrl(biz.facebook);
     const igUrl = nmNormalizeInstagramUrl(biz.instagram);
-    if(!fbUrl && !igUrl) return '';
+    const webUrl = nmNormalizeWebsiteUrl(biz.website);
+    if(!fbUrl && !igUrl && !webUrl) return '';
     return `<div style="background:var(--black-2);border:1px solid var(--border-soft);padding:28px;margin-bottom:16px;">
       <div class="biz-section-title">Follow</div>
       <div style="display:flex;flex-direction:column;gap:10px;">
+        ${webUrl ? `<a href="${webUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--green-dark);text-decoration:none;padding:12px 16px;background:rgba(22,101,52,.05);border:1px solid rgba(22,101,52,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='var(--green-dark)'" onmouseout="this.style.borderColor='rgba(22,101,52,.2)'">🌐 Website</a>` : ''}
         ${fbUrl ? `<a href="${fbUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#1877F2;text-decoration:none;padding:12px 16px;background:rgba(24,119,242,.05);border:1px solid rgba(24,119,242,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#1877F2'" onmouseout="this.style.borderColor='rgba(24,119,242,.2)'">📘 Facebook</a>` : ''}
         ${igUrl ? `<a href="${igUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#E1306C;text-decoration:none;padding:12px 16px;background:rgba(225,48,108,.05);border:1px solid rgba(225,48,108,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#E1306C'" onmouseout="this.style.borderColor='rgba(225,48,108,.2)'">📸 Instagram</a>` : ''}
       </div>
@@ -5944,6 +6010,13 @@ function showBizProfile(id){
   if(!window._nmSupressHistoryPush) history.pushState({ nmPage: 'marketplace', nmView: 'profile', nmBizId: String(id) }, '', '#marketplace/profile/' + id);
   const fullAddress=encodeURIComponent([biz.address,biz.area,biz.city,biz.province].filter(Boolean).join(', ')||biz.area||biz.name);
   const googleMapsUrl=`https://www.google.com/maps/search/?api=1&query=${fullAddress}`;
+  // Embeddable map — shows the location right on the page instead of sending
+  // the visitor away. Uses precise coordinates when we have them (geocoded on
+  // signup), falls back to a text-address search when we don't. This "output=embed"
+  // form works without a Google Maps API key/billing account.
+  const mapEmbedUrl = (typeof biz.lat === 'number' && typeof biz.lng === 'number')
+    ? `https://maps.google.com/maps?q=${biz.lat},${biz.lng}&z=15&output=embed`
+    : `https://maps.google.com/maps?q=${fullAddress}&z=14&output=embed`;
   const boltUrl=`https://bolt.eu/en-za/ride/?destination=${fullAddress}`;
   // Sanitize WhatsApp number: digits only, SA country code (0xx → 27xx)
   const rawWa = (biz.whatsapp || biz.phone || '').replace(/[^0-9]/g, '');
@@ -6068,7 +6141,10 @@ function showBizProfile(id){
           <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:28px;margin-bottom:16px;">
             <div class="biz-section-title">Location</div>
             <div style="font-size:14px;color:var(--white-soft);margin-bottom:16px;">📍 ${nmSafe(biz.area)}</div>
-            <a href="${googleMapsUrl}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#4285F4;text-decoration:none;padding:12px 16px;background:rgba(66,133,244,.05);border:1px solid rgba(66,133,244,.2);margin-bottom:10px;transition:border-color .3s;" onmouseover="this.style.borderColor='#4285F4'" onmouseout="this.style.borderColor='rgba(66,133,244,.2)'">📍 View on Google Maps</a>
+            <div style="position:relative;width:100%;padding-top:56%;margin-bottom:14px;overflow:hidden;border-radius:8px;border:1px solid var(--border-soft);background:var(--black-3);">
+              <iframe src="${mapEmbedUrl}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" title="Map showing location of ${nmSafe(biz.name)}"></iframe>
+            </div>
+            <a href="${googleMapsUrl}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#4285F4;text-decoration:none;padding:12px 16px;background:rgba(66,133,244,.05);border:1px solid rgba(66,133,244,.2);margin-bottom:10px;transition:border-color .3s;" onmouseover="this.style.borderColor='#4285F4'" onmouseout="this.style.borderColor='rgba(66,133,244,.2)'">📍 Open in Google Maps</a>
             <a href="${boltUrl}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#34E0A1;text-decoration:none;padding:12px 16px;background:rgba(52,224,161,.05);border:1px solid rgba(52,224,161,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#34E0A1'" onmouseout="this.style.borderColor='rgba(52,224,161,.2)'">🚗 Get a Bolt Here</a>
           </div>
           ${nmBuildSocialHTML(biz)}
@@ -6602,6 +6678,7 @@ async function submitBusiness(){
   const email=document.getElementById('biz_email').value.trim();
   const facebook=document.getElementById('biz_facebook').value.trim();
   const instagram=document.getElementById('biz_instagram').value.trim();
+  const website=document.getElementById('biz_website')?document.getElementById('biz_website').value.trim():'';
   const payments=['pay_cash','pay_eft','pay_snapscan','pay_ozow','pay_card']
     .filter(id=>{const el=document.getElementById(id);return el&&el.checked;})
     .map(id=>id.replace('pay_','').replace('cash','Cash').replace('eft','EFT')
@@ -6831,6 +6908,7 @@ async function submitBusiness(){
     business_status: status, years,
     payments, walkins,
     facebook, instagram,
+    website: nmNormalizeWebsiteUrl(website),
     menu: JSON.stringify(menuItems),
     price_hint: priceHint,
   };
@@ -6868,6 +6946,13 @@ async function submitBusiness(){
           _supa.from('listings').update(payloadNoLogo).eq('id', listingId)
         ));
       }
+      if (updateErr && updateErr.message && updateErr.message.includes('website')) {
+        // website column doesn't exist yet — retry without it so the listing still saves.
+        const { website, ...payloadNoWebsite } = listingPayload;
+        ({ error: updateErr } = await nmSupaQuery(() =>
+          _supa.from('listings').update(payloadNoWebsite).eq('id', listingId)
+        ));
+      }
       if (updateErr) throw updateErr;
     } else {
       // INSERT new listing — set status to pending for review
@@ -6896,6 +6981,13 @@ async function submitBusiness(){
         const { logo_url, ...payloadNoLogo } = insertPayload;
         ({ data: listingData, error: insertErr } = await nmSupaQuery(() =>
           _supa.from('listings').insert(payloadNoLogo).select()
+        ));
+      }
+      if (insertErr && insertErr.message && insertErr.message.includes('website')) {
+        // website column doesn't exist yet — retry without it so the listing still saves.
+        const { website, ...payloadNoWebsite } = insertPayload;
+        ({ data: listingData, error: insertErr } = await nmSupaQuery(() =>
+          _supa.from('listings').insert(payloadNoWebsite).select()
         ));
       }
       if (insertErr) throw insertErr;
@@ -6932,7 +7024,7 @@ async function submitBusiness(){
       address,area,city,province,landmark,
       hoursWeekday:hoursWD,hoursSaturday:hoursSat,hoursSunday:hoursSun,status,walkins,
       priceHint,menu,payments,
-      owner,idNumber:idnum,phone,whatsapp:wa,email,facebook,instagram,
+      owner,idNumber:idnum,phone,whatsapp:wa,email,facebook,instagram,website,
       transport_sub:document.getElementById('biz_transport_sub')?.value||'',boost,source:'NoaMark Business Listing Submission'
     })
   }).then(r=>{
@@ -6948,7 +7040,7 @@ async function submitBusiness(){
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 5000);
     // Clear form fields
-    ['biz_name','biz_cat','biz_type','biz_desc','biz_years','biz_address','biz_area','biz_city','biz_province','biz_landmark','biz_status','biz_price_hint','biz_menu','biz_owner','biz_phone','biz_whatsapp','biz_email','biz_facebook','biz_instagram'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['biz_name','biz_cat','biz_type','biz_desc','biz_years','biz_address','biz_area','biz_city','biz_province','biz_landmark','biz_status','biz_price_hint','biz_menu','biz_owner','biz_phone','biz_whatsapp','biz_email','biz_facebook','biz_instagram','biz_website'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     nmResetLogoField();
     ['biz_hours_weekday_open','biz_hours_sat_open','biz_hours_sun_open'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='08:00';});
     ['biz_hours_weekday_close','biz_hours_sat_close','biz_hours_sun_close'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='17:00';});
@@ -7580,9 +7672,10 @@ function renderHomeBoosted(){
   };
   const catEmoji = {food:'🍔',shops:'🏪',beauty:'✂️',laundry:'👔',services:'🔧',transport:'🚗'};
 
-  boosted.forEach(biz => {
+  boosted.forEach((biz, idx) => {
     const card = document.createElement('div');
-    card.className = 'biz-card';
+    card.className = 'biz-card nm-card-in';
+    card.style.animationDelay = Math.min(idx*60,300) + 'ms';
     card.style.cursor = 'pointer';
     // FIXED: use biz.cat (not biz.category) and biz.area (not biz.location)
     // FIXED: clicking opens the actual business profile, not just marketplace root
@@ -9637,6 +9730,7 @@ async function bpEditListing() {
     setVal('biz_email',         myListing.email);
     setVal('biz_facebook',      myListing.facebook);
     setVal('biz_instagram',     myListing.instagram);
+    setVal('biz_website',       myListing.website);
     // Show the existing logo (if any) in the preview box, and reset the
     // upload state so we don't accidentally re-upload or clear it unless
     // the owner actually interacts with the logo field this session.
@@ -9650,6 +9744,7 @@ async function bpEditListing() {
     // entry needs fixing (e.g. was saved before this check existed).
     nmValidateSocialField('biz_facebook', 'facebook');
     nmValidateSocialField('biz_instagram', 'instagram');
+    nmValidateWebsiteField('biz_website');
     setVal('biz_price_hint',    myListing.priceHint || myListing.price);
     nmSetHoursInputs('weekday', myListing.hoursWeekday);
     nmSetHoursInputs('sat',     myListing.hoursSat);
@@ -9751,6 +9846,7 @@ async function bpFetchMyOwnListing() {
       priceHint:    row.price_hint || '',
       facebook:     row.facebook || '',
       instagram:    row.instagram || '',
+      website:      row.website || '',
       logo:         row.logo_url || '',
       years:        row.years || '',
       payments:     row.payments || '',
