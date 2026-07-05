@@ -5176,11 +5176,29 @@ function nmFindSortBtn(mode){
 // Does the actual geolocation request + activates distance sort.
 // isAutoRestore=true suppresses user-facing error toasts, since this can
 // run silently on page load without the person having clicked anything.
-function nmActivateNearMe(btn, isAutoRestore){
+async function nmActivateNearMe(btn, isAutoRestore){
   if(!navigator.geolocation){
     if(!isAutoRestore) nmToast('Location services are not supported on this browser.');
     return;
   }
+
+  // "Priming" — explain why we're about to ask for location BEFORE the
+  // browser's own permission popup appears, the way most professional apps
+  // do it. Skipped for the silent auto-restore, and skipped if we can tell
+  // permission was already granted (no need to explain again every time).
+  if(!isAutoRestore){
+    let alreadyGranted = false;
+    try {
+      if(navigator.permissions && navigator.permissions.query){
+        const status = await navigator.permissions.query({ name: 'geolocation' });
+        alreadyGranted = status.state === 'granted';
+      }
+    } catch(e){ /* Permissions API not supported here — just proceed */ }
+    if(!alreadyGranted){
+      nmToast('📍 Please tap "Allow" when your browser asks for your location.', 4500);
+    }
+  }
+
   const originalText = btn.textContent;
   btn.textContent = '📍 Locating…';
   btn.disabled = true;
@@ -5207,9 +5225,11 @@ function nmActivateNearMe(btn, isAutoRestore){
       // for something the person didn't just click.
       if(!isAutoRestore){
         if(err.code === err.PERMISSION_DENIED){
-          nmToast('Location access was denied — showing all businesses instead.');
+          nmToast('⚠️ Location access is off for NoaMark. Please allow location for this site in your browser settings — or turn on Location Services on your device — then tap Near Me Now again.', 6000);
+        } else if(err.code === err.POSITION_UNAVAILABLE){
+          nmToast('⚠️ We couldn\'t work out your location. Please check Location Services are turned on for your device, then try again.', 6000);
         } else {
-          nmToast('Could not get your location. Please try again.');
+          nmToast('⚠️ Finding your location took too long. Please check your connection and try again.', 5000);
         }
       }
     },
@@ -5259,12 +5279,12 @@ function nmRestoreNearMeOnLoad(){
 
 // Small non-blocking toast — falls back to alert if the toast container
 // used elsewhere in the app isn't present for some reason.
-function nmToast(msg){
+function nmToast(msg, durationMs = 3500){
   const el = document.createElement('div');
   el.textContent = msg;
   el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:12px 22px;border-radius:8px;font-size:13px;font-family:var(--font-body);z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:90vw;text-align:center;';
   document.body.appendChild(el);
-  setTimeout(()=>el.remove(), 3500);
+  setTimeout(()=>el.remove(), durationMs);
 }
 
 function renderCard(biz){
