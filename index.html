@@ -5697,49 +5697,68 @@ function menuBuilderInit() {
 // showed a single Open/Closed badge. This renders the full weekly
 // breakdown and highlights whichever row matches today.
 function nmBuildHoursHTML(biz){
-  const rows = [
-    { label: 'Mon – Fri', value: biz.hoursWeekday, isToday: d => d >= 1 && d <= 5 },
-    { label: 'Saturday',  value: biz.hoursSat,     isToday: d => d === 6 },
-    { label: 'Sunday & Public Holidays', value: biz.hoursSun, isToday: d => d === 0 },
-  ];
-  if(!rows.some(r => r.value)) return ''; // nothing collected — don't show an empty card
+  try {
+    const rows = [
+      { label: 'Mon – Fri', value: biz.hoursWeekday, isToday: d => d >= 1 && d <= 5 },
+      { label: 'Saturday',  value: biz.hoursSat,     isToday: d => d === 6 },
+      { label: 'Sunday & Public Holidays', value: biz.hoursSun, isToday: d => d === 0 },
+    ];
+    if(!rows.some(r => r.value)) return ''; // nothing collected — don't show an empty card
 
-  const todayIdx = new Date().getDay(); // 0=Sun ... 6=Sat, based on the visitor's local time
-  const rowsHTML = rows.map(r => {
-    const isToday = r.isToday(todayIdx);
-    const display = r.value
-      ? (r.value.trim().toLowerCase() === 'closed' ? 'Closed' : nmSafe(r.value))
-      : '—';
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;${isToday ? 'font-weight:700;color:var(--gold);' : 'color:var(--white-soft);'}border-bottom:1px solid var(--border-soft);font-size:13px;">
-      <span>${r.label}${isToday ? ' <span style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;opacity:.7;">· Today</span>' : ''}</span>
-      <span>${display}</span>
+    const todayIdx = new Date().getDay(); // 0=Sun ... 6=Sat, based on the visitor's local time
+    const rowsHTML = rows.map(r => {
+      const isToday = r.isToday(todayIdx);
+      const display = r.value
+        ? (r.value.trim().toLowerCase() === 'closed' ? 'Closed' : nmSafe(r.value))
+        : '—';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;${isToday ? 'font-weight:700;color:var(--gold);' : 'color:var(--white-soft);'}border-bottom:1px solid var(--border-soft);font-size:13px;">
+        <span>${r.label}${isToday ? ' <span style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;opacity:.7;">· Today</span>' : ''}</span>
+        <span>${display}</span>
+      </div>`;
+    }).join('');
+
+    return `<div style="background:var(--black-2);border:1px solid var(--border-soft);padding:28px;margin-bottom:16px;">
+      <div class="biz-section-title">Opening Hours</div>
+      <div>${rowsHTML}</div>
     </div>`;
-  }).join('');
-
-  return `<div style="background:var(--black-2);border:1px solid var(--border-soft);padding:28px;margin-bottom:16px;">
-    <div class="biz-section-title">Opening Hours</div>
-    <div>${rowsHTML}</div>
-  </div>`;
+  } catch(e) {
+    // Never let a formatting quirk in one business's hours data take down
+    // the rest of the profile page — just skip the card silently.
+    console.warn('nmBuildHoursHTML failed for', biz && biz.name, e);
+    return '';
+  }
 }
 
 // ── SOCIAL MEDIA LINKS ────────────────────────────────────────────────────
 // Facebook/Instagram are collected at signup but were never rendered
 // anywhere on the public profile. Normalizes whatever format the owner
 // typed in (full URL, bare "facebook.com/x", or "@handle") into a working link.
-// Extracts just the actual handle/page-name from whatever the business owner
-// typed — a bare handle, "@handle", a full pasted URL, or even a handle with
-// stray spaces or extra text around it. Returns '' if nothing usable is found.
+// Extracts a handle ONLY when we can be confident it's correct — a real
+// Instagram/Facebook username/page-name has a narrow, known character set
+// (letters, numbers, dots, underscores, dashes). If what the business typed
+// doesn't match that shape — a display name with spaces, stray punctuation,
+// anything ambiguous — we deliberately return '' so no button renders at
+// all, rather than guessing and risking sending people to a stranger's
+// unrelated real account. Silence is safer than a wrong link here.
 function nmExtractSocialHandle(raw, domainPattern){
   if(!raw) return '';
   const s = raw.trim();
-  // If they pasted a full URL (with or without https://, with or without www.),
-  // pull the actual username out of the path rather than trusting the rest.
+  const VALID_HANDLE = /^[a-zA-Z0-9._-]{1,50}$/;
+
+  // Case 1: a full/partial URL containing the domain — pull the path segment
+  // right after it and validate that segment specifically.
   const domainMatch = s.match(new RegExp(domainPattern + '\\/?([^\\/?#\\s]+)', 'i'));
-  if(domainMatch) return domainMatch[1];
-  // Otherwise: strip a leading @, then take only the first "word" — guards
-  // against someone typing a display name like "Shlomane Fashion Store"
-  // instead of the actual handle, which would otherwise break the URL.
-  return s.replace(/^@/, '').trim().split(/\s+/)[0] || '';
+  if(domainMatch) {
+    const candidate = domainMatch[1];
+    return VALID_HANDLE.test(candidate) ? candidate : '';
+  }
+
+  // Case 2: a bare handle, optionally with a leading @. If there's more than
+  // one "word" (spaces present), we can't safely tell which word — if any —
+  // is the real handle, so we don't guess.
+  const candidate = s.replace(/^@/, '').trim();
+  if(/\s/.test(candidate)) return '';
+  return VALID_HANDLE.test(candidate) ? candidate : '';
 }
 function nmNormalizeFacebookUrl(raw){
   const handle = nmExtractSocialHandle(raw, 'facebook\\.com');
@@ -5750,16 +5769,23 @@ function nmNormalizeInstagramUrl(raw){
   return handle ? `https://instagram.com/${encodeURIComponent(handle)}` : '';
 }
 function nmBuildSocialHTML(biz){
-  const fbUrl = nmNormalizeFacebookUrl(biz.facebook);
-  const igUrl = nmNormalizeInstagramUrl(biz.instagram);
-  if(!fbUrl && !igUrl) return '';
-  return `<div style="background:var(--black-2);border:1px solid var(--border-soft);padding:28px;margin-bottom:16px;">
-    <div class="biz-section-title">Follow</div>
-    <div style="display:flex;flex-direction:column;gap:10px;">
-      ${fbUrl ? `<a href="${fbUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#1877F2;text-decoration:none;padding:12px 16px;background:rgba(24,119,242,.05);border:1px solid rgba(24,119,242,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#1877F2'" onmouseout="this.style.borderColor='rgba(24,119,242,.2)'">📘 Facebook</a>` : ''}
-      ${igUrl ? `<a href="${igUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#E1306C;text-decoration:none;padding:12px 16px;background:rgba(225,48,108,.05);border:1px solid rgba(225,48,108,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#E1306C'" onmouseout="this.style.borderColor='rgba(225,48,108,.2)'">📸 Instagram</a>` : ''}
-    </div>
-  </div>`;
+  try {
+    const fbUrl = nmNormalizeFacebookUrl(biz.facebook);
+    const igUrl = nmNormalizeInstagramUrl(biz.instagram);
+    if(!fbUrl && !igUrl) return '';
+    return `<div style="background:var(--black-2);border:1px solid var(--border-soft);padding:28px;margin-bottom:16px;">
+      <div class="biz-section-title">Follow</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        ${fbUrl ? `<a href="${fbUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#1877F2;text-decoration:none;padding:12px 16px;background:rgba(24,119,242,.05);border:1px solid rgba(24,119,242,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#1877F2'" onmouseout="this.style.borderColor='rgba(24,119,242,.2)'">📘 Facebook</a>` : ''}
+        ${igUrl ? `<a href="${igUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#E1306C;text-decoration:none;padding:12px 16px;background:rgba(225,48,108,.05);border:1px solid rgba(225,48,108,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#E1306C'" onmouseout="this.style.borderColor='rgba(225,48,108,.2)'">📸 Instagram</a>` : ''}
+      </div>
+    </div>`;
+  } catch(e) {
+    // Same principle — a malformed social link should never break the
+    // rest of the profile page. Skip the card, log it, move on.
+    console.warn('nmBuildSocialHTML failed for', biz && biz.name, e);
+    return '';
+  }
 }
 
 function showBizProfile(id){
