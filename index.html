@@ -516,7 +516,7 @@
   .biz-cover::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,#0B0D10 100%);}
   .biz-profile-body{padding:0 40px;max-width:1200px;margin:0 auto;}
   .biz-header{display:flex;align-items:flex-start;gap:40px;margin-bottom:60px;padding-bottom:40px;border-bottom:1px solid var(--border-soft);}
-  .biz-avatar{width:88px;height:88px;background:var(--black-3);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:40px;flex-shrink:0;margin-top:-40px;position:relative;z-index:1;}
+  .biz-avatar{width:88px;height:88px;background:var(--black-3);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:40px;flex-shrink:0;margin-top:-40px;position:relative;z-index:1;overflow:hidden;}
   .biz-header-info{flex:1;}
   .biz-name{font-family:var(--font-display);font-size:48px;font-weight:400;color:var(--white);line-height:1.1;margin-bottom:12px;}
   .biz-meta-row{display:flex;gap:20px;flex-wrap:wrap;align-items:center;}
@@ -3273,6 +3273,15 @@
         <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:48px;">
           <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:32px;">Step 1 — Basic Info <span style="color:var(--danger);margin-left:8px;">* All fields required</span></p>
           <div class="form-group"><label class="form-label">Business Name *</label><input type="text" class="form-input" id="biz_name" placeholder="e.g. Mama Thandi's Kitchen"></div>
+          <div class="form-group">
+            <label class="form-label">Business Logo <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(optional)</span></label>
+            <p style="font-size:11px;color:var(--white-dim);margin-bottom:10px;line-height:1.5;">A square logo (not your shop photos) — shown on your listing card and profile. Ideally your actual logo on a plain background.</p>
+            <div style="display:flex;align-items:center;gap:16px;">
+              <div id="biz_logo_preview" style="width:64px;height:64px;border:1px solid var(--border-soft);background:var(--black-3);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--white-dim);flex-shrink:0;overflow:hidden;">📷</div>
+              <input type="file" accept="image/*" id="biz_logo_input" style="display:none;" onchange="nmPreviewLogo(this)">
+              <button type="button" class="btn-ghost" style="padding:10px 20px;font-size:11px;" onclick="document.getElementById('biz_logo_input').click()">Choose Logo Image</button>
+            </div>
+          </div>
           <div class="form-group"><label class="form-label">Category *</label>
             <select class="form-input" id="biz_cat" onchange="const s=document.getElementById('transport-sub-field');if(s)s.style.display=this.value==='transport'?'block':'none';">
               <option value="">Select a category...</option>
@@ -5026,6 +5035,7 @@ async function loadListingsFromSupabase(force = false) {
           landmark:     l.landmark || '',
           lat:          (typeof l.latitude === 'number') ? l.latitude : null,
           lng:          (typeof l.longitude === 'number') ? l.longitude : null,
+          logo:         l.logo_url || '',
           desc:         l.description || '',
           phone:        l.phone || '',
           whatsapp:     l.whatsapp || l.phone || '',
@@ -5214,7 +5224,7 @@ function renderCard(biz){
       ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" onclick="event.stopPropagation()" class="listing-quick-btn wa">💬 WhatsApp</a>` : ''}
     </div>`;
   return `<div class="listing-card ${boostClass}" onclick="showBizProfile('${biz.id}')">
-    <div class="listing-img">${biz.photo ? `<img src="${biz.photo}" alt="${nmSafe(biz.name)}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none'">` : ''}<div class="listing-img-bg" style="${biz.photo ? 'display:none;' : ''}">${biz.emoji}</div>${badge}${statusBadge}</div>
+    <div class="listing-img">${biz.photo ? `<img src="${biz.photo}" alt="${nmSafe(biz.name)}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none'">` : ''}<div class="listing-img-bg" style="${biz.photo ? 'display:none;' : ''}">${biz.emoji}</div>${badge}${statusBadge}${biz.logo ? `<div style="position:absolute;bottom:10px;left:10px;width:48px;height:48px;border-radius:50%;border:2px solid #fff;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.3);background:#fff;"><img src="${biz.logo}" alt="${nmSafe(biz.name)} logo" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.parentElement.style.display='none'"></div>` : ''}</div>
     <div class="listing-info">
       <div class="listing-cat">${getCatLabel(biz.cat)}</div>
       <h3 class="listing-name">${nmSafe(biz.name)} ${verifiedHTML}</h3>
@@ -5811,6 +5821,35 @@ function nmBuildSocialHTML(biz){
   }
 }
 
+// ── SHARE BUSINESS ────────────────────────────────────────────────────────
+// Uses the native share sheet on phones (WhatsApp/SMS/etc. all show up
+// automatically) and falls back to copying the link on desktop browsers
+// that don't support navigator.share.
+async function nmShareBusiness(id, name){
+  const shareUrl = `${window.location.origin}${window.location.pathname}#marketplace/profile/${id}`;
+  const shareData = {
+    title: name,
+    text: `Check out ${name} on NoaMark`,
+    url: shareUrl,
+  };
+  if(navigator.share){
+    try {
+      await navigator.share(shareData);
+    } catch(e) {
+      // User cancelled the share sheet — not an error, do nothing
+      if(e.name !== 'AbortError') console.warn('Share failed', e);
+    }
+    return;
+  }
+  // Desktop fallback: copy link to clipboard
+  try {
+    await navigator.clipboard.writeText(shareUrl);
+    nmToast('🔗 Link copied — paste it anywhere to share!');
+  } catch(e) {
+    nmToast('Could not copy the link automatically. URL: ' + shareUrl);
+  }
+}
+
 function showBizProfile(id){
   // Coerce both sides to string so UUID strings and numeric IDs both match
   const biz=LISTINGS.find(b=>String(b.id)===String(id));if(!biz)return;
@@ -5907,9 +5946,9 @@ function showBizProfile(id){
     <div class="biz-profile-body">
       ${boostBanner}
       <div class="biz-header">
-        <div class="biz-avatar">${biz.emoji}</div>
+        <div class="biz-avatar">${biz.logo ? `<img src="${biz.logo}" alt="${nmSafe(biz.name)} logo" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.textContent='${biz.emoji}'">` : biz.emoji}</div>
         <div class="biz-header-info">
-          <h1 class="biz-name">${nmSafe(biz.name)}</h1>
+          <h1 class="biz-name">${nmSafe(biz.name)} <button onclick="nmShareBusiness('${biz.id}','${nmSafe(biz.name)}')" title="Share this business" aria-label="Share this business" style="background:transparent;border:1px solid var(--border-soft);color:var(--gold);width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:15px;vertical-align:middle;margin-left:8px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.background='rgba(212,175,55,.1)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.background='transparent'">🔗</button></h1>
           <div class="biz-meta-row">
             <span class="biz-meta-item">${getCatLabel(biz.cat)}</span>
             <span class="biz-meta-item">📍 ${nmSafe(biz.area)}</span>
@@ -6215,6 +6254,36 @@ function validateAndContinueStep5() {
 // and stores the new file so it uploads only that one on submit
 window._replacedPhotos = {}; // index → File
 window._removedPhotoIndexes = new Set();
+
+// ── LOGO UPLOAD ──────────────────────────────────────────────────────────
+// Separate from the shop/product photo gallery — a single square logo used
+// on the listing card and profile avatar. window._logoFile holds the chosen
+// file until submit; window._logoRemoved lets an owner clear an existing
+// logo without picking a replacement.
+window._logoFile = null;
+window._logoRemoved = false;
+
+function nmPreviewLogo(input){
+  if(!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  window._logoFile = file;
+  window._logoRemoved = false;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const preview = document.getElementById('biz_logo_preview');
+    if(preview) preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function nmResetLogoField(){
+  window._logoFile = null;
+  window._logoRemoved = false;
+  const preview = document.getElementById('biz_logo_preview');
+  if(preview) preview.innerHTML = '📷';
+  const input = document.getElementById('biz_logo_input');
+  if(input) input.value = '';
+}
 
 function replaceExistingPhoto(input, index, wrapId) {
   if(!input.files || !input.files[0]) return;
@@ -6633,6 +6702,35 @@ async function submitBusiness(){
     }
   } catch(e) { console.warn('Geocoding failed, listing will save without coordinates', e); }
 
+  // ── UPLOAD/RETAIN LOGO ──
+  // Separate from the photo gallery — one square logo image, optional.
+  let finalLogoUrl = null;
+  if(window._logoRemoved) {
+    finalLogoUrl = null; // owner explicitly cleared it
+  } else if(window._logoFile) {
+    if(submitBtn) submitBtn.textContent = '⏳ Uploading your logo...';
+    try {
+      const compressedLogo = await nmCompressImage(window._logoFile, 400, 150);
+      const logoFileName = 'logo_' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.jpg';
+      const logoUpload = await nmSupaQuery(() => _supa.storage.from('business-photos').upload(logoFileName, compressedLogo, { upsert: true }));
+      if(!logoUpload.error) {
+        const { data: logoUrlData } = _supa.storage.from('business-photos').getPublicUrl(logoFileName);
+        finalLogoUrl = logoUrlData.publicUrl;
+      }
+    } catch(e) { console.warn('Logo upload failed, listing will save without a new logo', e); }
+  } else if(window._editingListingId) {
+    // Editing, no new file chosen, not removed — keep whatever logo is
+    // already saved. LISTINGS cache only has approved listings, so fetch
+    // directly to be safe (same reasoning as the photo fetch above).
+    try {
+      const existingLogoRes = await nmSupaQuery(() =>
+        _supa.from('listings').select('logo_url').eq('id', window._editingListingId).limit(1)
+      );
+      const row = existingLogoRes && existingLogoRes.data && existingLogoRes.data[0];
+      finalLogoUrl = (row && row.logo_url) || null;
+    } catch(e) { finalLogoUrl = null; }
+  }
+
   // Save listing to Supabase — UPDATE if editing, INSERT if new
   if(submitBtn) submitBtn.textContent = '⏳ Saving your listing...';
   let listingId = window._editingListingId || null;
@@ -6640,6 +6738,7 @@ async function submitBusiness(){
     name, owner, type: cat, area, description: desc,
     phone, boost_tier: boost, photo_url: photoUrl,
     photo_urls: JSON.stringify(photoUrls),
+    logo_url: finalLogoUrl,
     email, whatsapp: wa, city, province,
     address, landmark,
     latitude: geocoded.latitude, longitude: geocoded.longitude,
@@ -6677,6 +6776,13 @@ async function submitBusiness(){
           _supa.from('listings').update(payloadNoCoords).eq('id', listingId)
         ));
       }
+      if (updateErr && updateErr.message && updateErr.message.includes('logo_url')) {
+        // logo_url column doesn't exist yet — retry without it so the listing still saves.
+        const { logo_url, ...payloadNoLogo } = listingPayload;
+        ({ error: updateErr } = await nmSupaQuery(() =>
+          _supa.from('listings').update(payloadNoLogo).eq('id', listingId)
+        ));
+      }
       if (updateErr) throw updateErr;
     } else {
       // INSERT new listing — set status to pending for review
@@ -6698,6 +6804,13 @@ async function submitBusiness(){
         const { latitude, longitude, ...payloadNoCoords } = insertPayload;
         ({ data: listingData, error: insertErr } = await nmSupaQuery(() =>
           _supa.from('listings').insert(payloadNoCoords).select()
+        ));
+      }
+      if (insertErr && insertErr.message && insertErr.message.includes('logo_url')) {
+        // logo_url column doesn't exist yet — retry without it so the listing still saves.
+        const { logo_url, ...payloadNoLogo } = insertPayload;
+        ({ data: listingData, error: insertErr } = await nmSupaQuery(() =>
+          _supa.from('listings').insert(payloadNoLogo).select()
         ));
       }
       if (insertErr) throw insertErr;
@@ -6751,6 +6864,7 @@ async function submitBusiness(){
     setTimeout(() => toast.remove(), 5000);
     // Clear form fields
     ['biz_name','biz_cat','biz_type','biz_desc','biz_years','biz_address','biz_area','biz_city','biz_province','biz_landmark','biz_status','biz_price_hint','biz_menu','biz_owner','biz_phone','biz_whatsapp','biz_email','biz_facebook','biz_instagram'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    nmResetLogoField();
     ['biz_hours_weekday_open','biz_hours_sat_open','biz_hours_sun_open'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='08:00';});
     ['biz_hours_weekday_close','biz_hours_sat_close','biz_hours_sun_close'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='17:00';});
     ['biz_hours_weekday_closed','biz_hours_sat_closed','biz_hours_sun_closed'].forEach(id=>{const el=document.getElementById(id);if(el){el.checked=false;}});
@@ -9412,6 +9526,14 @@ async function bpEditListing() {
     setVal('biz_email',         myListing.email);
     setVal('biz_facebook',      myListing.facebook);
     setVal('biz_instagram',     myListing.instagram);
+    // Show the existing logo (if any) in the preview box, and reset the
+    // upload state so we don't accidentally re-upload or clear it unless
+    // the owner actually interacts with the logo field this session.
+    nmResetLogoField();
+    if(myListing.logo) {
+      const logoPreview = document.getElementById('biz_logo_preview');
+      if(logoPreview) logoPreview.innerHTML = `<img src="${myListing.logo}" style="width:100%;height:100%;object-fit:cover;">`;
+    }
     // Show the same validation feedback immediately for pre-filled values,
     // so an owner editing their listing sees right away if their existing
     // entry needs fixing (e.g. was saved before this check existed).
@@ -9518,6 +9640,7 @@ async function bpFetchMyOwnListing() {
       priceHint:    row.price_hint || '',
       facebook:     row.facebook || '',
       instagram:    row.instagram || '',
+      logo:         row.logo_url || '',
       years:        row.years || '',
       payments:     row.payments || '',
       menu:         (() => { try { return typeof row.menu === 'string' ? JSON.parse(row.menu) : (row.menu || []); } catch(e) { return []; } })(),
