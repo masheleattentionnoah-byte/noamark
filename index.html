@@ -5224,7 +5224,7 @@ function renderCard(biz){
       ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" onclick="event.stopPropagation()" class="listing-quick-btn wa">💬 WhatsApp</a>` : ''}
     </div>`;
   return `<div class="listing-card ${boostClass}" onclick="showBizProfile('${biz.id}')">
-    <div class="listing-img">${biz.photo ? `<img src="${biz.photo}" alt="${nmSafe(biz.name)}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none'">` : ''}<div class="listing-img-bg" style="${biz.photo ? 'display:none;' : ''}">${biz.emoji}</div>${badge}${statusBadge}${biz.logo ? `<div style="position:absolute;bottom:10px;left:10px;width:48px;height:48px;border-radius:50%;border:2px solid #fff;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.3);background:#fff;"><img src="${biz.logo}" alt="${nmSafe(biz.name)} logo" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.parentElement.style.display='none'"></div>` : ''}</div>
+    <div class="listing-img">${biz.photo ? `<img src="${biz.photo}" alt="${nmSafe(biz.name)}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none'">` : ''}<div class="listing-img-bg" style="${biz.photo ? 'display:none;' : ''}">${biz.emoji}</div>${badge}${statusBadge}${biz.logo ? `<div style="position:absolute;bottom:12px;left:12px;width:60px;height:60px;border-radius:50%;border:3px solid #fff;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.15);background:#fff;"><img src="${biz.logo}" alt="${nmSafe(biz.name)} logo" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.parentElement.style.display='none'"></div>` : ''}</div>
     <div class="listing-info">
       <div class="listing-cat">${getCatLabel(biz.cat)}</div>
       <h3 class="listing-name">${nmSafe(biz.name)} ${verifiedHTML}</h3>
@@ -5948,12 +5948,13 @@ function showBizProfile(id){
       <div class="biz-header">
         <div class="biz-avatar">${biz.logo ? `<img src="${biz.logo}" alt="${nmSafe(biz.name)} logo" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.textContent='${biz.emoji}'">` : biz.emoji}</div>
         <div class="biz-header-info">
-          <h1 class="biz-name">${nmSafe(biz.name)} <button onclick="nmShareBusiness('${biz.id}','${nmSafe(biz.name)}')" title="Share this business" aria-label="Share this business" style="background:transparent;border:1px solid var(--border-soft);color:var(--gold);width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:15px;vertical-align:middle;margin-left:8px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.background='rgba(212,175,55,.1)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.background='transparent'">🔗</button></h1>
+          <h1 class="biz-name">${nmSafe(biz.name)}</h1>
           <div class="biz-meta-row">
             <span class="biz-meta-item">${getCatLabel(biz.cat)}</span>
             <span class="biz-meta-item">📍 ${nmSafe(biz.area)}</span>
             <span class="biz-meta-item" style="color:${sc};font-weight:600;">${st}</span>
             <span class="biz-meta-item" style="color:var(--success);">💰 ${biz.price}</span>
+            <button onclick="nmShareBusiness('${biz.id}','${nmSafe(biz.name)}')" title="Share this business" aria-label="Share this business" style="display:inline-flex;align-items:center;gap:6px;background:var(--gold);color:#111827;border:none;padding:6px 16px;border-radius:20px;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:.5px;transition:all .25s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">🔗 Share</button>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:10px;flex-shrink:0;">
