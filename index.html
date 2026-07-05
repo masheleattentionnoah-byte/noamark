@@ -7291,35 +7291,49 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Determine which page to show on load (needed for history floor below)
   const pageToShow = (hashPage && validPages.includes(hashPage)) ? hashPage : 'home';
 
-  // Set the history floor — two entries so pressing back can never exit to an external site.
+  // Only build the history "floor" the FIRST time this tab loads the app.
   //
-  // Stack BEFORE this code (user came from Google):
-  //   [Google-search-result, noamark.com]   ← current position
+  // BUG THIS FIXES: history.state survives a plain refresh (F5) — the browser
+  // keeps whatever state object was attached to the current entry before
+  // reload. This code used to run unconditionally, so every single refresh
+  // stacked a brand-new pair of "home" cushion entries on top of the ones
+  // already there from the previous load. A handful of refreshes in one
+  // session left dozens of duplicate entries in the back stack. That's what
+  // made the back button feel unreliable — sometimes several presses got
+  // silently absorbed by leftover duplicates, and sometimes a fast or
+  // repeated back-press could slip past the cushion before it was rebuilt,
+  // taking the visitor straight out of the site.
   //
-  // replaceState turns the current entry into a home state entry:
-  //   [Google-search-result, home(replaced)]
-  //
-  // pushState adds a second home entry on top as a cushion:
-  //   [Google-search-result, home(replaced), home(cushion)]
-  //
-  // Now when the user navigates to marketplace and a profile, the stack is:
-  //   [Google, home(replaced), home(cushion), marketplace/main, marketplace/profile]
-  //
-  // Pressing back from profile → marketplace ✅
-  // Pressing back from marketplace → home(cushion) → popstate fires with nmPage:'home' → app stays open ✅
-  // Pressing back from home(cushion) → home(replaced) → popstate fires with nmPage:'home' → app stays open ✅
-  // Pressing back from home(replaced) → Google — but popstate fires (no state) → pushes home → app stays open ✅
-  // Use '#home' not bare pathname — bare '/' causes a hard reload when back is pressed
-  // to these entries because the browser sees a URL change. '#home' keeps it SPA.
-  history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
-  // Push a second home entry as a cushion — this is what users land on when pressing back
-  // from any in-app navigation. The replaced entry below it catches any further back presses.
-  if(pageToShow === 'home') {
+  // Fix: only rebuild the floor on a genuinely fresh entry (first visit,
+  // external link, typed URL). On an ordinary reload, history.state already
+  // holds the correct, previously-established state, so we leave it alone.
+  const _isFreshEntry = !history.state || !history.state.nmPage;
+
+  if (_isFreshEntry) {
+    // Set the history floor — two entries so pressing back can never exit to an external site.
+    //
+    // Stack BEFORE this code (user came from Google):
+    //   [Google-search-result, noamark.com]   ← current position
+    //
+    // replaceState turns the current entry into a home state entry:
+    //   [Google-search-result, home(replaced)]
+    //
+    // pushState adds a second home entry on top as a cushion:
+    //   [Google-search-result, home(replaced), home(cushion)]
+    //
+    // Now when the user navigates to marketplace and a profile, the stack is:
+    //   [Google, home(replaced), home(cushion), marketplace/main, marketplace/profile]
+    //
+    // Pressing back from profile → marketplace ✅
+    // Pressing back from marketplace → home(cushion) → popstate fires with nmPage:'home' → app stays open ✅
+    // Pressing back from home(cushion) → home(replaced) → popstate fires with nmPage:'home' → app stays open ✅
+    // Pressing back from home(replaced) → Google — but popstate fires (no state) → pushes home → app stays open ✅
+    // Use '#home' not bare pathname — bare '/' causes a hard reload when back is pressed
+    // to these entries because the browser sees a URL change. '#home' keeps it SPA.
+    history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
+    // Push a second home entry as a cushion — this is what users land on when pressing back
+    // from any in-app navigation. The replaced entry below it catches any further back presses.
     history.pushState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
-  } else {
-    // For non-home pages (e.g. reloaded on #marketplace), push home cushion then the page
-    history.pushState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
-    // The page-specific state is pushed below in the marketplace/non-home block
   }
 
   // Hide all pages first
@@ -7390,19 +7404,27 @@ document.addEventListener('DOMContentLoaded',()=>{
     const viewId = viewMap[hashView] || 'mkt-main-view';
     const viewEl = document.getElementById(viewId);
     if(viewEl) viewEl.style.display = 'block';
-    // For sub-views (profile/boost/edit/portal), push main state first so that
-    // pressing back goes to the listing page, not exits the site
-    if(hashView && ['profile','boost','edit','portal'].includes(hashView)) {
-      history.pushState({ nmPage:'marketplace', nmView:'main' }, '', '#marketplace');
+    // Only push these states on a genuinely fresh entry (see _isFreshEntry above).
+    // On a plain reload, history.state already holds the correct sub-view state
+    // from before the refresh — re-pushing here would just stack duplicates.
+    if(_isFreshEntry) {
+      // For sub-views (profile/boost/edit/portal), push main state first so that
+      // pressing back goes to the listing page, not exits the site
+      if(hashView && ['profile','boost','edit','portal'].includes(hashView)) {
+        history.pushState({ nmPage:'marketplace', nmView:'main' }, '', '#marketplace');
+      }
+      // Then push the actual current sub-view state on top
+      const nmView = hashView==='edit'?'add':hashView==='portal'?'admin':(hashView||'main');
+      history.pushState({ nmPage:'marketplace', nmView: nmView, nmBizId: hashBizId },
+        '', hash || '#marketplace');
     }
-    // Then push the actual current sub-view state on top
-    const nmView = hashView==='edit'?'add':hashView==='portal'?'admin':(hashView||'main');
-    history.pushState({ nmPage:'marketplace', nmView: nmView, nmBizId: hashBizId },
-      '', hash || '#marketplace');
   } else if(pageToShow !== 'home') {
     // Push correct page state for non-home, non-marketplace pages.
     // Floor is already home (set above), so just push the current page on top.
-    history.pushState({ nmPage: pageToShow, nmView: 'main' }, '', hash || '#' + pageToShow);
+    // Only do this on a fresh entry — see _isFreshEntry note above.
+    if(_isFreshEntry) {
+      history.pushState({ nmPage: pageToShow, nmView: 'main' }, '', hash || '#' + pageToShow);
+    }
   }
 
   // ── Anti-flash removal strategy ──
