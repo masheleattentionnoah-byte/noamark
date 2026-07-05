@@ -3075,10 +3075,10 @@
   <!-- SORT BAR -->
   <div id="mkt-sort-bar" style="display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--black-2);border-bottom:1px solid var(--border-soft);flex-wrap:wrap;overflow-x:auto;width:100%;box-sizing:border-box;">
     <span style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);white-space:nowrap;">Sort by:</span>
-    <button class="sort-btn active" onclick="setSort('ranking',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--gold);background:var(--gold);color:#111827;cursor:pointer;transition:all .3s;">🏆 Ranking</button>
+    <button class="sort-btn active" data-sort="ranking" onclick="setSort('ranking',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--gold);background:var(--gold);color:#111827;cursor:pointer;transition:all .3s;">🏆 Ranking</button>
     <button class="sort-btn" data-sort="distance" onclick="setSort('distance',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;">📍 Distance</button>
-    <button class="sort-btn" onclick="setSort('rating',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;">⭐ Rating</button>
-    <button class="sort-btn" onclick="setSort('newest',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;">🆕 Newest</button>
+    <button class="sort-btn" data-sort="rating" onclick="setSort('rating',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;">⭐ Rating</button>
+    <button class="sort-btn" data-sort="newest" onclick="setSort('newest',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;">🆕 Newest</button>
     <button class="near-me-btn" onclick="nmUseNearMe(this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);cursor:pointer;transition:all .3s;margin-left:auto;white-space:nowrap;">📍 Near Me Now</button>
   </div>
 
@@ -5158,11 +5158,27 @@ function nmFormatDistance(km){
   return km.toFixed(1) + 'km away';
 }
 
-// Called by the "Near Me Now" button. Asks for geolocation permission,
-// stores the result, switches to distance sort, and re-renders.
-function nmUseNearMe(btn){
+// Remembers whether Near Me Now is active across page refreshes, so
+// reloading the page doesn't silently drop back to the default sort.
+function nmSaveNearMeState(active){
+  try { localStorage.setItem('nm_near_me_active', active ? '1' : '0'); } catch(e){}
+}
+function nmLoadNearMeState(){
+  try { return localStorage.getItem('nm_near_me_active') === '1'; } catch(e){ return false; }
+}
+
+// Finds a sort button by its data-sort attribute (all four sort buttons
+// now carry one, including "ranking").
+function nmFindSortBtn(mode){
+  return document.querySelector(`.sort-btn[data-sort="${mode}"]`);
+}
+
+// Does the actual geolocation request + activates distance sort.
+// isAutoRestore=true suppresses user-facing error toasts, since this can
+// run silently on page load without the person having clicked anything.
+function nmActivateNearMe(btn, isAutoRestore){
   if(!navigator.geolocation){
-    nmToast('Location services are not supported on this browser.');
+    if(!isAutoRestore) nmToast('Location services are not supported on this browser.');
     return;
   }
   const originalText = btn.textContent;
@@ -5173,24 +5189,72 @@ function nmUseNearMe(btn){
       window._userLat = pos.coords.latitude;
       window._userLng = pos.coords.longitude;
       btn.textContent = '📍 Near Me ✓';
+      btn.title = 'Tap again to turn off Near Me Now';
       btn.disabled = false;
       btn.classList.add('near-me-active');
+      nmSaveNearMeState(true);
       // Switch to distance sort so the nearest businesses surface immediately
-      const distBtn = document.querySelector('.sort-btn[data-sort="distance"]');
+      const distBtn = nmFindSortBtn('distance');
       if(distBtn) setSort('distance', distBtn);
       else populateMarketplace();
     },
     err => {
       btn.textContent = originalText;
       btn.disabled = false;
-      if(err.code === err.PERMISSION_DENIED){
-        nmToast('Location access was denied — showing all businesses instead.');
-      } else {
-        nmToast('Could not get your location. Please try again.');
+      nmSaveNearMeState(false);
+      // On auto-restore, fail silently — e.g. permission may have been
+      // revoked since the last visit. Don't interrupt with an error toast
+      // for something the person didn't just click.
+      if(!isAutoRestore){
+        if(err.code === err.PERMISSION_DENIED){
+          nmToast('Location access was denied — showing all businesses instead.');
+        } else {
+          nmToast('Could not get your location. Please try again.');
+        }
       }
     },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
   );
+}
+
+// Turns Near Me Now off and restores whatever sort was active before it
+// was turned on — the actual "undo" behavior.
+function nmDeactivateNearMe(btn){
+  window._userLat = null;
+  window._userLng = null;
+  btn.classList.remove('near-me-active');
+  btn.textContent = '📍 Near Me Now';
+  btn.title = '';
+  btn.disabled = false;
+  nmSaveNearMeState(false);
+  const restoreMode = window._sortBeforeNearMe || 'ranking';
+  const restoreBtn = nmFindSortBtn(restoreMode);
+  if(restoreBtn) setSort(restoreMode, restoreBtn);
+  else populateMarketplace();
+}
+
+// Called by the "Near Me Now" button — acts as a toggle: first tap turns
+// it on (asks for location, sorts by distance), second tap turns it off
+// and puts the marketplace back exactly how it was before.
+function nmUseNearMe(btn){
+  if(btn.classList.contains('near-me-active')){
+    nmDeactivateNearMe(btn);
+  } else {
+    window._sortBeforeNearMe = currentSort;
+    nmActivateNearMe(btn, false);
+  }
+}
+
+// On page load, if Near Me Now was active last time this browser visited,
+// silently re-request location (the browser won't re-prompt for permission
+// it already granted) and restore the sorted view — so refreshing the page
+// no longer "undoes" it the way it used to.
+function nmRestoreNearMeOnLoad(){
+  if(!nmLoadNearMeState()) return;
+  const btn = document.querySelector('.near-me-btn');
+  if(!btn) return;
+  window._sortBeforeNearMe = 'ranking';
+  nmActivateNearMe(btn, true);
 }
 
 // Small non-blocking toast — falls back to alert if the toast container
@@ -7344,6 +7408,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   nmLoadGlobalStats();
   nmTrackVisit();
   loadNotifPrefs();
+  // Restore "Near Me Now" if it was active before this page reload — see
+  // nmRestoreNearMeOnLoad for why this needs a short delay (listings need
+  // to finish loading for distance sorting to have anything to sort).
+  setTimeout(nmRestoreNearMeOnLoad, 600);
 
   // ── Auto-restore session from device fingerprint ──
   const saved = restoreSession();
