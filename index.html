@@ -5232,8 +5232,16 @@ async function nmActivateNearMe(btn, isAutoRestore){
   const originalText = btn.textContent;
   btn.textContent = '📍 Locating…';
   btn.disabled = true;
+
+  // Reassure the person during a slow fix instead of leaving the button
+  // looking frozen for several seconds with no feedback.
+  const slowNoticeTimer = setTimeout(() => {
+    if(btn.disabled) btn.textContent = '📍 Still locating…';
+  }, 3000);
+
   navigator.geolocation.getCurrentPosition(
     pos => {
+      clearTimeout(slowNoticeTimer);
       window._userLat = pos.coords.latitude;
       window._userLng = pos.coords.longitude;
       btn.textContent = '📍 Near Me ✓';
@@ -5247,6 +5255,7 @@ async function nmActivateNearMe(btn, isAutoRestore){
       else populateMarketplace();
     },
     err => {
+      clearTimeout(slowNoticeTimer);
       btn.textContent = originalText;
       btn.disabled = false;
       nmSaveNearMeState(false);
@@ -5263,7 +5272,13 @@ async function nmActivateNearMe(btn, isAutoRestore){
         }
       }
     },
-    { enableHighAccuracy: false, timeout: isAutoRestore ? 5000 : 8000, maximumAge: 300000 }
+    // enableHighAccuracy:true asks the device to use its GPS chip directly
+    // rather than waiting on network/Wi-Fi-based positioning — on mobile
+    // this is usually FASTER and more consistent for a one-shot "where am
+    // I" request (network-based lookups can stall for several seconds when
+    // Wi-Fi positioning data is sparse). The small battery cost of a single
+    // one-off request is worth the snappier, more reliable result.
+    { enableHighAccuracy: true, timeout: isAutoRestore ? 6000 : 10000, maximumAge: 300000 }
   );
 }
 
@@ -6432,7 +6447,7 @@ function nmPreviewLogo(input){
   const reader = new FileReader();
   reader.onload = e => {
     const preview = document.getElementById('biz_logo_preview');
-    if(preview) preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+    if(preview) preview.innerHTML = `<img src="${e.target.result}" alt="Logo preview" style="width:100%;height:100%;object-fit:cover;">`;
   };
   reader.readAsDataURL(file);
 }
@@ -6673,7 +6688,6 @@ async function submitBusiness(){
   const menu=document.getElementById('biz_menu').value.trim();
   const walkins=document.getElementById('biz_walkins')?document.getElementById('biz_walkins').value.trim():'';
   const owner=document.getElementById('biz_owner').value.trim();
-  const idnum=document.getElementById('biz_id')?document.getElementById('biz_id').value.trim():'';
   const wa=document.getElementById('biz_whatsapp').value.trim();
   const email=document.getElementById('biz_email').value.trim();
   const facebook=document.getElementById('biz_facebook').value.trim();
@@ -7024,7 +7038,7 @@ async function submitBusiness(){
       address,area,city,province,landmark,
       hoursWeekday:hoursWD,hoursSaturday:hoursSat,hoursSunday:hoursSun,status,walkins,
       priceHint,menu,payments,
-      owner,idNumber:idnum,phone,whatsapp:wa,email,facebook,instagram,website,
+      owner,phone,whatsapp:wa,email,facebook,instagram,website,
       transport_sub:document.getElementById('biz_transport_sub')?.value||'',boost,source:'NoaMark Business Listing Submission'
     })
   }).then(r=>{
@@ -9737,7 +9751,7 @@ async function bpEditListing() {
     nmResetLogoField();
     if(myListing.logo) {
       const logoPreview = document.getElementById('biz_logo_preview');
-      if(logoPreview) logoPreview.innerHTML = `<img src="${myListing.logo}" style="width:100%;height:100%;object-fit:cover;">`;
+      if(logoPreview) logoPreview.innerHTML = `<img src="${myListing.logo}" alt="${nmSafe(myListing.name)} logo" style="width:100%;height:100%;object-fit:cover;">`;
     }
     // Show the same validation feedback immediately for pre-filled values,
     // so an owner editing their listing sees right away if their existing
@@ -11610,7 +11624,7 @@ async function admLoadVideos() {
         const tierLabels = { free: '🟢 Free', vip: '⭐ VIP', premium: '👑 Premium' };
         listEl.innerHTML = videos.map(v => `
           <div style="display:flex;align-items:center;gap:16px;padding:16px;background:#0a0c10;border:1px solid #1a1f2c;margin-bottom:10px;">
-            <img src="https://img.youtube.com/vi/${nmSafe(v.youtube_id)}/mqdefault.jpg" style="width:100px;height:60px;object-fit:cover;border:1px solid #1a1f2c;flex-shrink:0;" onerror="this.style.display='none'" />
+            <img src="https://img.youtube.com/vi/${nmSafe(v.youtube_id)}/mqdefault.jpg" alt="${nmSafe(v.title || 'Video thumbnail')}" style="width:100px;height:60px;object-fit:cover;border:1px solid #1a1f2c;flex-shrink:0;" onerror="this.style.display='none'" />
             <div style="flex:1;min-width:0;">
               <div style="font-size:13px;font-weight:700;color:#e5e7eb;margin-bottom:4px;">${nmSafe(v.title)}</div>
               <div style="font-size:11px;color:#6b7280;margin-bottom:4px;">${nmSafe(v.description || '')}</div>
@@ -11710,7 +11724,7 @@ function loadVideosPage(videos) {
         </div>`;
       } else {
         return `<div style="background:var(--black-2);border:1px solid rgba(212,175,55,.2);border-radius:8px;overflow:hidden;position:relative;">
-          <img src="https://img.youtube.com/vi/${nmSafe(v.youtube_id)}/mqdefault.jpg" style="width:100%;display:block;" />
+          <img src="https://img.youtube.com/vi/${nmSafe(v.youtube_id)}/mqdefault.jpg" alt="${nmSafe(v.title || 'Video thumbnail')}" style="width:100%;display:block;" />
           <div style="padding:16px;">
             <div style="font-size:13px;font-weight:700;color:var(--white);margin-bottom:6px;">${nmSafe(v.title)}</div>
             <div style="font-size:11px;color:var(--gold);margin-bottom:12px;">🔒 ${tier === 'vip' ? 'VIP members only' : 'Premium members only'}</div>
