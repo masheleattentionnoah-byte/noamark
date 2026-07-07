@@ -10866,8 +10866,8 @@ bpLoad();
           <div class="adm-card-title">Recent Plan Signups</div>
           <div style="overflow-x:auto;">
             <table class="adm-table">
-              <thead><tr><th>Name</th><th>Plan</th><th>Contact</th><th>Province</th><th>Requested</th></tr></thead>
-              <tbody id="adm-recent-subs"><tr><td colspan="5" class="adm-empty">Loading...</td></tr></tbody>
+              <thead><tr><th>Name</th><th>Plan</th><th>Contact</th><th>Province</th><th>Requested</th><th>Action</th></tr></thead>
+              <tbody id="adm-recent-subs"><tr><td colspan="6" class="adm-empty">Loading...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -11464,14 +11464,28 @@ async function admLoadOverview() {
 
     const subsData = subsRes.data || [];
     set('adm-stat-subs', subsData.filter(s => s.status === 'pending' || !s.status).length);
+    // Map so admApproveSub/admRejectSub can look up name/phone/plan by id
+    window._pendingSubsMap = window._pendingSubsMap || {};
+    subsData.forEach(s => { window._pendingSubsMap[s.id] = s; });
     const subsTbody = document.getElementById('adm-recent-subs');
     if(subsTbody) {
       subsTbody.innerHTML = subsData.length === 0
-        ? '<tr><td colspan="5" class="adm-empty">No plan signups yet.</td></tr>'
+        ? '<tr><td colspan="6" class="adm-empty">No plan signups yet.</td></tr>'
         : subsData.map(s => {
             const d = s.created_at ? new Date(s.created_at) : null;
             const when = d ? d.toLocaleDateString('en-ZA',{day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'}) : '—';
-            return `<tr><td style="font-weight:600;color:#fff;">${nmSafe(s.name||'—')}</td><td style="text-transform:uppercase;color:#F4C430;font-weight:600;">${nmSafe(s.plan||'—')}</td><td>${nmSafe(s.email||'—')}<br>${nmSafe(s.phone||'')}</td><td>${nmSafe(s.province||'—')}</td><td>${when}</td></tr>`;
+            const st = s.status || 'pending';
+            let actionCell;
+            if(st === 'approved') {
+              actionCell = (s.payment_status === 'paid')
+                ? '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Paid &amp; Active</span>'
+                : '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Approved</span><br><button class="adm-btn" style="background:rgba(244,196,48,.15);color:#F4C430;border:1px solid rgba(244,196,48,.3);margin-top:4px;" onclick="admMarkPaid(\'' + s.id + '\',this)">💰 Mark as Paid</button>';
+            } else if(st === 'rejected') {
+              actionCell = '<span style="color:#f87171;font-weight:700;font-size:11px;">✗ Rejected</span>';
+            } else {
+              actionCell = `<button class="adm-btn adm-btn-approve" onclick="admApproveSub('${s.id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectSub('${s.id}',this)">✗ Reject</button>`;
+            }
+            return `<tr><td style="font-weight:600;color:#fff;">${nmSafe(s.name||'—')}</td><td style="text-transform:uppercase;color:#F4C430;font-weight:600;">${nmSafe(s.plan||'—')}</td><td>${nmSafe(s.email||'—')}<br>${nmSafe(s.phone||'')}</td><td>${nmSafe(s.province||'—')}</td><td>${when}</td><td>${actionCell}</td></tr>`;
           }).join('');
     }
   } catch(e) {
@@ -11581,6 +11595,101 @@ async function admRejectListing(id, btn) {
     console.error('Reject error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
     alert('Error rejecting. Check your Supabase connection and try again.');
+  }
+}
+
+// ── Plan price map, used to build the payment-instructions SMS on approval ──
+const NM_PLAN_PRICES = { free: 'Free', vip: 'R99.99/month', premium: 'R199.99/month' };
+
+async function admApproveSub(id, btn) {
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
+  try {
+    const { error } = await nmSupaQuery(() => _supa.from('subscription_requests').update({status:'approved'}).eq('id', id));
+    if(error) throw error;
+
+    // Send the payment-instructions SMS + email. Best-effort — if either
+    // fails, the approval itself has still gone through, so we don't roll it back.
+    const sub = window._pendingSubsMap && window._pendingSubsMap[id];
+    if(sub) {
+      const planLabel = (sub.plan || '').toUpperCase();
+      const price = NM_PLAN_PRICES[sub.plan] || 'the plan price';
+      const bodyMsg = 'Hi ' + (sub.name ? sub.name.split(' ')[0] : '') + ', your ' + planLabel +
+        ' plan request has been approved! To activate, please pay ' + price +
+        ' via EFT or SnapScan — contact +27 63 418 9749 or support@noamark.com to complete payment. ' +
+        'Your account will be activated as soon as payment is confirmed.';
+      if(sub.phone) { try { await nmSendSMS(sub.phone, 'NoaMark: ' + bodyMsg); } catch(e) { console.warn('Approval SMS failed:', e); } }
+      if(sub.email) { try { await nmSendEmail(sub.email, 'Your NoaMark ' + planLabel + ' plan is approved', bodyMsg); } catch(e) { console.warn('Approval email failed:', e); } }
+    }
+
+    btn.textContent = '✓ Done!'; btn.style.background = '#dcfce7'; btn.style.opacity = '1';
+    setTimeout(()=>{ admLoadOverview(); }, 800);
+  } catch(e) {
+    console.error('Approve sub error:', e);
+    btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
+    alert('Error approving. Check your Supabase connection and try again.');
+  }
+}
+
+async function admRejectSub(id, btn) {
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
+  try {
+    const { error } = await nmSupaQuery(() => _supa.from('subscription_requests').update({status:'rejected'}).eq('id', id));
+    if(error) throw error;
+    btn.textContent = '✓ Done!'; btn.style.background = '#fee2e2'; btn.style.opacity = '1';
+    setTimeout(()=>{ admLoadOverview(); }, 800);
+  } catch(e) {
+    console.error('Reject sub error:', e);
+    btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
+    alert('Error rejecting. Check your Supabase connection and try again.');
+  }
+}
+
+// ── Mark as Paid: confirms manual EFT/SnapScan payment, unlocks the
+// person's account by setting their `plan` on the users table, and lets
+// them know they're active. This is the step that actually gates access
+// to paid Learning content (loadVideosPage checks currentUser.plan). ──
+async function admMarkPaid(id, btn) {
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
+  try {
+    const sub = window._pendingSubsMap && window._pendingSubsMap[id];
+    if(!sub) throw new Error('Could not find this request — please refresh and try again.');
+
+    const { error } = await nmSupaQuery(() => _supa.from('subscription_requests').update({payment_status:'paid'}).eq('id', id));
+    if(error) throw error;
+
+    // Try to find their existing account by email and upgrade its plan.
+    // If they haven't created an account yet (this form doesn't require
+    // one), there's nothing to upgrade — flag it so you can follow up.
+    let accountFound = false;
+    if(sub.email) {
+      const { data: existingUser } = await nmSupaQuery(() =>
+        _supa.from('users').select('id').eq('role','subscriber').ilike('email', sub.email).limit(1)
+      );
+      if(existingUser && existingUser.length) {
+        const { error: upErr } = await nmSupaQuery(() => _supa.from('users').update({ plan: sub.plan }).eq('id', existingUser[0].id));
+        if(upErr) throw upErr;
+        accountFound = true;
+      }
+    }
+
+    const planLabel = (sub.plan || '').toUpperCase();
+    const bodyMsg = 'Payment confirmed! Your ' + planLabel + ' plan is now active. ' +
+      'Log in to noamark.com to access your content.';
+    if(sub.phone) { try { await nmSendSMS(sub.phone, 'NoaMark: ' + bodyMsg); } catch(e) { console.warn('Paid-confirmation SMS failed:', e); } }
+    if(sub.email) { try { await nmSendEmail(sub.email, 'Your NoaMark ' + planLabel + ' plan is active', bodyMsg); } catch(e) { console.warn('Paid-confirmation email failed:', e); } }
+
+    btn.textContent = '✓ Done!'; btn.style.background = '#dcfce7'; btn.style.opacity = '1';
+    if(!accountFound) {
+      setTimeout(()=>{ alert(sub.name + ' doesn\'t have a matching account yet (' + sub.email + '). Ask them to sign up on noamark.com with this same email, then their plan will apply automatically next time you check — or come back here and it will pick it up once their account exists.'); }, 300);
+    }
+    setTimeout(()=>{ admLoadOverview(); }, 800);
+  } catch(e) {
+    console.error('Mark as paid error:', e);
+    btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
+    alert('Error marking as paid: ' + (e.message || 'check your Supabase connection and try again.'));
   }
 }
 
@@ -11893,7 +12002,28 @@ document.addEventListener('DOMContentLoaded', function() {
 // ██████  NOAMARK BOOKINGS SYSTEM  ████████████████████████████
 // ══════════════════════════════════════════════════════════════
 
-// ── Send SMS via our secure server-side proxy (/api/send-sms) ──
+// ── Send email via our secure server-side proxy (/api/send-email) ──
+// Resend API key lives only in Vercel environment variables, never in
+// this file or the browser. See /api/send-email.js. This is written to
+// fail silently (like nmSendSMS) — if Resend isn't set up yet, the rest
+// of the approve/mark-paid flow still completes normally.
+async function nmSendEmail(toEmail, subject, message) {
+  try {
+    if (!toEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail)) return { ok: false, reason: 'bad email' };
+    const res = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: toEmail, subject, message })
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok && data.ok === true, status: res.status };
+  } catch(e) {
+    console.warn('Email send failed (this is expected until /api/send-email.js + Resend are set up):', e);
+    return { ok: false, reason: e.message };
+  }
+}
+
+
 // BulkSMS credentials live only in Vercel environment variables now,
 // never in this file or the browser. See /api/send-sms.js
 async function nmSendSMS(toNumber, message) {
