@@ -7541,7 +7541,12 @@ document.addEventListener('DOMContentLoaded',()=>{
   // can flash before populateBizDashboard() finishes resolving the owner's actual listing.
   const _isProfileReload = (pageToShow === 'marketplace' && hashView === 'profile' && hashBizId);
   const _isPortalReload  = (pageToShow === 'marketplace' && hashView === 'portal');
-  if(!_isProfileReload && !_isPortalReload) {
+  // Admin dashboard reload: hash looks like '#admin/revenue'. This isn't
+  // part of the normal page routing above (admin is its own top-level
+  // view), so keep the page hidden here too — the dedicated admin-restore
+  // listener further down reveals it once the correct tab has painted.
+  const _isAdminReload = (hashPage === 'admin');
+  if(!_isProfileReload && !_isPortalReload && !_isAdminReload) {
     const nmAntiFlash = document.getElementById('nm-anti-flash');
     if(nmAntiFlash) nmAntiFlash.remove();
   }
@@ -11173,7 +11178,13 @@ function showAdminDashboard() {
   if(chatFab) chatFab.style.display = 'none';
   if(chatWin) chatWin.style.display = 'none';
   window.scrollTo(0, 0);
-  setTimeout(()=>admGoPage('overview'), 100);
+  // Restore the exact admin tab (Revenue, Users, etc.) the admin was on
+  // before refreshing, instead of always resetting to Overview — same
+  // idea as the business portal's tab restoration.
+  const validAdmPages = ['overview','approvals','revenue','users','analytics','enquiries','resets','videos'];
+  const hParts = (window.location.hash || '').replace('#','').split('/');
+  const restoredAdmPage = (hParts[0] === 'admin' && validAdmPages.includes(hParts[1])) ? hParts[1] : 'overview';
+  setTimeout(()=>admGoPage(restoredAdmPage), 100);
 }
 
 function admGoPage(page) {
@@ -11192,6 +11203,12 @@ function admGoPage(page) {
   if(page === 'enquiries') { admLoadEnquiries(); window._admEnqPageOpen = true; const b=document.getElementById('adm-enq-badge'); if(b){b.textContent='0';b.style.display='none';} } else { window._admEnqPageOpen = false; }
   if(page === 'resets')     admLoadResets();
   if(page === 'videos')     admLoadVideos();
+
+  // Remember which admin tab is active in the URL, so refreshing the page
+  // returns to this exact tab instead of resetting to Overview. Same
+  // pattern as bpGoPage for the business portal — replaceState (not
+  // pushState) so switching tabs doesn't add back-button stops.
+  history.replaceState({ nmPage: 'admin', nmAdmPage: page }, '', '#admin/' + page);
 }
 
 // ──────────────────────────────────────────────────
@@ -11478,10 +11495,10 @@ async function admLoadOverview() {
             let actionCell;
             if(st === 'approved') {
               actionCell = (s.payment_status === 'paid')
-                ? '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Paid &amp; Active</span>'
-                : '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Approved</span><br><button class="adm-btn" style="background:rgba(244,196,48,.15);color:#F4C430;border:1px solid rgba(244,196,48,.3);margin-top:4px;" onclick="admMarkPaid(\'' + s.id + '\',this)">💰 Mark as Paid</button>';
+                ? '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Paid &amp; Active</span><br><button class="adm-btn" style="background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.25);margin-top:4px;font-size:10px;" onclick="admUndoPaid(\'' + s.id + '\',this)">↩ Undo (not paid)</button>'
+                : '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Approved</span><br><button class="adm-btn" style="background:rgba(244,196,48,.15);color:#F4C430;border:1px solid rgba(244,196,48,.3);margin-top:4px;" onclick="admMarkPaid(\'' + s.id + '\',this)">💰 Mark as Paid</button><br><button class="adm-btn" style="background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.25);margin-top:4px;font-size:10px;" onclick="admUnapproveSub(\'' + s.id + '\',this)">↩ Un-approve</button>';
             } else if(st === 'rejected') {
-              actionCell = '<span style="color:#f87171;font-weight:700;font-size:11px;">✗ Rejected</span>';
+              actionCell = '<span style="color:#f87171;font-weight:700;font-size:11px;">✗ Rejected</span><br><button class="adm-btn" style="background:rgba(99,179,237,.1);color:#63b3ed;border:1px solid rgba(99,179,237,.25);margin-top:4px;font-size:10px;" onclick="admUnapproveSub(\'' + s.id + '\',this)">↩ Reconsider</button>';
             } else {
               actionCell = `<button class="adm-btn adm-btn-approve" onclick="admApproveSub('${s.id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectSub('${s.id}',this)">✗ Reject</button>`;
             }
@@ -11690,6 +11707,52 @@ async function admMarkPaid(id, btn) {
     console.error('Mark as paid error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
     alert('Error marking as paid: ' + (e.message || 'check your Supabase connection and try again.'));
+  }
+}
+
+// ── Un-approve: walks an approved or rejected request back to pending.
+// No SMS/email sent — this is just an internal correction, not a
+// customer-facing status change. ──
+async function admUnapproveSub(id, btn) {
+  if(!confirm('Send this request back to pending? No message will be sent to the customer.')) return;
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
+  try {
+    const { error } = await nmSupaQuery(() => _supa.from('subscription_requests').update({status:'pending'}).eq('id', id));
+    if(error) throw error;
+    setTimeout(()=>{ admLoadOverview(); }, 400);
+  } catch(e) {
+    console.error('Un-approve error:', e);
+    btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
+    alert('Error un-approving. Check your Supabase connection and try again.');
+  }
+}
+
+// ── Undo Paid: reverses a Mark as Paid click. Sets payment_status back
+// to unpaid AND downgrades the account's plan back to Free, so wrongly
+// granted access doesn't linger. No SMS/email sent. ──
+async function admUndoPaid(id, btn) {
+  if(!confirm("Undo this payment? Their plan access will be downgraded back to Free. No message will be sent.")) return;
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
+  try {
+    const sub = window._pendingSubsMap && window._pendingSubsMap[id];
+    const { error } = await nmSupaQuery(() => _supa.from('subscription_requests').update({payment_status:'unpaid'}).eq('id', id));
+    if(error) throw error;
+
+    if(sub && sub.email) {
+      const { data: existingUser } = await nmSupaQuery(() =>
+        _supa.from('users').select('id').eq('role','subscriber').ilike('email', sub.email).limit(1)
+      );
+      if(existingUser && existingUser.length) {
+        await nmSupaQuery(() => _supa.from('users').update({ plan: 'Free' }).eq('id', existingUser[0].id));
+      }
+    }
+    setTimeout(()=>{ admLoadOverview(); }, 400);
+  } catch(e) {
+    console.error('Undo paid error:', e);
+    btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
+    alert('Error undoing payment. Check your Supabase connection and try again.');
   }
 }
 
@@ -11995,6 +12058,23 @@ document.addEventListener('DOMContentLoaded', function() {
     if(preload) preload.remove();
     loginAs(saved);
     showAdminDashboard();
+    // showAdminDashboard() calls admGoPage(...) ~100ms from now, which
+    // immediately paints a "Loading…" state for the restored tab (the
+    // adm loaders set that synchronously before their first await) — so
+    // it's safe to reveal the page shortly after, instead of leaving it
+    // hidden behind nm-anti-flash (intentionally skipped above for
+    // admin reloads).
+    setTimeout(() => {
+      const nmAntiFlash = document.getElementById('nm-anti-flash');
+      if(nmAntiFlash) nmAntiFlash.remove();
+    }, 250);
+  } else if((window.location.hash || '').replace('#','').split('/')[0] === 'admin') {
+    // Hash says admin, but there's no valid admin session (expired/logged
+    // out). Don't leave the page hidden forever — clear the hash and
+    // reveal, same safety net the business portal reload already has.
+    history.replaceState(null, '', window.location.pathname);
+    const nmAntiFlash = document.getElementById('nm-anti-flash');
+    if(nmAntiFlash) nmAntiFlash.remove();
   }
 });
 
