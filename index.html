@@ -7873,7 +7873,7 @@ function handleFooterSubscribe() {
 }
 
 // ── FULL SUBSCRIBE PAGE ──
-function handleSubscribe(){
+async function handleSubscribe(){
   const name     = document.getElementById('sub_name').value.trim();
   const phone    = document.getElementById('sub_phone').value.trim();
   const email    = document.getElementById('sub_email').value.trim();
@@ -7889,6 +7889,23 @@ function handleSubscribe(){
   }
 
   if(btn){ btn.textContent = 'Sending…'; btn.disabled = true; }
+
+  // Save to Supabase FIRST — this is what the admin dashboard actually reads.
+  // Previously this request only went out as an email (Formspree) and saved
+  // to the submitter's own browser storage, which the admin has no way to
+  // see. If your Supabase project doesn't have a 'subscription_requests'
+  // table yet, this fails silently and falls through to the email-only path
+  // below — nothing breaks, but you won't see it in the dashboard until
+  // that table exists (see the SQL note in chat).
+  try {
+    await nmSupaQuery(() => _supa.from('subscription_requests').insert({
+      name, phone, email, plan, province,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    }), 1, 5000);
+  } catch(e) {
+    console.warn('subscription_requests insert failed (table may not exist yet):', e);
+  }
 
   fetch('https://formspree.io/f/xaqajvvj', {
     method: 'POST',
@@ -10794,7 +10811,7 @@ bpLoad();
             <div class="adm-page-title">Good day, Admin 👋</div>
             <div class="adm-page-sub">Here's what's happening on NoaMark today</div>
           </div>
-          <button class="adm-btn-refresh" onclick="admLoadOverview()">↻ Refresh</button>
+          <button class="adm-btn-refresh" onclick="admRefreshClick(this,'admLoadOverview')">↻ Refresh</button>
         </div>
         <div class="adm-stats">
           <div class="adm-stat">
@@ -10837,6 +10854,22 @@ bpLoad();
             <div class="adm-stat-val" id="adm-stat-enquiries">—</div>
             <div class="adm-stat-sub">Platform wide</div>
           </div>
+          <div class="adm-stat">
+            <div class="adm-stat-label">Plan Signups</div>
+            <div class="adm-stat-val gold" id="adm-stat-subs">—</div>
+            <div class="adm-stat-sub">Awaiting follow-up</div>
+          </div>
+        </div>
+
+        <!-- Recent plan signups (VIP/Premium/Free requests from the Subscribe page) -->
+        <div class="adm-card">
+          <div class="adm-card-title">Recent Plan Signups</div>
+          <div style="overflow-x:auto;">
+            <table class="adm-table">
+              <thead><tr><th>Name</th><th>Plan</th><th>Contact</th><th>Province</th><th>Requested</th></tr></thead>
+              <tbody id="adm-recent-subs"><tr><td colspan="5" class="adm-empty">Loading...</td></tr></tbody>
+            </table>
+          </div>
         </div>
 
         <!-- Recent pending -->
@@ -10861,7 +10894,7 @@ bpLoad();
             <div class="adm-page-title">Business Management</div>
             <div class="adm-page-sub">Review, approve and manage all business listings</div>
           </div>
-          <button class="adm-btn-refresh" onclick="admLoadApprovals()">↻ Refresh</button>
+          <button class="adm-btn-refresh" onclick="admRefreshClick(this,'admLoadApprovals')">↻ Refresh</button>
         </div>
 
         <!-- Pending -->
@@ -10907,7 +10940,7 @@ bpLoad();
             <div class="adm-page-title">Revenue Overview</div>
             <div class="adm-page-sub">Active boost tiers — revenue confirmed only after payment</div>
           </div>
-          <button class="adm-btn-refresh" onclick="admLoadRevenue()">↻ Refresh</button>
+          <button class="adm-btn-refresh" onclick="admRefreshClick(this,'admLoadRevenue')">↻ Refresh</button>
         </div>
         <div class="adm-stats">
           <div class="adm-stat">
@@ -10959,7 +10992,7 @@ bpLoad();
             <div class="adm-page-title">User Management</div>
             <div class="adm-page-sub">All registered users across NoaMark</div>
           </div>
-          <button class="adm-btn-refresh" onclick="admLoadUsers()">↻ Refresh</button>
+          <button class="adm-btn-refresh" onclick="admRefreshClick(this,'admLoadUsers')">↻ Refresh</button>
         </div>
         <div class="adm-stats nm-3col-grid" style="display:grid;">
           <div class="adm-stat">
@@ -10996,7 +11029,7 @@ bpLoad();
             <div class="adm-page-title">Platform Analytics</div>
             <div class="adm-page-sub">NoaMark platform performance overview</div>
           </div>
-          <button class="adm-btn-refresh" onclick="admLoadAnalytics()">↻ Refresh</button>
+          <button class="adm-btn-refresh" onclick="admRefreshClick(this,'admLoadAnalytics')">↻ Refresh</button>
         </div>
         <div class="adm-stats">
           <div class="adm-stat">
@@ -11052,7 +11085,7 @@ bpLoad();
             <div class="adm-page-title">Video Manager</div>
             <div class="adm-page-sub">Add, edit, or remove videos shown on the Videos page</div>
           </div>
-          <button class="adm-btn-refresh" onclick="admLoadVideos()">↻ Refresh</button>
+          <button class="adm-btn-refresh" onclick="admRefreshClick(this,'admLoadVideos')">↻ Refresh</button>
         </div>
 
         <!-- Add Video Form -->
@@ -11098,7 +11131,7 @@ bpLoad();
             <div class="adm-page-title">Password Reset Requests</div>
             <div class="adm-page-sub">Users who forgot their password — review and reset manually</div>
           </div>
-          <button class="adm-btn-refresh" onclick="admLoadResets()">↻ Refresh</button>
+          <button class="adm-btn-refresh" onclick="admRefreshClick(this,'admLoadResets')">↻ Refresh</button>
         </div>
         <div class="adm-card">
           <div id="adm-resets-list"><div class="adm-empty">Loading…</div></div>
@@ -11348,12 +11381,51 @@ async function admResetUserPassword() {
   }
 }
 
-async function admLoadOverview() {
+// Wraps any admin "↻ Refresh" button click so it visibly shows something is
+// happening — previously these called the loader function directly with no
+// feedback at all, so on a slow connection a tap looked like it did nothing,
+// even though a query was quietly in flight (and possibly retrying) behind
+// the scenes.
+async function admRefreshClick(btn, loaderFnName) {
+  if(!btn || btn.disabled) return;
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '↻ Refreshing…';
   try {
-    const [bizRes, userRes, enqRes] = await Promise.all([
-      nmSupaQuery(() => _supa.from('listings').select('id,status,boost_tier')),
-      nmSupaQuery(() => _supa.from('users').select('id,role')),
-      nmSupaQuery(() => _supa.from('enquiries').select('id')),
+    await window[loaderFnName]();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+}
+
+async function admLoadOverview() {
+  // Show an immediate "loading" state instead of leaving stats blank while
+  // the queries are in flight — this was previously silent, which is why a
+  // slow connection made the whole dashboard look broken/frozen.
+  const statIds = ['adm-stat-biz','adm-stat-live','adm-stat-pending','adm-stat-users',
+                    'adm-stat-explorers','adm-stat-learners','adm-stat-boosted','adm-stat-enquiries',
+                    'adm-stat-subs'];
+  statIds.forEach(id => { const el = document.getElementById(id); if(el) el.textContent = '…'; });
+  const tbodyEarly = document.getElementById('adm-recent-pending');
+  if(tbodyEarly) tbodyEarly.innerHTML = '<tr><td colspan="5" class="adm-empty">Loading…</td></tr>';
+  const subsTbodyEarly = document.getElementById('adm-recent-subs');
+  if(subsTbodyEarly) subsTbodyEarly.innerHTML = '<tr><td colspan="5" class="adm-empty">Loading…</td></tr>';
+
+  try {
+    // All reads now run in parallel (previously the 4th ran sequentially
+    // AFTER the first three finished, which could roughly double the worst-case
+    // wait on a slow connection). Dashboard reads also use a faster-failing
+    // retry config than critical writes — 2 attempts at 5s each instead of
+    // 3 attempts at 8s each — so a bad connection surfaces a retry button
+    // in a few seconds instead of silently hanging for up to a minute.
+    const [bizRes, userRes, enqRes, pendingRes, subsRes] = await Promise.all([
+      nmSupaQuery(() => _supa.from('listings').select('id,status,boost_tier'), 2, 5000),
+      nmSupaQuery(() => _supa.from('users').select('id,role'), 2, 5000),
+      nmSupaQuery(() => _supa.from('enquiries').select('id'), 2, 5000),
+      nmSupaQuery(() => _supa.from('listings').select('*').eq('status','pending').order('created_at',{ascending:false}).limit(5), 2, 5000),
+      nmSupaQuery(() => _supa.from('subscription_requests').select('*').order('created_at',{ascending:false}).limit(10), 1, 5000)
+        .catch(e => { console.warn('subscription_requests read failed (table may not exist yet):', e); return { data: [] }; }),
     ]);
     const listings = bizRes.data || [];
     const users = userRes.data || [];
@@ -11379,7 +11451,6 @@ async function admLoadOverview() {
     if(badge) { badge.textContent = pending; badge.style.display = pending > 0 ? 'inline' : 'none'; }
     set('adm-pending-count-label', pending);
 
-    const pendingRes = await nmSupaQuery(() => _supa.from('listings').select('*').eq('status','pending').order('created_at',{ascending:false}).limit(5));
     const pendingData = pendingRes.data || [];
     // Build map so adminReviewListing works from overview
     window._pendingListingsMap = window._pendingListingsMap || {};
@@ -11390,7 +11461,30 @@ async function admLoadOverview() {
         ? '<tr><td colspan="5" class="adm-empty">✅ No pending listings!</td></tr>'
         : pendingData.map(l => `<tr><td style="font-weight:600;color:#fff;">${nmSafe(l.name)}</td><td>${nmSafe(l.owner||'—')}</td><td>${nmSafe(l.type||'—')}</td><td>${nmSafe(l.area||'—')}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${l.id}')">👁 Review</button><br><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${l.id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${l.id}',this)">✗ Reject</button></td></tr>`).join('');
     }
-  } catch(e) { console.warn('Overview load failed', e); }
+
+    const subsData = subsRes.data || [];
+    set('adm-stat-subs', subsData.filter(s => s.status === 'pending' || !s.status).length);
+    const subsTbody = document.getElementById('adm-recent-subs');
+    if(subsTbody) {
+      subsTbody.innerHTML = subsData.length === 0
+        ? '<tr><td colspan="5" class="adm-empty">No plan signups yet.</td></tr>'
+        : subsData.map(s => {
+            const d = s.created_at ? new Date(s.created_at) : null;
+            const when = d ? d.toLocaleDateString('en-ZA',{day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'}) : '—';
+            return `<tr><td style="font-weight:600;color:#fff;">${nmSafe(s.name||'—')}</td><td style="text-transform:uppercase;color:#F4C430;font-weight:600;">${nmSafe(s.plan||'—')}</td><td>${nmSafe(s.email||'—')}<br>${nmSafe(s.phone||'')}</td><td>${nmSafe(s.province||'—')}</td><td>${when}</td></tr>`;
+          }).join('');
+    }
+  } catch(e) {
+    console.warn('Overview load failed', e);
+    // Previously this failed silently, leaving blank/stale numbers on screen
+    // with no indication anything had gone wrong or how to fix it. Now the
+    // dashboard visibly says so and gives a one-tap retry.
+    statIds.forEach(id => { const el = document.getElementById(id); if(el) el.textContent = '—'; });
+    const tbody = document.getElementById('adm-recent-pending');
+    if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="adm-empty">⚠️ Couldn\'t load data — check your connection. <button class="adm-btn-refresh" onclick="admRefreshClick(this,\'admLoadOverview\')" style="margin-left:8px;">↻ Retry</button></td></tr>';
+    const subsTbody = document.getElementById('adm-recent-subs');
+    if(subsTbody) subsTbody.innerHTML = '<tr><td colspan="5" class="adm-empty">⚠️ Couldn\'t load data.</td></tr>';
+  }
 }
 
 async function admLoadApprovals() {
