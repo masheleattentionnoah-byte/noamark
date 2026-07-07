@@ -1377,6 +1377,45 @@
 </script>
 <!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style id="nm-motion-system">
+/* ============================================================
+   NM MOTION SYSTEM — subtle, professional scroll + hover motion
+   Respects prefers-reduced-motion; degrades gracefully.
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  .nm-fade{opacity:0;transform:translateY(16px);transition:opacity .6s cubic-bezier(.16,.8,.3,1),transform .6s cubic-bezier(.16,.8,.3,1);}
+  .nm-fade.nm-in{opacity:1;transform:none;}
+  .nm-fade.d1{transition-delay:.06s}
+  .nm-fade.d2{transition-delay:.12s}
+  .nm-fade.d3{transition-delay:.18s}
+  .nm-fade.d4{transition-delay:.24s}
+  .nm-fade.d5{transition-delay:.30s}
+  .nm-fade.d6{transition-delay:.36s}
+
+  /* gentle hover lift, consistent across card types that lacked it */
+  .opp-card,.learn-card,.tier{transition:transform .35s cubic-bezier(.16,.8,.3,1),box-shadow .35s ease,border-color .35s ease;}
+  .opp-card:hover{transform:translateY(-4px);box-shadow:0 10px 28px rgba(0,0,0,.3);}
+  .learn-card:hover{transform:translateY(-4px);box-shadow:0 10px 28px rgba(0,0,0,.3);}
+  .tier:hover{transform:translateY(-5px);box-shadow:0 14px 36px rgba(0,0,0,.28);}
+  .hero-stat-card,.hero-cta-card{transition:transform .35s cubic-bezier(.16,.8,.3,1),box-shadow .35s ease;}
+  .hero-stat-card:hover{transform:translateY(-3px);}
+
+  /* button micro-interactions */
+  .btn-primary,.btn-ghost{transition:transform .25s cubic-bezier(.16,.8,.3,1),box-shadow .25s ease,background-color .25s ease,color .25s ease,border-color .25s ease;}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(22,101,52,.28);}
+  .btn-primary:active{transform:translateY(0) scale(.97);}
+  .btn-ghost:hover{transform:translateY(-2px);}
+  .btn-ghost:active{transform:scale(.97);}
+
+  /* nav gains a soft shadow once the page scrolls */
+  #main-nav{transition:box-shadow .3s ease;}
+  #main-nav.nm-scrolled{box-shadow:0 4px 20px rgba(0,0,0,.2);}
+
+  /* icon subtle scale on card hover, not looping (keeps it professional) */
+  .what-card-icon,.opp-icon,.learn-icon{display:inline-block;transition:transform .3s ease;}
+  .what-card:hover .what-card-icon{transform:scale(1.12);}
+}
+</style>
 </head>
 <body>
 
@@ -12859,5 +12898,67 @@ document.addEventListener('keydown', function(e) {
     <div id="nm-lb-counter"></div>
   </div>
 
+<script>
+(function(){
+  // Groups of cards to fade/lift in as the user scrolls to them.
+  var GROUP_SELECTORS = ['.what-grid', '.opps-grid', '.learning-grid', '.tiers-grid', '.hero-stats-panel'];
+  var HEADER_SELECTORS = ['.home-section-header', '.section-tag', '.section-title'];
+
+  function tagGroups(){
+    GROUP_SELECTORS.forEach(function(sel){
+      document.querySelectorAll(sel).forEach(function(group){
+        Array.prototype.forEach.call(group.children, function(child, i){
+          if(!child.classList.contains('nm-fade')){
+            child.classList.add('nm-fade', 'd' + ((i % 6) + 1));
+          }
+        });
+      });
+    });
+    HEADER_SELECTORS.forEach(function(sel){
+      document.querySelectorAll(sel).forEach(function(el){
+        if(!el.classList.contains('nm-fade')) el.classList.add('nm-fade');
+      });
+    });
+  }
+
+  var io = ('IntersectionObserver' in window) ? new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        entry.target.classList.add('nm-in');
+        io.unobserve(entry.target);
+      }
+    });
+  }, {threshold: .15, rootMargin: '0px 0px -40px 0px'}) : null;
+
+  function observeNew(){
+    document.querySelectorAll('.nm-fade:not(.nm-in)').forEach(function(el){
+      if(io) io.observe(el); else el.classList.add('nm-in');
+    });
+  }
+
+  function scan(){ tagGroups(); observeNew(); }
+  scan();
+
+  // Cards for opportunities/learning/plans/business listings can render
+  // asynchronously after data loads, so keep re-scanning briefly for new nodes.
+  var scanCount = 0;
+  var rescanTimer = setInterval(function(){
+    scan();
+    scanCount++;
+    if(scanCount > 12) clearInterval(rescanTimer); // stop after ~18s
+  }, 1500);
+
+  // Soft shadow on the main nav once the page has scrolled.
+  var nav = document.getElementById('main-nav');
+  if(nav){
+    var onScroll = function(){
+      if(window.scrollY > 10) nav.classList.add('nm-scrolled');
+      else nav.classList.remove('nm-scrolled');
+    };
+    window.addEventListener('scroll', onScroll, {passive: true});
+    onScroll();
+  }
+})();
+</script>
 </body>
 </html>
