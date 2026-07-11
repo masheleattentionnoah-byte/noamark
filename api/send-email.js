@@ -16,7 +16,28 @@
 // just won't get the email sent until this is configured.
 
 export default async function handler(req, res) {
+  // Same CORS/preflight handling as /api/send-sms.js — must run before
+  // any method check, or a browser preflight (OPTIONS) gets rejected
+  // with 405 before it ever reaches the code meant to answer it, and the
+  // browser silently refuses to send the real request at all.
+  const origin = req.headers.origin || '';
+  const allowedOrigins = [
+    'https://noamark.com',
+    'https://www.noamark.com',
+  ];
+  const isVercelPreview = /\.vercel\.app$/.test(origin.replace(/^https?:\/\//, ''));
+  if (allowedOrigins.includes(origin) || isVercelPreview) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
   if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, reason: 'Method not allowed' });
   }
 
