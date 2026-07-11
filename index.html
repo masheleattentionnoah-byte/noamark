@@ -1237,6 +1237,14 @@
   .bp-pill-live{background:rgba(34,197,94,.1);color:var(--green-fresh);border:1px solid rgba(34,197,94,.25);}
   .bp-pill-offline{background:rgba(220,38,38,.08);color:var(--danger);border:1px solid rgba(220,38,38,.2);}
   .bp-content{flex:1;overflow-y:auto;padding:40px;}
+  /* Modal scroll lock — body.style.overflow='hidden' alone does nothing here
+     because .bp-content (business portal) and .adm-main (admin dashboard)
+     are their own independently-scrollable flex children, not the document
+     body. Without this, the page visibly kept scrolling underneath an open
+     modal (e.g. the booking modal) even though the modal itself was fixed. */
+  body.nm-scroll-locked{overflow:hidden!important;}
+  body.nm-scroll-locked .bp-content,
+  body.nm-scroll-locked .adm-main{overflow:hidden!important;}
   .bp-page{display:none;}
   .bp-page.active{display:block;}
   .bp-section-label{font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:20px;display:flex;align-items:center;gap:14px;}
@@ -3100,9 +3108,19 @@
           <div class="auth-error" id="dash-cpw-error"></div>
           <div class="auth-success" id="dash-cpw-success"></div>
           <div style="display:flex;flex-direction:column;gap:10px;">
-            <input type="password" id="dash-cpw-current" placeholder="Current / temporary password" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 12px;font-size:12px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
-            <input type="password" id="dash-cpw-new" placeholder="New password" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 12px;font-size:12px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
-            <input type="password" id="dash-cpw-confirm" placeholder="Confirm new password" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 12px;font-size:12px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+            <div style="position:relative;">
+              <input type="password" id="dash-cpw-current" placeholder="Current / temporary password" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 40px 10px 12px;font-size:12px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+              <button type="button" onclick="nmTogglePwVisibility('dash-cpw-current', this)" aria-label="Show password" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:14px;line-height:1;padding:4px;color:var(--white-dim);">👁</button>
+            </div>
+            <div style="position:relative;">
+              <input type="password" id="dash-cpw-new" placeholder="New password" oninput="nmCheckPwMatch('dash-cpw-new','dash-cpw-confirm','dash-cpw-match')" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 40px 10px 12px;font-size:12px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+              <button type="button" onclick="nmTogglePwVisibility('dash-cpw-new', this)" aria-label="Show password" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:14px;line-height:1;padding:4px;color:var(--white-dim);">👁</button>
+            </div>
+            <div style="position:relative;">
+              <input type="password" id="dash-cpw-confirm" placeholder="Confirm new password" oninput="nmCheckPwMatch('dash-cpw-new','dash-cpw-confirm','dash-cpw-match')" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 40px 10px 12px;font-size:12px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+              <button type="button" onclick="nmTogglePwVisibility('dash-cpw-confirm', this)" aria-label="Show password" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:14px;line-height:1;padding:4px;color:var(--white-dim);">👁</button>
+            </div>
+            <div id="dash-cpw-match" style="font-size:11px;min-height:14px;"></div>
             <button class="btn-ghost" id="dash-cpw-btn" style="justify-content:center;padding:12px 20px;font-size:10px;" onclick="nmChangePassword('dash-cpw-current','dash-cpw-new','dash-cpw-confirm','dash-cpw-error','dash-cpw-success','dash-cpw-btn')">Update Password</button>
           </div>
         </div>
@@ -4141,16 +4159,26 @@
             <div style="display:flex;flex-direction:column;gap:12px;max-width:420px;">
               <div>
                 <label style="font-size:11px;color:var(--white-dim);display:block;margin-bottom:6px;">Current password</label>
-                <input type="password" id="bp-cpw-current" placeholder="Your current or temporary password" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+                <div style="position:relative;">
+                  <input type="password" id="bp-cpw-current" placeholder="Your current or temporary password" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 40px 11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+                  <button type="button" onclick="nmTogglePwVisibility('bp-cpw-current', this)" aria-label="Show password" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:15px;line-height:1;padding:4px;color:var(--white-dim);">👁</button>
+                </div>
               </div>
               <div>
                 <label style="font-size:11px;color:var(--white-dim);display:block;margin-bottom:6px;">New password</label>
-                <input type="password" id="bp-cpw-new" placeholder="At least 8 characters, 1 uppercase, 1 number, 1 special" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+                <div style="position:relative;">
+                  <input type="password" id="bp-cpw-new" placeholder="At least 8 characters, 1 uppercase, 1 number, 1 special" oninput="nmCheckPwMatch('bp-cpw-new','bp-cpw-confirm','bp-cpw-match')" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 40px 11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+                  <button type="button" onclick="nmTogglePwVisibility('bp-cpw-new', this)" aria-label="Show password" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:15px;line-height:1;padding:4px;color:var(--white-dim);">👁</button>
+                </div>
               </div>
               <div>
                 <label style="font-size:11px;color:var(--white-dim);display:block;margin-bottom:6px;">Confirm new password</label>
-                <input type="password" id="bp-cpw-confirm" placeholder="Re-enter your new password" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+                <div style="position:relative;">
+                  <input type="password" id="bp-cpw-confirm" placeholder="Re-enter your new password" oninput="nmCheckPwMatch('bp-cpw-new','bp-cpw-confirm','bp-cpw-match')" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 40px 11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+                  <button type="button" onclick="nmTogglePwVisibility('bp-cpw-confirm', this)" aria-label="Show password" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:15px;line-height:1;padding:4px;color:var(--white-dim);">👁</button>
+                </div>
               </div>
+              <div id="bp-cpw-match" style="font-size:11px;min-height:14px;"></div>
               <button class="bp-btn bp-btn-gold" id="bp-cpw-btn" style="justify-content:center;" onclick="nmChangePassword('bp-cpw-current','bp-cpw-new','bp-cpw-confirm','bp-cpw-error','bp-cpw-success','bp-cpw-btn')">Update Password</button>
             </div>
           </div>
@@ -4842,6 +4870,28 @@ function showPage(id, cb){
 // ── BACK BUTTON HANDLER — handles every case professionally ──
 window.addEventListener('popstate', function(e) {
 
+  // Any modal/overlay currently open must be closed by back button FIRST,
+  // regardless of role. This must be checked before the business-owner
+  // redirect below.
+  //
+  // BUG THIS FIXES: the business-owner redirect used to run unconditionally
+  // for any business-role session, before the modal-closing checks further
+  // down ever got a chance to run. So for a business owner, pressing back
+  // while the booking modal (or auth modal, gate, etc.) was open never
+  // closed the modal at all — it just re-asserted the portal state and
+  // returned early, and the modal stayed stuck open with its own leftover
+  // history entry still on the stack.
+  const _overlayOpen = !!(
+    (document.getElementById('booking-modal') && document.getElementById('booking-modal').style.display === 'flex') ||
+    (document.getElementById('auth-overlay') && document.getElementById('auth-overlay').classList.contains('active')) ||
+    (document.getElementById('gate-overlay') && document.getElementById('gate-overlay').classList.contains('active')) ||
+    (document.getElementById('activate-overlay') && document.getElementById('activate-overlay').classList.contains('active')) ||
+    document.getElementById('biz-gate-modal') ||
+    (document.getElementById('admin-review-modal') && ['flex','block'].includes(document.getElementById('admin-review-modal').style.display)) ||
+    (typeof chatOpen !== 'undefined' && chatOpen) ||
+    (document.getElementById('nm-lightbox') && document.getElementById('nm-lightbox').classList.contains('open'))
+  );
+
   // PRIORITY 0: Business owners must NEVER be sent to the homepage or public
   // marketplace by the back button — intercept immediately and keep them in
   // their portal. Read session directly from localStorage (synchronous) because
@@ -4857,7 +4907,7 @@ window.addEventListener('popstate', function(e) {
     } catch(e) { return null; }
   };
   const _sessionRole = (currentUser && currentUser.type) || _getSessionRole();
-  if (_sessionRole === 'business') {
+  if (_sessionRole === 'business' && !_overlayOpen) {
     const state = e.state || {};
     const isPortal = state.nmPage === 'marketplace' && state.nmView === 'admin';
     if (!isPortal) {
@@ -8619,6 +8669,38 @@ async function nmVerifyPassword(password, storedStr) {
 // pass in the ids of the 3 password fields, the error/success
 // message divs, and the submit button for whichever form is calling it.
 // ────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────
+// PASSWORD FIELD HELPERS — show/hide toggle + live match check.
+// Shared by both the Learner dashboard and Business portal
+// change-password forms, so people can see exactly what they
+// typed (temp passwords are often fiddly to type blind) and get
+// instant feedback if the new password and confirmation don't
+// match, before even hitting Update.
+// ────────────────────────────────────────────────────────────
+function nmTogglePwVisibility(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const isHidden = input.type === 'password';
+  input.type = isHidden ? 'text' : 'password';
+  btn.textContent = isHidden ? '🙈' : '👁';
+  btn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+}
+
+function nmCheckPwMatch(newId, confirmId, matchId) {
+  const newVal = (document.getElementById(newId) || {}).value || '';
+  const confVal = (document.getElementById(confirmId) || {}).value || '';
+  const el = document.getElementById(matchId);
+  if (!el) return;
+  if (!confVal) { el.textContent = ''; return; } // don't judge before they've typed anything to confirm
+  if (newVal === confVal) {
+    el.style.color = '#4ade80';
+    el.textContent = '✓ Passwords match';
+  } else {
+    el.style.color = '#f87171';
+    el.textContent = '✗ Passwords do not match';
+  }
+}
+
 async function nmChangePassword(curId, newId, confId, errId, sucId, btnId) {
   const curPass  = document.getElementById(curId).value;
   const newPass  = document.getElementById(newId).value;
@@ -9396,15 +9478,30 @@ function loginAs(user) {
   // Update active-user count in admin panel
   updateAdminUserCount();
 
-  // Restore portal view if business/admin user on PAGE RELOAD only
-  if(user._isRestore && (user.type === 'business' || user.type === 'admin')) {
+  // Restore portal view if BUSINESS user on PAGE RELOAD only.
+  // NOTE: platform admins are handled separately by showAdminDashboard()
+  // (see the dedicated admin-restore DOMContentLoaded listener). They used
+  // to be lumped in here too, but showMktView('admin') is actually the
+  // BUSINESS OWNER's portal view (mkt-admin-view) — an unrelated container
+  // that happens to share the name "admin". Routing platform admins through
+  // it was the root cause of two bugs: (1) the real admin dashboard's tab
+  // never got restored on reload (admGoPage() was never called, so it just
+  // sat on whatever tab was hardcoded 'active' in the HTML — Overview), and
+  // (2) this delayed setTimeout chain could still fire minutes later — even
+  // after the admin had already signed out — silently painting the business
+  // owner portal shell over the home page.
+  if(user._isRestore && user.type === 'business') {
     const tryShowPortal = () => {
+      // Bail out if the session changed while we were waiting (e.g. the
+      // user signed out, or logged back in as someone else) — prevents
+      // this delayed call from stomping on whatever page is now showing.
+      if(!currentUser || currentUser.type !== 'business') return;
       if(document.readyState === 'complete') {
         // Activate marketplace page then show admin sub-view — ONE history entry total
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         const mktPage = document.getElementById('page-marketplace');
         if(mktPage) mktPage.classList.add('active');
-        setTimeout(() => showMktView('admin'), 150);
+        setTimeout(() => { if(currentUser && currentUser.type === 'business') showMktView('admin'); }, 150);
       } else {
         setTimeout(tryShowPortal, 300);
       }
@@ -9615,6 +9712,18 @@ function handleLogout() {
   // logout is the single most important place this must never linger.
   const admEl = document.getElementById('page-admin');
   if(admEl) admEl.style.display = 'none';
+  // Same belt-and-suspenders for the business owner portal sub-view
+  // (mkt-admin-view) — it also lives inside page-marketplace with its own
+  // inline display style, so simply switching pages doesn't reset it. If a
+  // stray delayed restore call ever fires after logout, this ensures there's
+  // nothing left visible for it to show.
+  const bizPortalEl = document.getElementById('mkt-admin-view');
+  if(bizPortalEl) bizPortalEl.style.display = 'none';
+  // Clear any admin/portal hash so a reload right after logout doesn't try
+  // to restore a tab that no longer has a session behind it.
+  if(/^#(admin|marketplace\/portal)/.test(window.location.hash || '')) {
+    history.replaceState(null, '', window.location.pathname + '#home');
+  }
   applyRoleHomePage(null);
   showPage('home');
 }
@@ -11507,7 +11616,7 @@ bpLoad();
         <!-- Manual reset form -->
         <div class="adm-card" style="margin-top:24px;border-color:rgba(244,196,48,.2);">
           <div class="adm-card-title" style="margin-bottom:16px;">🔧 Manually Reset a User's Password</div>
-          <p style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px;line-height:1.6;">Enter the user's registered email and set a new temporary password. Tell the user their temp password and ask them to change it after logging in.</p>
+          <p style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px;line-height:1.6;">Enter the user's registered email and set a new temporary password. It will be emailed to them automatically, along with a reminder to change it after logging in.</p>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
             <div><label style="font-size:11px;color:rgba(255,255,255,.4);display:block;margin-bottom:6px;">User Email</label><input id="adm-reset-email" type="email" placeholder="user@email.com" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;padding:10px 12px;border-radius:8px;font-size:13px;box-sizing:border-box;"></div>
             <div><label style="font-size:11px;color:rgba(255,255,255,.4);display:block;margin-bottom:6px;">New Temporary Password</label><input id="adm-reset-newpw" type="text" placeholder="e.g. NoaMark@2026!" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;padding:10px 12px;border-radius:8px;font-size:13px;box-sizing:border-box;"></div>
@@ -11810,8 +11919,28 @@ async function admResetUserPassword() {
     if(result && result.data && result.data.length > 0) {
       // Mark any pending reset for this email as done
       await nmSupaQuery(() => _supa.from('password_resets').update({ status: 'done' }).eq('email', email).eq('status', 'pending'));
+
+      // Email the temporary password directly to the user — previously this
+      // only updated the database and left it to the admin to manually relay
+      // the password (phone/WhatsApp/personal email), with no automated
+      // notification actually going out.
+      const emailResult = await nmSendEmail(
+        email,
+        'Your NoaMark Password Has Been Reset',
+        'Hi,\n\nYour NoaMark account password has been reset by an admin.\n\n' +
+        'Your temporary password is: ' + newPw + '\n\n' +
+        'Please log in with this password, then go to Settings and set your own permanent password as soon as possible.\n\n' +
+        '— The NoaMark Team'
+      );
+
       msgEl.style.background = 'rgba(34,197,94,.15)'; msgEl.style.color = '#22c55e';
-      msgEl.textContent = '✅ Password updated for ' + email + '. Tell the user their temporary password and ask them to log in.';
+      if (emailResult && emailResult.ok) {
+        msgEl.textContent = '✅ Password updated for ' + email + ' and the temporary password has been emailed to them automatically.';
+      } else {
+        // Email sending failed (e.g. Resend not configured yet) — fall back
+        // to telling the admin so the user isn't left without their password.
+        msgEl.textContent = '✅ Password updated for ' + email + '. ⚠️ The automatic email could not be sent — please tell the user their temporary password directly.';
+      }
       msgEl.style.display = 'block';
       document.getElementById('adm-reset-email').value = '';
       document.getElementById('adm-reset-newpw').value = '';
@@ -12549,12 +12678,28 @@ async function admLoadAnalytics() {
 })();
 
 document.addEventListener('DOMContentLoaded', function() {
-  // Admin auto-login: only run if the main DOMContentLoaded hasn't already logged in
+  // Admin session restore — this is what actually paints the correct admin
+  // tab (Revenue, Users, etc.) on reload instead of always Overview.
+  //
+  // BUG THIS FIXES: this used to only run `if (... && !currentUser)`. But
+  // the FIRST DOMContentLoaded listener earlier in the file already calls
+  // restoreSession() + loginAs(saved) for every session type, including
+  // admin — which sets currentUser synchronously. By the time THIS listener
+  // ran, currentUser was already non-null, so this entire block was always
+  // skipped and showAdminDashboard()/admGoPage() never actually ran on
+  // reload. The CSS in the IIFE above (#page-admin{display:block!important})
+  // kept the dashboard visually showing, which masked the bug — but since
+  // admGoPage() was never called, it just sat on whatever tab was hardcoded
+  // 'active' in the raw HTML (Overview), no matter which tab you'd been on.
   const saved = restoreSession();
-  if(saved && saved.type === 'admin' && !currentUser) {
+  if(saved && saved.type === 'admin') {
     const preload = document.getElementById('adm-preload');
     if(preload) preload.remove();
-    loginAs(saved);
+    // Only log in if the earlier listener hasn't already done so — avoids
+    // redundantly re-running loginAs's nav/UI setup a second time.
+    if(!currentUser) loginAs(saved);
+    // Always (re)paint the dashboard and restore the exact tab from the
+    // URL hash — this is the part that was previously being skipped.
     showAdminDashboard();
     // showAdminDashboard() calls admGoPage(...) ~100ms from now, which
     // immediately paints a "Loading…" state for the restored tab (the
@@ -12752,6 +12897,7 @@ function openBookingModal(bizId, bizName, bizCat) {
   const modal = document.getElementById('booking-modal');
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
+  document.body.classList.add('nm-scroll-locked');
 }
 
 function bmSelectType(type) {
@@ -12804,6 +12950,7 @@ async function loadBmAvailability(bizId) {
 function closeBookingModal() {
   document.getElementById('booking-modal').style.display = 'none';
   document.body.style.overflow = '';
+  document.body.classList.remove('nm-scroll-locked');
 }
 
 async function submitBooking() {
