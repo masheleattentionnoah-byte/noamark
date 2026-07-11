@@ -4812,6 +4812,14 @@ function closeBusinessGate() {
   const modal = document.getElementById('biz-gate-modal');
   if (modal) modal.remove();
   nmLockBodyScroll(false);
+  // showBusinessGate() pushes a history entry so back can close this modal.
+  // Consume it here too when closed any other way (X button), otherwise it
+  // sits unconsumed on the stack and the next back press silently eats it
+  // instead of leaving the page — repeat enough times across different
+  // modals in one session and back eventually skips past the site entirely.
+  if (history.state && history.state.nmPage === 'biz-gate' && history.length > 1) {
+    history.back();
+  }
 }
 function showBusinessGate(action) {
   // Remove any existing gate modal
@@ -8343,6 +8351,9 @@ async function handleActivateAccountSignup(subId, email, plan) {
 function closeActivateOverlay() {
   const overlay = document.getElementById('activate-overlay');
   if(overlay) overlay.classList.remove('active');
+  if (history.state && history.state.nmPage === 'activate' && history.length > 1) {
+    history.back();
+  }
 }
 
 // Deep link: #activate/<subscription_request_id>, opened from the
