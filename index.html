@@ -3688,7 +3688,7 @@
       </nav>
       <div class="bp-sb-footer" style="padding:16px 20px;border-top:1px solid var(--border-soft);">
         <div style="font-size:10px;color:var(--white-dim);cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:6px;" onclick="bpViewMyListing()">View My Listing</div>
-        <div style="font-size:10px;color:var(--white-dim);cursor:pointer;display:flex;align-items:center;gap:6px;" onclick="showMktView('add')">+ Edit Listing</div>
+        <div style="font-size:10px;color:var(--white-dim);cursor:pointer;display:flex;align-items:center;gap:6px;" onclick="bpEditListing()">+ Edit Listing</div>
       </div>
     </div>
 
@@ -13373,6 +13373,20 @@ function closeBookingModal() {
   document.getElementById('booking-modal').style.display = 'none';
   document.body.style.overflow = '';
   document.body.classList.remove('nm-scroll-locked');
+  // openBookingModal() pushes a history entry so the physical back button
+  // can close the modal. But when the modal is closed some OTHER way (the
+  // ✕ button, clicking outside it, ESC, or auto-close after a successful
+  // booking) that entry is never consumed. It then sits on the stack
+  // forever, one level deeper than the page actually looks — so the next
+  // time the visitor presses back, it silently eats that dangling entry
+  // instead of leaving the page, and a second back press is needed. Do
+  // this enough times in a session and the back button ends up skipping
+  // past the site entirely. Popping the entry here (only when we're still
+  // sitting on the state THIS modal pushed — the popstate-triggered path
+  // below has already moved past it) keeps one open = one history entry.
+  if (history.state && history.state.nmPage === 'booking-modal' && history.length > 1) {
+    history.back();
+  }
 }
 
 async function submitBooking() {
