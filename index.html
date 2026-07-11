@@ -3460,6 +3460,9 @@
               <option value="closed">🔴 Closed</option>
             </select>
           </div>
+          <div class="form-group"><label class="form-label">Walk-ins</label>
+            <input type="text" class="form-input" id="biz_walkins" placeholder="e.g. Walk-ins welcome, Appointments preferred, By appointment only">
+          </div>
           <div style="display:flex;gap:12px;">
             <button class="btn-ghost" onclick="nextStep(2)" style="flex:1;padding:16px;">← Back</button>
             <button class="form-submit" onclick="nextStep(4)" style="flex:2;margin-top:0;">Continue →</button>
@@ -3468,6 +3471,7 @@
       </div>
 
       <!-- STEP 4: PRICING -->
+
       <div class="onboard-form-panel" id="step-4">
         <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:48px;">
           <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:8px;">Step 4 — Menu & Pricing *</p>
@@ -4388,7 +4392,7 @@
 
     <!-- ══ FORGOT PASSWORD SCREEN (overlays the main modal body) ══ -->
     <div id="auth-forgot-screen" style="display:none;padding:28px 24px 24px;">
-      <button onclick="hideForgotPassword()" style="background:none;border:none;color:var(--white-dim);font-size:13px;cursor:pointer;margin-bottom:20px;display:flex;align-items:center;gap:6px;">← Back to Login</button>
+      <button onclick="history.back()" style="background:none;border:none;color:var(--white-dim);font-size:13px;cursor:pointer;margin-bottom:20px;display:flex;align-items:center;gap:6px;">← Back to Login</button>
       <div style="text-align:center;font-size:36px;margin-bottom:12px;">🔑</div>
       <h2 style="font-size:18px;font-weight:800;color:var(--white);text-align:center;margin-bottom:8px;">Forgot Password?</h2>
       <p style="font-size:13px;color:var(--white-dim);text-align:center;line-height:1.7;margin-bottom:24px;">Enter your registered email address. We'll send your reset request to the NoaMark team and you'll receive a new temporary password shortly.</p>
@@ -4420,6 +4424,19 @@
       <button class="auth-btn auth-btn-gold" style="width:auto;padding:13px 28px;" onclick="closeGate();openAuth('guest')">Quick Access</button>
     </div>
     <p style="font-size:11px;color:var(--white-dim);margin-top:16px;">Already have an account? <a style="color:var(--green-dark);cursor:pointer;font-weight:600;" onclick="closeGate();openAuth('subscriber')">Sign in here</a></p>
+  </div>
+</div>
+
+<!-- Plan Activation Modal — opened from the approval email/SMS link so a
+     customer can see payment instructions AND set up their login password
+     in one step. Reuses the gate-overlay/gate-modal styling. -->
+<div class="gate-overlay" id="activate-overlay">
+  <div class="gate-modal" style="max-width:460px;text-align:left;position:relative;max-height:90vh;overflow-y:auto;">
+    <button onclick="closeActivateOverlay()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:22px;line-height:1;color:var(--white-dim);cursor:pointer;padding:4px;">×</button>
+    <div id="activate-body">
+      <div class="gate-icon" style="text-align:center;">⏳</div>
+      <p class="gate-sub" style="text-align:center;">Loading your request…</p>
+    </div>
   </div>
 </div>
 
@@ -4743,6 +4760,14 @@ function showPage(id, cb){
     return;
   }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  // The admin dashboard (#page-admin) isn't part of the .page class system —
+  // showAdminDashboard() shows it with a direct inline style.display, so it's
+  // never touched by the .page toggling above. Without this, navigating away
+  // after logout left the admin portal visibly stacked on top of the page
+  // the nav bar said you were on (e.g. "logged out" nav + admin dashboard
+  // still showing underneath).
+  const _admEl = document.getElementById('page-admin');
+  if(_admEl && id !== 'admin') _admEl.style.display = 'none';
   const _pageTarget = document.getElementById('page-' + id);
   if(!_pageTarget){ console.warn('showPage: page not found:', id); return; }
   _pageTarget.classList.add('active');
@@ -4829,6 +4854,12 @@ window.addEventListener('popstate', function(e) {
     history.pushState(e.state || { nmPage: 'marketplace', nmView: 'main' }, '', window.location.href);
     return;
   }
+  const activateOverlay = document.getElementById('activate-overlay');
+  if(activateOverlay && activateOverlay.classList.contains('active')) {
+    closeActivateOverlay();
+    history.pushState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
+    return;
+  }
   const bizGateModal = document.getElementById('biz-gate-modal');
   if(bizGateModal) {
     closeBusinessGate();
@@ -4839,6 +4870,15 @@ window.addEventListener('popstate', function(e) {
   // PRIORITY 1b: Auth modal open → close it, stay on page
   const authOverlay = document.getElementById('auth-overlay');
   if(authOverlay && authOverlay.classList.contains('active')) {
+    // If the Forgot Password screen is showing, back should step out of
+    // THAT first (back to the login form) — not close the whole modal in
+    // one press. This is what fixes "back button just exits the account".
+    const forgotScreen = document.getElementById('auth-forgot-screen');
+    if(forgotScreen && forgotScreen.style.display === 'block') {
+      hideForgotPassword();
+      history.pushState({ nmPage: 'auth', nmView: 'modal' }, '', window.location.href);
+      return;
+    }
     if(!authRequired) {
       authOverlay.classList.remove('active');
     }
@@ -7977,6 +8017,157 @@ async function handleSubscribe(){
   });
 }
 
+// ══════════════════════════════════════════════════════════════
+// PLAN ACTIVATION — opened from the link in the approval email/SMS.
+// Shows clear payment instructions AND, if the person doesn't already
+// have a login (most don't — the plan-request form above never asked
+// for a password), lets them set one right here so they actually have
+// something to log in with once payment is confirmed.
+// ══════════════════════════════════════════════════════════════
+const NM_PLAN_PRICES = { free: 'Free', vip: 'R99.99/month', premium: 'R199.99/month' };
+
+async function openActivateOverlay(subId) {
+  const overlay = document.getElementById('activate-overlay');
+  const body = document.getElementById('activate-body');
+  if(!overlay || !body) return;
+  overlay.classList.add('active');
+  history.pushState({ nmPage: 'activate', nmView: 'modal' }, '', window.location.href);
+  body.innerHTML = '<div class="gate-icon" style="text-align:center;">⏳</div><p class="gate-sub" style="text-align:center;">Loading your request…</p>';
+
+  let sub = null;
+  try {
+    const result = await nmSupaQuery(() => _supa.from('subscription_requests').select('*').eq('id', subId).maybeSingle());
+    sub = result && result.data;
+  } catch(e) { console.warn('Activation lookup failed:', e); }
+
+  if(!sub) {
+    body.innerHTML = '<div class="gate-icon" style="text-align:center;">⚠️</div>' +
+      '<h2 class="gate-heading" style="text-align:center;">Link Not Found</h2>' +
+      '<p class="gate-sub" style="text-align:center;">This activation link is invalid or has expired. Please contact <a href="mailto:support@noamark.com" style="color:var(--green-dark);font-weight:600;">support@noamark.com</a> and we\'ll sort it out.</p>';
+    return;
+  }
+
+  const planLabel = (sub.plan || '').toUpperCase();
+  const price = NM_PLAN_PRICES[sub.plan] || 'the plan price';
+  const alreadyPaid = sub.payment_status === 'paid';
+
+  // Payment instructions block — shown either way, so even someone who
+  // already has an account can come back to this link and see it again.
+  const paymentHtml = `
+    <div style="background:var(--black-3);border:1px solid var(--border-soft);border-radius:10px;padding:18px;margin-top:18px;">
+      <div style="font-weight:700;color:var(--gold);font-size:13px;margin-bottom:10px;">💳 ${alreadyPaid ? 'Payment Confirmed' : 'Complete Your Payment'}</div>
+      ${alreadyPaid
+        ? `<p style="font-size:13px;color:var(--white-dim);line-height:1.7;">Your ${planLabel} plan is active. Just log in below to get started.</p>`
+        : `<p style="font-size:13px;color:var(--white-dim);line-height:1.7;">Pay <strong style="color:#fff;">${nmSafe(price)}</strong> for your <strong style="color:#fff;">${nmSafe(planLabel)}</strong> plan via EFT or SnapScan:</p>
+           <p style="font-size:13px;color:#fff;line-height:1.9;margin-top:8px;">📱 SnapScan / EFT: contact <strong>+27 63 418 9749</strong><br>✉️ Or email <a href="mailto:support@noamark.com" style="color:var(--green-dark);font-weight:600;">support@noamark.com</a> with your proof of payment.<br>Your plan activates as soon as we confirm payment — usually within a few hours.</p>`}
+    </div>`;
+
+  // Check if an account already exists for this email — if so, skip the
+  // password form and just point them to log in.
+  let existingUser = null;
+  try {
+    const userCheck = await nmSupaQuery(() => _supa.from('users').select('id,role').ilike('email', sub.email).limit(1));
+    existingUser = userCheck && userCheck.data && userCheck.data[0];
+  } catch(e) { console.warn('Existing-account check failed:', e); }
+
+  if(existingUser) {
+    body.innerHTML = `
+      <div class="gate-icon" style="text-align:center;">✅</div>
+      <h2 class="gate-heading" style="text-align:center;">You're Almost There, ${nmSafe((sub.name||'').split(' ')[0] || '')}!</h2>
+      <p class="gate-sub" style="text-align:center;">You already have a NoaMark account with this email — just log in to continue.</p>
+      <div style="text-align:center;"><button class="auth-btn auth-btn-primary" style="width:auto;padding:13px 28px;" onclick="closeActivateOverlay();openAuth('subscriber')">Log In</button></div>
+      ${paymentHtml}`;
+    return;
+  }
+
+  // No account yet — this is the gap the whole activation link exists to
+  // close: let them set a password right now so they have somewhere to
+  // log in to once payment clears.
+  body.innerHTML = `
+    <div class="gate-icon" style="text-align:center;">🎉</div>
+    <h2 class="gate-heading" style="text-align:center;">Your ${nmSafe(planLabel)} Plan is Approved!</h2>
+    <p class="gate-sub" style="text-align:center;">Set a password to activate your login — you'll use it to access your account once payment is confirmed.</p>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px;color:var(--white-dim);display:block;margin-bottom:6px;">Name</label>
+      <input class="auth-input" id="activate-name" value="${nmSafe(sub.name || '')}">
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px;color:var(--white-dim);display:block;margin-bottom:6px;">Email</label>
+      <input class="auth-input" id="activate-email" value="${nmSafe(sub.email || '')}" disabled style="opacity:.7;">
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px;color:var(--white-dim);display:block;margin-bottom:6px;">Create Password</label>
+      <input class="auth-input" type="password" id="activate-pass" placeholder="At least 8 characters">
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px;color:var(--white-dim);display:block;margin-bottom:6px;">Confirm Password</label>
+      <input class="auth-input" type="password" id="activate-confirm" placeholder="Re-enter your password">
+    </div>
+    <div id="activate-error" style="display:none;background:rgba(239,68,68,.1);color:#f87171;font-size:12px;padding:10px 14px;border-radius:8px;margin-bottom:12px;"></div>
+    <button class="auth-btn auth-btn-primary" onclick="handleActivateAccountSignup('${sub.id}','${nmSafe(sub.email || '')}','${nmSafe(sub.plan || '')}')" id="activate-submit-btn">Activate My Login →</button>
+    ${paymentHtml}`;
+}
+
+async function handleActivateAccountSignup(subId, email, plan) {
+  const name = (document.getElementById('activate-name').value || '').trim();
+  const pass = document.getElementById('activate-pass').value;
+  const confirm = document.getElementById('activate-confirm').value;
+  const errEl = document.getElementById('activate-error');
+  const btn = document.getElementById('activate-submit-btn');
+  errEl.style.display = 'none';
+
+  if(!name) { errEl.textContent = 'Please enter your name.'; errEl.style.display = 'block'; return; }
+  if(!pass || pass.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; errEl.style.display = 'block'; return; }
+  if(pass !== confirm) { errEl.textContent = 'Passwords do not match.'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true; btn.textContent = 'Activating…';
+  try {
+    await saveUserToSupabase({ name, email, password: pass, role: 'subscriber', plan: 'Free' });
+    const lookup = await nmSupaQuery(() => _supa.from('users').select('id,joinedAt,created_at').ilike('email', email).limit(1));
+    const savedUser = lookup && lookup.data && lookup.data[0];
+    trackUser('subscriber', name, email);
+    loginAs({ type:'subscriber', name, email, plan:'Free', id:(savedUser && savedUser.id) || generateId(), joinedAt:(savedUser && (savedUser.joinedAt || savedUser.created_at)) || new Date().toISOString() });
+    btn.textContent = '✓ Activated!';
+    const body = document.getElementById('activate-body');
+    const paymentSection = body.querySelector('div[style*="Complete Your Payment"], div[style*="Payment Confirmed"]');
+    body.innerHTML = `
+      <div class="gate-icon" style="text-align:center;">✅</div>
+      <h2 class="gate-heading" style="text-align:center;">You're Logged In, ${nmSafe(name.split(' ')[0])}!</h2>
+      <p class="gate-sub" style="text-align:center;">Your login is ready. Now just complete payment below and your ${nmSafe((plan||'').toUpperCase())} plan activates automatically.</p>
+      <div style="background:var(--black-3);border:1px solid var(--border-soft);border-radius:10px;padding:18px;margin-top:6px;">
+        <div style="font-weight:700;color:var(--gold);font-size:13px;margin-bottom:10px;">💳 Complete Your Payment</div>
+        <p style="font-size:13px;color:#fff;line-height:1.9;">📱 SnapScan / EFT: contact <strong>+27 63 418 9749</strong><br>✉️ Or email <a href="mailto:support@noamark.com" style="color:var(--green-dark);font-weight:600;">support@noamark.com</a> with your proof of payment.<br>Your plan activates as soon as we confirm payment — usually within a few hours.</p>
+      </div>
+      <div style="text-align:center;margin-top:18px;"><button class="auth-btn auth-btn-gold" onclick="closeActivateOverlay();showPage('dashboard')" style="width:auto;padding:13px 28px;">Go to My Dashboard</button></div>`;
+  } catch(e) {
+    console.error('Activation signup error:', e);
+    btn.disabled = false; btn.textContent = 'Activate My Login →';
+    errEl.textContent = '❌ Could not create your account: ' + (e.message || 'please try again or contact support@noamark.com.');
+    errEl.style.display = 'block';
+  }
+}
+
+function closeActivateOverlay() {
+  const overlay = document.getElementById('activate-overlay');
+  if(overlay) overlay.classList.remove('active');
+}
+
+// Deep link: #activate/<subscription_request_id>, opened from the
+// approval email/SMS link.
+(function initActivateRoute(){
+  function checkActivateHash(){
+    const h = window.location.hash || '';
+    const m = h.match(/^#activate\/([^/?]+)/);
+    if(m) openActivateOverlay(decodeURIComponent(m[1]));
+  }
+  if(document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', checkActivateHash);
+  } else {
+    checkActivateHash();
+  }
+  window.addEventListener('hashchange', checkActivateHash);
+})();
+
 function showSubPageError(msg) {
   let el = document.getElementById('sub-page-msg');
   if(!el) {
@@ -8558,7 +8749,7 @@ async function saveUserToSupabase(user) {
 loadNMUsers();
 
 // ── ADMIN CREDENTIALS — verified via SHA-256 hash, never stored in plaintext ──
-const ADMIN_EMAIL = 'noamarkinvest@gmail.com';
+const ADMIN_EMAIL = 'supportnoamark@gmail.com';
 // Hash = SHA-256('nm_admin_salt_2026::Noah#2026') — plaintext never in source
 const _ADMIN_PH = 'a5445015b3bf3e40a9a70ea92bb4beb429728bd2490711577fddae6f2c078989';
 async function _verifyAdminPass(pass) {
@@ -8768,7 +8959,11 @@ function checkBizNameAvail() {
 async function handleBizSignup() {
   const name    = document.getElementById('biz-reg-name').value.trim();
   const owner   = document.getElementById('biz-reg-owner').value.trim();
-  const email   = document.getElementById('biz-reg-email').value.trim();
+  // Lowercase the email at the point of storage — mobile keyboards often
+  // auto-capitalize the first letter, and any case difference between
+  // signup and a later exact-match (.eq) lookup (forgot password, admin
+  // reset) would otherwise make a real account look like it doesn't exist.
+  const email   = document.getElementById('biz-reg-email').value.trim().toLowerCase();
   const pass    = document.getElementById('biz-reg-password').value;
   const confirm = document.getElementById('biz-reg-confirm').value;
 
@@ -8842,7 +9037,10 @@ async function handleBizLogin() {
     if(isAdmin) {
       loginAs({ type:'admin', name:'NoaMark Admin', owner:'NoaMark', email:ADMIN_EMAIL, plan:'Admin', id:'admin-001' });
       showAuthSuccess('biz-login-success', '✓ Welcome back, Admin!');
-      setTimeout(()=>{ closeAuth(); showAdminDashboard(); }, 900);
+      // Shortened from 900ms — this was pure waiting with no work happening,
+      // and it stacks with the dashboard's own load time right after,
+      // making the whole "log in as admin" flow feel sluggish.
+      setTimeout(()=>{ closeAuth(); showAdminDashboard(); }, 350);
       return;
     }
   }
@@ -8863,7 +9061,19 @@ async function handleBizLogin() {
     );
     const biz = result && result.data && result.data[0];
     if (!biz) {
-      showAuthError('biz-login-error', '\u274C No business account found with that email. Please check your email or sign up for a new account.');
+      // Before giving up, check if this email exists under ANY role — this
+      // tells apart "never signed up" from "signed up but saved under the
+      // wrong role" (e.g. a signup that partially failed), which needs a
+      // different fix (an admin role correction, not a fresh signup).
+      let hint = '';
+      try {
+        const anyRole = await nmSupaQuery(() =>
+          _supa.from('users').select('role').ilike('email', email).limit(1)
+        );
+        const found = anyRole && anyRole.data && anyRole.data[0];
+        if (found) hint = ' We did find an account with this email registered as "' + (found.role || 'unknown') + '" — if you meant to sign up as a business, contact support@noamark.com to have it corrected.';
+      } catch(e) { /* best-effort hint only, ignore failures */ }
+      showAuthError('biz-login-error', '\u274C No business account found with that email. Please check your email or sign up for a new account.' + hint);
       return;
     }
     // Verify business name matches (case-insensitive) so the right business is confirmed
@@ -8892,7 +9102,7 @@ async function handleBizLogin() {
 // ──────────────────────────────────────────────────
 async function handleSubSignup() {
   const name    = document.getElementById('sub-reg-name').value.trim();
-  const email   = document.getElementById('sub-reg-email').value.trim();
+  const email   = document.getElementById('sub-reg-email').value.trim().toLowerCase();
   const pass    = document.getElementById('sub-reg-password').value;
   const confirm = document.getElementById('sub-reg-confirm').value;
 
@@ -9305,6 +9515,11 @@ function handleLogout() {
   document.getElementById('nav-user-pill').style.display = 'none';
   document.getElementById('nav-dd-listings').style.display = 'none';
   document.getElementById('user-tracker').classList.remove('visible');
+  // Belt-and-suspenders: explicitly hide the admin dashboard here too, since
+  // it's shown via a direct inline style (not the normal .page system) and
+  // logout is the single most important place this must never linger.
+  const admEl = document.getElementById('page-admin');
+  if(admEl) admEl.style.display = 'none';
   applyRoleHomePage(null);
   showPage('home');
 }
@@ -11180,6 +11395,20 @@ bpLoad();
         <div class="adm-card">
           <div id="adm-resets-list"><div class="adm-empty">Loading…</div></div>
         </div>
+        <!-- Account Lookup — diagnose "I can't log in" reports. Searches ALL
+             roles (business/subscriber/guest) by email so you can see exactly
+             what's actually saved, e.g. an account that landed under the wrong
+             role after a partial signup failure. -->
+        <div class="adm-card" style="margin-top:24px;border-color:rgba(99,179,237,.25);">
+          <div class="adm-card-title" style="margin-bottom:16px;">🔍 Find a User's Account</div>
+          <p style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px;line-height:1.6;">Can't figure out why someone's login isn't working? Search by email here — it checks every account type, not just business, so you can see if it exists at all and what role it's saved under.</p>
+          <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+            <input id="adm-lookup-email" type="email" placeholder="user@email.com" style="flex:1;min-width:200px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;padding:10px 12px;border-radius:8px;font-size:13px;box-sizing:border-box;" onkeydown="if(event.key==='Enter')admLookupAccount()">
+            <button onclick="admLookupAccount()" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);font-weight:700;font-size:13px;padding:10px 20px;border-radius:8px;cursor:pointer;">Search</button>
+          </div>
+          <div id="adm-lookup-result"></div>
+        </div>
+
         <!-- Manual reset form -->
         <div class="adm-card" style="margin-top:24px;border-color:rgba(244,196,48,.2);">
           <div class="adm-card-title" style="margin-bottom:16px;">🔧 Manually Reset a User's Password</div>
@@ -11223,7 +11452,9 @@ function showAdminDashboard() {
   const validAdmPages = ['overview','approvals','revenue','users','analytics','enquiries','resets','videos'];
   const hParts = (window.location.hash || '').replace('#','').split('/');
   const restoredAdmPage = (hParts[0] === 'admin' && validAdmPages.includes(hParts[1])) ? hParts[1] : 'overview';
-  setTimeout(()=>admGoPage(restoredAdmPage), 100);
+  // Shortened from 100ms — enough for the display:block above to take
+  // effect, but no longer than needed before the real data fetch starts.
+  setTimeout(()=>admGoPage(restoredAdmPage), 20);
 }
 
 function admGoPage(page) {
@@ -11267,6 +11498,11 @@ function showForgotPassword() {
   if(sucEl) { sucEl.style.display='none'; sucEl.textContent=''; }
   if(emailEl) emailEl.value = '';
   if(nameEl) nameEl.value = '';
+  // Push a history entry for this screen so the phone's physical back button
+  // steps back to the login form first, instead of jumping straight past it
+  // and closing the entire sign-in window. Without this, there was only one
+  // history entry for the whole modal, so back always closed everything.
+  history.pushState({ nmPage: 'auth', nmView: 'forgot' }, '', window.location.href);
 }
 
 function hideForgotPassword() {
@@ -11293,8 +11529,11 @@ async function handleForgotPassword() {
   btn.disabled = true; btn.textContent = 'Sending…';
 
   try {
-    // Check user exists in Supabase
-    const result = await nmSupaQuery(() => _supa.from('users').select('id,email,name,role').eq('email', email).maybeSingle());
+    // Check user exists in Supabase. Use ilike (case-insensitive), not eq —
+    // emails typed at signup may have been auto-capitalized by a mobile
+    // keyboard, and an exact-match eq() would wrongly say "no account found"
+    // for a real account whose stored email casing differs from what's typed here.
+    const result = await nmSupaQuery(() => _supa.from('users').select('id,email,name,role').ilike('email', email).maybeSingle());
     if(!result || !result.data) {
       errEl.textContent = 'No account found with that email address. Please check the email and try again.';
       errEl.style.display = 'block';
@@ -11387,6 +11626,60 @@ async function admMarkResetDone(id) {
   } catch(e) { alert('Could not update status. Try again.'); }
 }
 
+// ── Account Lookup: searches the users table by email across ALL roles
+// (case-insensitive) so an admin can see exactly what's saved for a user
+// who reports they "can't log in" — including accounts that ended up under
+// the wrong role, which a role-filtered login query would never surface. ──
+async function admLookupAccount() {
+  const email = (document.getElementById('adm-lookup-email').value || '').trim();
+  const resultEl = document.getElementById('adm-lookup-result');
+  if(!email) { resultEl.innerHTML = '<div class="adm-empty">Enter an email address to search.</div>'; return; }
+  resultEl.innerHTML = '<div class="adm-empty">Searching…</div>';
+  try {
+    const result = await nmSupaQuery(() =>
+      _supa.from('users').select('id,name,owner,email,role,plan,created_at,joinedAt,password').ilike('email', email)
+    );
+    const rows = (result && result.data) || [];
+    if(rows.length === 0) {
+      resultEl.innerHTML = '<div class="adm-empty">❌ No account found with this email, under any role. They likely need to sign up (or their signup silently failed — ask them to try again and watch for an error message).</div>';
+      return;
+    }
+    resultEl.innerHTML = '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Name</th><th>Role</th><th>Email (as stored)</th><th>Plan</th><th>Joined</th><th>Password set?</th><th>Action</th></tr></thead><tbody>' +
+      rows.map(r => {
+        const joined = r.created_at || r.joinedAt;
+        const when = joined ? new Date(joined).toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'}) : '—';
+        const hasPw = r.password ? '✓ Yes' : '⚠️ No password saved';
+        return '<tr><td style="font-weight:600;color:#fff;">' + nmSafe(r.name || r.owner || '—') + '</td>' +
+          '<td><span style="text-transform:uppercase;font-weight:700;color:' + (r.role === 'business' ? '#4ade80' : '#fbbf24') + ';">' + nmSafe(r.role || 'unknown') + '</span></td>' +
+          '<td style="color:#63b3ed;">' + nmSafe(r.email || '—') + '</td>' +
+          '<td>' + nmSafe(r.plan || '—') + '</td><td>' + when + '</td><td>' + hasPw + '</td>' +
+          '<td>' + (r.role !== 'business' ? '<button class="adm-btn" style="background:rgba(74,222,128,.1);color:#4ade80;border:1px solid rgba(74,222,128,.25);font-size:10px;" onclick="admFixAccountRole(\'' + r.id + '\',\'business\',this)">→ Make Business</button>' : '<span style="font-size:11px;color:rgba(255,255,255,.3);">—</span>') + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  } catch(e) {
+    console.error('Lookup error:', e);
+    resultEl.innerHTML = '<div class="adm-empty">⚠️ Search failed. Check your Supabase connection and try again.</div>';
+  }
+}
+
+// ── Corrects a user's role directly (e.g. an account that was meant to be
+// a business but got saved as something else during a partial signup).
+// Used from the Account Lookup results above. ──
+async function admFixAccountRole(id, newRole, btn) {
+  if(!confirm('Change this account\'s role to "' + newRole + '"? They will then be able to log in as a ' + newRole + '.')) return;
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const { error } = await nmSupaQuery(() => _supa.from('users').update({ role: newRole }).eq('id', id));
+    if(error) throw error;
+    btn.textContent = '✓ Fixed!';
+    setTimeout(() => admLookupAccount(), 700);
+  } catch(e) {
+    console.error('Fix role error:', e);
+    btn.disabled = false; btn.textContent = original;
+    alert('Error updating role: ' + (e.message || 'check your Supabase connection and try again.'));
+  }
+}
+
 async function admResetUserPassword() {
   const email = (document.getElementById('adm-reset-email').value || '').trim().toLowerCase();
   const newPw  = (document.getElementById('adm-reset-newpw').value || '').trim();
@@ -11413,8 +11706,11 @@ async function admResetUserPassword() {
       storedPw = hashed.stored;
     } catch(e) { console.warn('Hash failed, storing plain (not ideal):', e); }
 
+    // ilike (case-insensitive) — same reasoning as the forgot-password fix above:
+    // an exact eq() match fails silently whenever the stored email's casing
+    // differs even slightly from what's typed into this admin box.
     const result = await nmSupaQuery(() =>
-      _supa.from('users').update({ password: storedPw }).eq('email', email).select('id')
+      _supa.from('users').update({ password: storedPw }).ilike('email', email).select('id')
     );
     if(result && result.data && result.data.length > 0) {
       // Mark any pending reset for this email as done
@@ -11456,17 +11752,30 @@ async function admRefreshClick(btn, loaderFnName) {
 }
 
 async function admLoadOverview() {
-  // Show an immediate "loading" state instead of leaving stats blank while
-  // the queries are in flight — this was previously silent, which is why a
-  // slow connection made the whole dashboard look broken/frozen.
   const statIds = ['adm-stat-biz','adm-stat-live','adm-stat-pending','adm-stat-users',
                     'adm-stat-explorers','adm-stat-learners','adm-stat-boosted','adm-stat-enquiries',
                     'adm-stat-subs'];
-  statIds.forEach(id => { const el = document.getElementById(id); if(el) el.textContent = '…'; });
-  const tbodyEarly = document.getElementById('adm-recent-pending');
-  if(tbodyEarly) tbodyEarly.innerHTML = '<tr><td colspan="5" class="adm-empty">Loading…</td></tr>';
-  const subsTbodyEarly = document.getElementById('adm-recent-subs');
-  if(subsTbodyEarly) subsTbodyEarly.innerHTML = '<tr><td colspan="5" class="adm-empty">Loading…</td></tr>';
+  // Show the LAST successfully loaded numbers immediately, if we have them,
+  // instead of a bare "…" — on a slow connection this was the biggest
+  // contributor to the dashboard feeling slow: it looked empty/frozen for
+  // several seconds every single time, even though nothing had really
+  // changed since the last visit. The real numbers are then silently
+  // replaced by fresh ones the moment the network call actually finishes.
+  let cached = null;
+  try { cached = JSON.parse(sessionStorage.getItem('nm_admin_overview_cache_v1') || 'null'); } catch(e){}
+  if(cached && cached.stats) {
+    statIds.forEach(id => { const el = document.getElementById(id); if(el && id in cached.stats) el.textContent = cached.stats[id]; });
+    const tbodyEarly = document.getElementById('adm-recent-pending');
+    if(tbodyEarly && cached.pendingHtml) tbodyEarly.innerHTML = cached.pendingHtml;
+    const subsTbodyEarly = document.getElementById('adm-recent-subs');
+    if(subsTbodyEarly && cached.subsHtml) subsTbodyEarly.innerHTML = cached.subsHtml;
+  } else {
+    statIds.forEach(id => { const el = document.getElementById(id); if(el) el.textContent = '…'; });
+    const tbodyEarly = document.getElementById('adm-recent-pending');
+    if(tbodyEarly) tbodyEarly.innerHTML = '<tr><td colspan="5" class="adm-empty">Loading…</td></tr>';
+    const subsTbodyEarly = document.getElementById('adm-recent-subs');
+    if(subsTbodyEarly) subsTbodyEarly.innerHTML = '<tr><td colspan="5" class="adm-empty">Loading…</td></tr>';
+  }
 
   try {
     // All reads now run in parallel (previously the 4th ran sequentially
@@ -11532,28 +11841,47 @@ async function admLoadOverview() {
             const when = d ? d.toLocaleDateString('en-ZA',{day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'}) : '—';
             const st = s.status || 'pending';
             let actionCell;
+            // Every row gets a small delete link regardless of status — lets
+            // you permanently clear out rejected/spam/test signups instead of
+            // them sitting in this list forever.
+            const deleteLink = '<br><button class="adm-btn" style="background:none;color:rgba(248,113,113,.6);border:none;margin-top:4px;font-size:10px;text-decoration:underline;padding:2px 0;" onclick="admDeleteSub(\'' + s.id + '\',this)">🗑 Delete</button>';
             if(st === 'approved') {
               actionCell = (s.payment_status === 'paid')
-                ? '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Paid &amp; Active</span><br><button class="adm-btn" style="background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.25);margin-top:4px;font-size:10px;" onclick="admUndoPaid(\'' + s.id + '\',this)">↩ Undo (not paid)</button>'
-                : '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Approved</span><br><button class="adm-btn" style="background:rgba(244,196,48,.15);color:#F4C430;border:1px solid rgba(244,196,48,.3);margin-top:4px;" onclick="admMarkPaid(\'' + s.id + '\',this)">💰 Mark as Paid</button><br><button class="adm-btn" style="background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.25);margin-top:4px;font-size:10px;" onclick="admUnapproveSub(\'' + s.id + '\',this)">↩ Un-approve</button>';
+                ? '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Paid &amp; Active</span><br><button class="adm-btn" style="background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.25);margin-top:4px;font-size:10px;" onclick="admUndoPaid(\'' + s.id + '\',this)">↩ Undo (not paid)</button>' + deleteLink
+                : '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Approved</span><br><button class="adm-btn" style="background:rgba(244,196,48,.15);color:#F4C430;border:1px solid rgba(244,196,48,.3);margin-top:4px;" onclick="admMarkPaid(\'' + s.id + '\',this)">💰 Mark as Paid</button><br><button class="adm-btn" style="background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.25);margin-top:4px;font-size:10px;" onclick="admUnapproveSub(\'' + s.id + '\',this)">↩ Un-approve</button>' + deleteLink;
             } else if(st === 'rejected') {
-              actionCell = '<span style="color:#f87171;font-weight:700;font-size:11px;">✗ Rejected</span><br><button class="adm-btn" style="background:rgba(99,179,237,.1);color:#63b3ed;border:1px solid rgba(99,179,237,.25);margin-top:4px;font-size:10px;" onclick="admUnapproveSub(\'' + s.id + '\',this)">↩ Reconsider</button>';
+              actionCell = '<span style="color:#f87171;font-weight:700;font-size:11px;">✗ Rejected</span><br><button class="adm-btn" style="background:rgba(99,179,237,.1);color:#63b3ed;border:1px solid rgba(99,179,237,.25);margin-top:4px;font-size:10px;" onclick="admUnapproveSub(\'' + s.id + '\',this)">↩ Reconsider</button>' + deleteLink;
             } else {
-              actionCell = `<button class="adm-btn adm-btn-approve" onclick="admApproveSub('${s.id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectSub('${s.id}',this)">✗ Reject</button>`;
+              actionCell = `<button class="adm-btn adm-btn-approve" onclick="admApproveSub('${s.id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectSub('${s.id}',this)">✗ Reject</button>` + deleteLink;
             }
             return `<tr><td style="font-weight:600;color:#fff;">${nmSafe(s.name||'—')}</td><td style="text-transform:uppercase;color:#F4C430;font-weight:600;">${nmSafe(s.plan||'—')}</td><td>${nmSafe(s.email||'—')}<br>${nmSafe(s.phone||'')}</td><td>${nmSafe(s.province||'—')}</td><td>${when}</td><td>${actionCell}</td></tr>`;
           }).join('');
     }
+
+    // Save this successful load so the next dashboard open can render
+    // instantly from cache while a fresh copy loads behind the scenes.
+    try {
+      const statsSnapshot = {};
+      statIds.forEach(id => { const el = document.getElementById(id); if(el) statsSnapshot[id] = el.textContent; });
+      sessionStorage.setItem('nm_admin_overview_cache_v1', JSON.stringify({
+        stats: statsSnapshot,
+        pendingHtml: document.getElementById('adm-recent-pending') ? document.getElementById('adm-recent-pending').innerHTML : '',
+        subsHtml: document.getElementById('adm-recent-subs') ? document.getElementById('adm-recent-subs').innerHTML : '',
+      }));
+    } catch(e) { /* sessionStorage full/unavailable — cache is a nice-to-have, skip silently */ }
   } catch(e) {
     console.warn('Overview load failed', e);
-    // Previously this failed silently, leaving blank/stale numbers on screen
-    // with no indication anything had gone wrong or how to fix it. Now the
-    // dashboard visibly says so and gives a one-tap retry.
-    statIds.forEach(id => { const el = document.getElementById(id); if(el) el.textContent = '—'; });
-    const tbody = document.getElementById('adm-recent-pending');
-    if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="adm-empty">⚠️ Couldn\'t load data — check your connection. <button class="adm-btn-refresh" onclick="admRefreshClick(this,\'admLoadOverview\')" style="margin-left:8px;">↻ Retry</button></td></tr>';
-    const subsTbody = document.getElementById('adm-recent-subs');
-    if(subsTbody) subsTbody.innerHTML = '<tr><td colspan="5" class="adm-empty">⚠️ Couldn\'t load data.</td></tr>';
+    // If we already had cached numbers on screen, leave them showing —
+    // a transient network hiccup shouldn't wipe out good data the admin
+    // can already see. Only fall back to the "couldn't load" state when
+    // there was nothing to show in the first place.
+    if(!cached) {
+      statIds.forEach(id => { const el = document.getElementById(id); if(el) el.textContent = '—'; });
+      const tbody = document.getElementById('adm-recent-pending');
+      if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="adm-empty">⚠️ Couldn\'t load data — check your connection. <button class="adm-btn-refresh" onclick="admRefreshClick(this,\'admLoadOverview\')" style="margin-left:8px;">↻ Retry</button></td></tr>';
+      const subsTbody = document.getElementById('adm-recent-subs');
+      if(subsTbody) subsTbody.innerHTML = '<tr><td colspan="5" class="adm-empty">⚠️ Couldn\'t load data.</td></tr>';
+    }
   }
 }
 
@@ -11654,8 +11982,8 @@ async function admRejectListing(id, btn) {
   }
 }
 
-// ── Plan price map, used to build the payment-instructions SMS on approval ──
-const NM_PLAN_PRICES = { free: 'Free', vip: 'R99.99/month', premium: 'R199.99/month' };
+// NM_PLAN_PRICES is defined earlier, above openActivateOverlay() — shared
+// by both the activation page and the approval email/SMS below.
 
 async function admApproveSub(id, btn) {
   const originalText = btn.textContent;
@@ -11670,10 +11998,16 @@ async function admApproveSub(id, btn) {
     if(sub) {
       const planLabel = (sub.plan || '').toUpperCase();
       const price = NM_PLAN_PRICES[sub.plan] || 'the plan price';
+      // This link takes them straight to a page that shows payment
+      // instructions AND, if they don't already have an account (most
+      // don't — the request form never asked for a password), lets them
+      // set one up right there. Without this, an approved requester had
+      // no way to log in even after paying, because no account had ever
+      // been created for them.
+      const activateLink = 'https://noamark.com/#activate/' + sub.id;
       const bodyMsg = 'Hi ' + (sub.name ? sub.name.split(' ')[0] : '') + ', your ' + planLabel +
-        ' plan request has been approved! To activate, please pay ' + price +
-        ' via EFT or SnapScan — contact +27 63 418 9749 or support@noamark.com to complete payment. ' +
-        'Your account will be activated as soon as payment is confirmed.';
+        ' plan request has been approved! To activate your account and complete payment (' + price + '), tap here: ' +
+        activateLink + '. Your plan goes live as soon as payment is confirmed.';
       if(sub.phone) { try { await nmSendSMS(sub.phone, 'NoaMark: ' + bodyMsg); } catch(e) { console.warn('Approval SMS failed:', e); } }
       if(sub.email) { try { await nmSendEmail(sub.email, 'Your NoaMark ' + planLabel + ' plan is approved', bodyMsg); } catch(e) { console.warn('Approval email failed:', e); } }
     }
@@ -11792,6 +12126,27 @@ async function admUndoPaid(id, btn) {
     console.error('Undo paid error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
     alert('Error undoing payment. Check your Supabase connection and try again.');
+  }
+}
+
+// ── Permanently deletes a plan signup / subscription request row. This is
+// separate from Reject — Reject just marks the request as rejected (and
+// keeps it visible so it can be reconsidered), while this removes it from
+// the list entirely. Use it to clear out spam/test/duplicate signups. ──
+async function admDeleteSub(id, btn) {
+  if(!confirm('Permanently delete this plan signup request? This cannot be undone.')) return;
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳'; btn.style.opacity = '.6';
+  try {
+    const { error } = await nmSupaQuery(() => _supa.from('subscription_requests').delete().eq('id', id));
+    if(error) throw error;
+    const row = btn.closest('tr');
+    if(row) { row.style.opacity = '0'; row.style.transition = 'opacity .3s'; setTimeout(()=>row.remove(), 300); }
+    setTimeout(()=>{ admLoadOverview(); }, 350);
+  } catch(e) {
+    console.error('Delete sub error:', e);
+    btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
+    alert('Delete failed. Check your Supabase connection and try again.');
   }
 }
 
