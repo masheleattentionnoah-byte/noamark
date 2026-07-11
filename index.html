@@ -1435,12 +1435,12 @@
     <div class="nav-logo-name">Noa<span>Mark</span></div>
   </div>
   <ul class="nav-links" id="main-nav-links">
-    <li id="nav-item-home"><a onclick="showPage('home')" class="nav-link-home">Home</a></li>
-    <li id="nav-item-marketplace"><a onclick="showPage('marketplace')">Marketplace</a></li>
-    <li id="nav-item-opportunities"><a onclick="showPage('opportunities')">Opportunities</a></li>
-    <li id="nav-item-learning"><a onclick="showPage('learning')">Learn</a></li>
-    <li id="nav-item-videos"><a onclick="showPage('videos')">Videos</a></li>
-    <li id="nav-item-plans"><a onclick="showPage('plans')">Pricing</a></li>
+    <li id="nav-item-home"><a onclick="closeMobileNav();showPage('home')" class="nav-link-home">Home</a></li>
+    <li id="nav-item-marketplace"><a onclick="closeMobileNav();showPage('marketplace')">Marketplace</a></li>
+    <li id="nav-item-opportunities"><a onclick="closeMobileNav();showPage('opportunities')">Opportunities</a></li>
+    <li id="nav-item-learning"><a onclick="closeMobileNav();showPage('learning')">Learn</a></li>
+    <li id="nav-item-videos"><a onclick="closeMobileNav();showPage('videos')">Videos</a></li>
+    <li id="nav-item-plans"><a onclick="closeMobileNav();showPage('plans')">Pricing</a></li>
   </ul>
   <div style="display:flex;gap:10px;align-items:center;flex-shrink:0;">
     <!-- Auth nav area — switches between Sign In button and user pill -->
@@ -1465,7 +1465,7 @@
         <button class="nav-dd-item danger" onclick="handleLogout()">🚪 Sign Out</button>
       </div>
     </div>
-    <button class="nav-hamburger" id="nav-hamburger" onclick="document.getElementById('main-nav').classList.toggle('nav-mobile-open')" aria-label="Menu"><span></span><span></span><span></span></button>
+    <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu"><span></span><span></span><span></span></button>
   </div>
 </nav>
 
@@ -2327,6 +2327,16 @@
           </div>
           <p style="font-size:14px;color:#4b5563;line-height:1.8;">We do not sell or share your personal data with third parties without your consent.</p>
         </div>
+        <div style="padding-bottom:24px;border-bottom:1px solid #f1f5f9;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div style="width:36px;height:36px;background:#f0fdf4;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#16a34a;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.2C10.6 2.2 9.6 3.2 9.6 4.4C9.6 5 9.3 5.5 8.7 5.7C7.9 6 7.3 6.7 7.3 7.6C7.3 8.2 7 8.7 6.4 8.9C5.5 9.2 4.9 10.1 5.1 11.1C5.2 11.6 5 12.1 4.5 12.4C3.6 12.9 3.1 13.9 3.4 14.9C4.2 17.7 6.5 20.2 12 20.2C17 20.2 21 16.2 21 11.2C21 10.6 20.9 10.1 20.8 9.6C19.5 10 18 9.1 18 7.7C18 6.3 16.9 5.2 15.5 5.2C15.3 5.2 15.1 5.2 15 5.3C14.6 3.5 13.4 2.2 12 2.2Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="10" cy="10.5" r="0.9" fill="currentColor"/><circle cx="14.2" cy="9.3" r="0.9" fill="currentColor"/><circle cx="12" cy="14.2" r="0.9" fill="currentColor"/><circle cx="9" cy="15.3" r="0.9" fill="currentColor"/></svg></div>
+            <h3 style="font-size:15px;font-weight:700;color:#111827;">Cookies &amp; Similar Technologies</h3>
+          </div>
+          <p style="font-size:14px;color:#4b5563;line-height:1.8;">We use two categories of cookies and local browser storage:</p>
+          <p style="font-size:14px;color:#4b5563;line-height:1.8;margin-top:8px;"><strong>Strictly necessary</strong> — keep you logged in, remember your session and preferences, and let the site function. These are always on and don't require consent, as the site cannot work without them.</p>
+          <p style="font-size:14px;color:#4b5563;line-height:1.8;margin-top:8px;"><strong>Analytics</strong> — anonymous, aggregate site-visit counts that help us understand how NoaMark is used. These are off by default and only activate if you choose "Allow All" in the cookie banner.</p>
+          <p style="font-size:14px;color:#4b5563;line-height:1.8;margin-top:8px;">Your choice is remembered for 12 months, after which we'll ask again. You can change your preference anytime via <a onclick="nmOpenCookiePrefs()" style="color:#16a34a;font-weight:600;cursor:pointer;text-decoration:underline;">Cookie Preferences</a> in the footer.</p>
+        </div>
         <div>
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
             <div style="width:36px;height:36px;background:#f0fdf4;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🛡️</div>
@@ -2466,6 +2476,7 @@
           <li><a href="tel:+27634189749">+27 63 418 9749</a></li>
           <li><a>Polokwane, Limpopo, South Africa</a></li>
           <li><a onclick="document.getElementById('support-modal').style.display='flex'">Support Centre</a></li>
+          <li><a onclick="nmOpenCookiePrefs()">Cookie Preferences</a></li>
         </ul>
       </div>
     </div>
@@ -3215,14 +3226,14 @@
   <!-- BUSINESS PROFILE VIEW -->
   <div id="mkt-profile-view" style="display:none;padding:80px 0;">
     <div class="biz-profile-body" style="max-width:1100px;margin:0 auto;">
-      <button onclick="showMktView('main');populateMarketplace();" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);background:transparent;border:1px solid var(--border-soft);padding:10px 20px;cursor:pointer;margin-bottom:40px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.color='var(--white-dim)'">← Back to Marketplace</button>
+      <button onclick="nmBackToMarketplace()" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);background:transparent;border:1px solid var(--border-soft);padding:10px 20px;cursor:pointer;margin-bottom:40px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.color='var(--white-dim)'">← Back to Marketplace</button>
       <div id="mkt-profile-content"></div>
     </div>
   </div>
 
   <!-- BOOST PLANS VIEW -->
   <div id="mkt-boost-view" style="display:none;padding:48px 20px;">
-    <button onclick="showMktView('main');populateMarketplace();" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);background:transparent;border:1px solid var(--border-soft);padding:10px 20px;cursor:pointer;margin-bottom:48px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.color='var(--white-dim)'">← Back to Marketplace</button>
+    <button onclick="nmBackToMarketplace()" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);background:transparent;border:1px solid var(--border-soft);padding:10px 20px;cursor:pointer;margin-bottom:48px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.color='var(--white-dim)'">← Back to Marketplace</button>
     <div style="text-align:center;max-width:700px;margin:0 auto 80px;">
       <span class="section-tag">NoaMark Boost</span>
       <h2 class="section-title">Put Your Business <em>On Top</em></h2>
@@ -3342,7 +3353,7 @@
 
   <!-- ADD BUSINESS VIEW -->
   <div id="mkt-add-view" style="display:none;padding:48px 20px;">
-    <button onclick="showMktView('main');populateMarketplace();" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);background:transparent;border:1px solid var(--border-soft);padding:10px 20px;cursor:pointer;margin-bottom:48px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.color='var(--white-dim)'">← Back to Marketplace</button>
+    <button onclick="nmBackToMarketplace()" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);background:transparent;border:1px solid var(--border-soft);padding:10px 20px;cursor:pointer;margin-bottom:48px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.color='var(--white-dim)'">← Back to Marketplace</button>
     <div style="max-width:800px;margin:0 auto;">
       <div style="text-align:center;margin-bottom:60px;">
         <span class="section-tag">List Your Business</span>
@@ -4119,29 +4130,50 @@
           <div class="bp-2col">
             <div class="bp-card">
               <div class="bp-card-title">Account details</div>
-              <div style="display:flex;flex-direction:column;gap:10px;">
-                <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-soft);">
-                  <div style="font-size:12px;color:var(--white-dim);">Business name</div>
-                  <div style="font-size:13px;font-weight:600;color:var(--white);" id="bps-name">—</div>
+              <div style="font-size:12px;color:var(--white-dim);line-height:1.6;margin-bottom:16px;">Update your business name, owner name, email, or profile photo below.</div>
+
+              <!-- Logo / profile photo -->
+              <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+                <img id="bps-logo-preview" src="" style="width:64px;height:64px;border-radius:10px;object-fit:cover;background:var(--black-3);border:1px solid var(--border-soft);display:none;">
+                <div id="bps-logo-placeholder" style="width:64px;height:64px;border-radius:10px;background:var(--black-3);border:1px solid var(--border-soft);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--white-dim);">🏪</div>
+                <div>
+                  <label class="bp-btn bp-btn-g" style="font-size:9px;cursor:pointer;display:inline-flex;">
+                    📷 Change photo
+                    <input type="file" id="bps-logo-input" accept="image/*" style="display:none;" onchange="bpPreviewNewLogo(this)">
+                  </label>
+                  <div style="font-size:10px;color:var(--white-dim);margin-top:6px;">JPG or PNG, square works best</div>
                 </div>
-                <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-soft);">
-                  <div style="font-size:12px;color:var(--white-dim);">Owner name</div>
-                  <div style="font-size:13px;font-weight:600;color:var(--white);" id="bps-owner">—</div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:14px;">
+                <div>
+                  <label style="font-size:11px;color:var(--white-dim);display:block;margin-bottom:6px;">Business name</label>
+                  <input type="text" id="bps-name-input" placeholder="Your business name" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
                 </div>
-                <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-soft);">
-                  <div style="font-size:12px;color:var(--white-dim);">Email address</div>
-                  <div style="font-size:13px;font-weight:600;color:var(--white);" id="bps-email">—</div>
+                <div>
+                  <label style="font-size:11px;color:var(--white-dim);display:block;margin-bottom:6px;">Owner name</label>
+                  <input type="text" id="bps-owner-input" placeholder="Your full name" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
                 </div>
-                <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-soft);">
+                <div>
+                  <label style="font-size:11px;color:var(--white-dim);display:block;margin-bottom:6px;">Email address</label>
+                  <input type="email" id="bps-email-input" placeholder="you@example.com" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+                  <div style="font-size:10px;color:var(--white-dim);margin-top:6px;">⚠️ This is also the email you log in with — you'll use the new one next time.</div>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border-soft);">
                   <div style="font-size:12px;color:var(--white-dim);">Plan</div>
                   <div style="font-size:13px;font-weight:600;color:var(--gold-dim);" id="bps-plan">—</div>
                 </div>
-                <div style="display:flex;justify-content:space-between;padding:10px 0;">
+                <div style="display:flex;justify-content:space-between;padding:0 0 4px;">
                   <div style="font-size:12px;color:var(--white-dim);">Member since</div>
                   <div style="font-size:13px;font-weight:600;color:var(--white);" id="bps-joined">—</div>
                 </div>
               </div>
-              <button class="bp-btn" style="margin-top:16px;width:100%;justify-content:center;" onclick="showMktView('add')">Edit listing details</button>
+
+              <div class="auth-error" id="bps-acct-error" style="margin-top:12px;"></div>
+              <div class="auth-success" id="bps-acct-success" style="margin-top:12px;"></div>
+
+              <button class="bp-btn bp-btn-gold" id="bps-acct-save-btn" style="margin-top:14px;width:100%;justify-content:center;" onclick="bpSaveAccountDetails()">💾 Save Account Details</button>
+              <button class="bp-btn" style="margin-top:10px;width:100%;justify-content:center;" onclick="showMktView('add')">Edit listing content (category, description, photos, hours)</button>
             </div>
             <div class="bp-card">
               <div class="bp-card-title">Notifications</div>
@@ -4746,8 +4778,16 @@
 window.addEventListener('scroll',()=>document.getElementById('main-nav').classList.toggle('scrolled',window.scrollY>60));
 
 // ── PAGE NAVIGATION ──
+// NOTE: this used to just do classList.remove('nav-mobile-open') directly.
+// It's called automatically by showPage() on every navigation — but since
+// the mobile-nav-open helpers below now also register a scroll listener and
+// push a history entry when the menu opens, closing it through this old
+// bare classList removal would leave that scroll listener attached forever
+// and that history entry stranded. Delegating to closeMobileNav() keeps
+// every way of closing the menu (link click, hamburger, scroll, back
+// button) going through the same cleanup.
 function closeNav(){
-  document.getElementById('main-nav').classList.remove('nav-mobile-open');
+  closeMobileNav();
 }
 let boostShown = false;
 function showBoostThenList(){
@@ -4882,6 +4922,7 @@ window.addEventListener('popstate', function(e) {
   // returned early, and the modal stayed stuck open with its own leftover
   // history entry still on the stack.
   const _overlayOpen = !!(
+    (document.getElementById('main-nav') && document.getElementById('main-nav').classList.contains('nav-mobile-open')) ||
     (document.getElementById('booking-modal') && document.getElementById('booking-modal').style.display === 'flex') ||
     (document.getElementById('auth-overlay') && document.getElementById('auth-overlay').classList.contains('active')) ||
     (document.getElementById('gate-overlay') && document.getElementById('gate-overlay').classList.contains('active')) ||
@@ -4931,6 +4972,13 @@ window.addEventListener('popstate', function(e) {
       showMktView('admin', false);
       return;
     }
+  }
+  const mainNavEl = document.getElementById('main-nav');
+  if(mainNavEl && mainNavEl.classList.contains('nav-mobile-open')) {
+    closeMobileNav();
+    // We already consumed the history entry the menu itself pushed on open
+    // by navigating back to it — no need to push anything further.
+    return;
   }
   const gateOverlay = document.getElementById('gate-overlay');
   if(gateOverlay && gateOverlay.classList.contains('active')) {
@@ -5686,6 +5734,32 @@ function setCat(cat,btn){
     b.style.borderColor = i===0 ? 'var(--gold)' : 'var(--border-soft)';
   });
   populateMarketplace();
+}
+
+// ── BACK TO MARKETPLACE (profile / boost / add-listing views) ──
+// BUG THIS FIXES: the "← Back to Marketplace" button used to call
+// showMktView('main'), which — like every other real navigation —
+// pushes a NEW history entry. But entering the profile/boost/add view
+// in the first place ALSO pushed an entry. So one visit to a business
+// profile cost two stacked history entries (enter, then "return"),
+// instead of one push that a single back-press could undo. Multiply
+// that by every business someone looks at in a session, and the
+// physical/browser back button ends up replaying every profile and
+// every "back to marketplace" click one at a time — exactly the
+// "back and forth through every business I visited" behaviour this
+// was reported as. Using history.back() here instead pops the single
+// entry the profile/boost/add view pushed on the way in, landing
+// cleanly on whatever was already on the stack beneath it (the
+// marketplace grid, or home) — one press, one step, like any other
+// professional site.
+function nmBackToMarketplace(){
+  if (window.history.length > 1) {
+    history.back();
+  } else {
+    // No history to go back to (e.g. a direct deep link) — just switch view.
+    showMktView('main');
+    populateMarketplace();
+  }
 }
 
 function showMktView(view, pushHistory){
@@ -7964,6 +8038,16 @@ async function nmLoadGlobalStats() {
 // so the number reflects actual distinct visits, not inflated by normal browsing.
 async function nmTrackVisit() {
   try {
+    // Only log an anonymous visit if the visitor has consented to analytics
+    // cookies/local storage via the cookie banner (see the cookie consent
+    // block near the end of the file) — POPIA requires opt-in consent
+    // before non-essential tracking technologies are used. Reading consent
+    // directly from localStorage here (rather than calling a helper defined
+    // later in the file) avoids any script-load-order dependency, since
+    // this function can run before that later script block has executed.
+    const consentRaw = localStorage.getItem('nm_cookie_consent_v1');
+    const consent = consentRaw ? JSON.parse(consentRaw) : null;
+    if (!consent || !consent.analytics) return;
     if (sessionStorage.getItem('nm_visit_logged')) return;
     sessionStorage.setItem('nm_visit_logged', '1');
     await nmSupaQuery(() => _supa.from('site_visits').insert({ created_at: new Date().toISOString() }));
@@ -8054,6 +8138,31 @@ async function handleSubscribe(){
   }
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
     showSubPageError('Please enter a valid email address.'); return;
+  }
+
+  // Paid plans (VIP/Premium) require an actual login account before we'll
+  // take the request. Without this, someone could request-and-pay for VIP
+  // with nothing but a name/email — no password, nothing for admMarkPaid
+  // to attach the plan to on the users table. This is exactly the "Paid,
+  // but no account yet" gap the admin dashboard has to flag and chase up
+  // manually. Catching it here, before the request is even submitted,
+  // means every paid request that reaches the dashboard already has a
+  // real account behind it. Free plan requests are unaffected — no
+  // account is needed to try NoaMark for free.
+  if(plan === 'vip' || plan === 'premium') {
+    const isMatchingSubscriber = currentUser && currentUser.type === 'subscriber' &&
+      currentUser.email && currentUser.email.toLowerCase() === email.toLowerCase();
+    if(!isMatchingSubscriber) {
+      showSubPageError('Please create your free account first — you\'ll need to log in so we can activate your ' + plan.toUpperCase() + ' plan the moment your payment is confirmed. Opening sign up…');
+      setTimeout(() => {
+        openAuth('subscriber');
+        const nameEl = document.getElementById('sub-reg-name');
+        const emailEl = document.getElementById('sub-reg-email');
+        if(nameEl && !nameEl.value) nameEl.value = name;
+        if(emailEl && !emailEl.value) emailEl.value = email;
+      }, 1400);
+      return;
+    }
   }
 
   if(btn){ btn.textContent = 'Sending…'; btn.disabled = true; }
@@ -9686,6 +9795,41 @@ function applyRoleHomePage(user) {
 // ──────────────────────────────────────────────────
 // LOGOUT
 // ──────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────
+// MOBILE NAV (hamburger menu) — open/close/toggle.
+//
+// BUG THIS FIXES: this used to be a single raw
+// `classList.toggle('nav-mobile-open')` inline on the hamburger button —
+// nothing else in the app knew the menu was open. So the menu had exactly
+// one way to close: tapping the hamburger icon again. Scrolling the page
+// behind it did nothing (the menu just stayed floating over the content
+// you were now scrolling through), and the back button did nothing either
+// (it would navigate you away or do nothing, instead of just closing the
+// menu like people expect). Now opening it registers a scroll listener
+// that closes it the moment you scroll, and pushes a history entry so the
+// back button closes it first before doing anything else.
+// ────────────────────────────────────────────────────────────
+function openMobileNav() {
+  const nav = document.getElementById('main-nav');
+  if (!nav || nav.classList.contains('nav-mobile-open')) return;
+  nav.classList.add('nav-mobile-open');
+  history.pushState({ nmPage: 'mobile-nav' }, '', window.location.href);
+  window.addEventListener('scroll', closeMobileNav, { passive: true });
+}
+
+function closeMobileNav() {
+  const nav = document.getElementById('main-nav');
+  if (!nav) return;
+  nav.classList.remove('nav-mobile-open');
+  window.removeEventListener('scroll', closeMobileNav);
+}
+
+function toggleMobileNav() {
+  const nav = document.getElementById('main-nav');
+  if (nav && nav.classList.contains('nav-mobile-open')) closeMobileNav();
+  else openMobileNav();
+}
+
 function toggleNavDropdown(e) {
   e.stopPropagation();
   const dd = document.querySelector('.nav-user-dropdown');
@@ -10939,8 +11083,8 @@ function bpRenderAnalytics() {
 async function bpRenderSettings() {
   if(!currentUser) return;
   const d = new Date(currentUser.joinedAt || Date.now());
-  document.getElementById('bps-name').textContent = currentUser.name || '—';
-  document.getElementById('bps-email').textContent = currentUser.email || '—';
+  document.getElementById('bps-name-input').value = currentUser.name || '';
+  document.getElementById('bps-email-input').value = currentUser.email || '';
   document.getElementById('bps-plan').textContent = currentUser.plan || 'Free Listing';
   document.getElementById('bps-joined').textContent = d.toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'});
 
@@ -10950,11 +11094,11 @@ async function bpRenderSettings() {
   // fallback), pull the real owner name from the listing's "Owner Full Name"
   // field and repair the account so this never needs fixing again.
   let ownerName = currentUser.owner;
+  let myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
+  if (!myListing && typeof bpFetchMyOwnListing === 'function') {
+    try { myListing = await bpFetchMyOwnListing(); } catch(e) { /* ignore */ }
+  }
   if (!ownerName || ownerName.trim().toLowerCase() === (currentUser.name || '').trim().toLowerCase()) {
-    let myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
-    if (!myListing && typeof bpFetchMyOwnListing === 'function') {
-      try { myListing = await bpFetchMyOwnListing(); } catch(e) { /* ignore */ }
-    }
     if (myListing && myListing.owner && myListing.owner.trim()) {
       ownerName = myListing.owner.trim();
       currentUser.owner = ownerName;
@@ -10963,8 +11107,141 @@ async function bpRenderSettings() {
       catch(e) { console.warn('Owner name repair failed', e); }
     }
   }
-  document.getElementById('bps-owner').textContent = ownerName || '—';
+  document.getElementById('bps-owner-input').value = ownerName || '';
+
+  // Logo preview — pulled from the linked listing, since that's where the
+  // logo actually lives (uploaded via bpEditListing's photo picker).
+  const logoUrl = myListing && myListing.logo;
+  const preview = document.getElementById('bps-logo-preview');
+  const placeholder = document.getElementById('bps-logo-placeholder');
+  if (logoUrl) {
+    preview.src = logoUrl; preview.style.display = 'block'; placeholder.style.display = 'none';
+  } else {
+    preview.style.display = 'none'; placeholder.style.display = 'flex';
+  }
+  window._bpMyListingId = myListing ? myListing.id : (currentUser.listingId || null);
+
   loadNotifPrefs();
+}
+
+// Show the newly-picked logo file immediately, before it's uploaded —
+// standard "preview before save" pattern so people can see what they picked.
+function bpPreviewNewLogo(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  window._bpsNewLogoFile = file;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const preview = document.getElementById('bps-logo-preview');
+    const placeholder = document.getElementById('bps-logo-placeholder');
+    preview.src = e.target.result; preview.style.display = 'block'; placeholder.style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function bpSaveAccountDetails() {
+  if (!currentUser) return;
+  const errEl = document.getElementById('bps-acct-error');
+  const sucEl = document.getElementById('bps-acct-success');
+  errEl.style.display = 'none'; sucEl.style.display = 'none';
+  const btn = document.getElementById('bps-acct-save-btn');
+
+  const newName  = (document.getElementById('bps-name-input').value || '').trim();
+  const newOwner = (document.getElementById('bps-owner-input').value || '').trim();
+  const newEmail = (document.getElementById('bps-email-input').value || '').trim();
+  const oldEmail = currentUser.email;
+
+  if (!newName) { errEl.textContent = 'Business name can\'t be empty.'; errEl.style.display = 'block'; return; }
+  if (!newOwner) { errEl.textContent = 'Owner name can\'t be empty.'; errEl.style.display = 'block'; return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { errEl.textContent = 'Please enter a valid email address.'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true; btn.textContent = '⏳ Saving...';
+  try {
+    const emailChanged = newEmail.toLowerCase() !== (oldEmail || '').toLowerCase();
+
+    // If the email is changing, make sure no OTHER account is already using
+    // it — otherwise this update would silently create a login collision.
+    if (emailChanged) {
+      const clash = await nmSupaQuery(() => _supa.from('users').select('id,email').ilike('email', newEmail).limit(1));
+      const clashRow = clash && clash.data && clash.data[0];
+      if (clashRow && clashRow.email && clashRow.email.toLowerCase() !== (oldEmail || '').toLowerCase()) {
+        errEl.textContent = 'That email is already used by another account.';
+        errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = '💾 Save Account Details';
+        return;
+      }
+    }
+
+    // Upload the new logo first (if one was picked), reusing the same
+    // compress-then-upload pattern the listing editor already uses.
+    let newLogoUrl = null;
+    if (window._bpsNewLogoFile) {
+      try {
+        const compressed = await nmCompressImage(window._bpsNewLogoFile, 400, 150);
+        const fileName = 'logo_' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.jpg';
+        const upload = await nmSupaQuery(() => _supa.storage.from('business-photos').upload(fileName, compressed, { upsert: true }));
+        if (!upload.error) {
+          const { data: urlData } = _supa.storage.from('business-photos').getPublicUrl(fileName);
+          newLogoUrl = urlData.publicUrl;
+        }
+      } catch(e) { console.warn('Logo upload failed:', e); }
+    }
+
+    // BUG THIS AVOIDS: saveUserToSupabase() looks up the existing row by
+    // matching the EMAIL IN THE PAYLOAD — if we handed it the new email, it
+    // would search for a row that doesn't exist yet under that email, find
+    // nothing, and INSERT A DUPLICATE ROW instead of updating the real one.
+    // So here we look the row up by the OLD email first, then update that
+    // exact row directly by id — safe regardless of whether the email changed.
+    const existing = await nmSupaQuery(() => _supa.from('users').select('id').ilike('email', oldEmail).limit(1));
+    const existingRow = existing && existing.data && existing.data[0];
+    const userPayload = { name: newName, owner: newOwner, email: newEmail };
+    if (existingRow) {
+      const upd = await nmSupaQuery(() => _supa.from('users').update(userPayload).eq('id', existingRow.id));
+      if (upd && upd.error) throw new Error(upd.error.message || 'Failed to update account');
+    } else {
+      // No row found under the old email (shouldn't normally happen for a
+      // logged-in user) — fall back to the general save path.
+      await saveUserToSupabase({ ...currentUser, ...userPayload, role: 'business' });
+    }
+
+    // Keep the linked marketplace listing in sync — it has its own copies
+    // of name/owner/email/logo that customers see, and getMyListing() uses
+    // email to re-find this listing next time, so it must match too.
+    if (window._bpMyListingId) {
+      const listingPayload = { name: newName, owner: newOwner, email: newEmail };
+      if (newLogoUrl) listingPayload.logo_url = newLogoUrl;
+      try { await nmSupaQuery(() => _supa.from('listings').update(listingPayload).eq('id', window._bpMyListingId)); }
+      catch(e) { console.warn('Listing sync failed (account details still saved):', e); }
+    }
+
+    // Update the in-memory session so nav, dashboard, etc. reflect the
+    // change immediately without needing a reload.
+    currentUser.name = newName;
+    currentUser.owner = newOwner;
+    currentUser.email = newEmail;
+    saveSession(currentUser);
+    const navNameEl = document.getElementById('nav-user-name');
+    if (navNameEl) navNameEl.textContent = newName;
+    const ddNameEl = document.getElementById('nav-dd-name');
+    if (ddNameEl) ddNameEl.textContent = newName;
+    const ddEmailEl = document.getElementById('nav-dd-email');
+    if (ddEmailEl) ddEmailEl.textContent = newEmail;
+    const bizNameEl = document.getElementById('bp-sb-bizname');
+    if (bizNameEl) bizNameEl.textContent = newName;
+
+    window._bpsNewLogoFile = null;
+    sucEl.textContent = emailChanged
+      ? '✅ Saved! Since your email changed, use ' + newEmail + ' next time you log in.'
+      : '✅ Account details saved.';
+    sucEl.style.display = 'block';
+  } catch(e) {
+    console.error('bpSaveAccountDetails failed:', e);
+    errEl.textContent = 'Something went wrong saving your details. Please try again.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 Save Account Details';
+  }
 }
 
 // ── BOOST SELECT — currently manual activation (online checkout temporarily disabled) ──
@@ -11624,6 +11901,20 @@ bpLoad();
           <div id="adm-reset-msg" style="font-size:12px;margin-bottom:12px;display:none;padding:10px 14px;border-radius:8px;"></div>
           <button onclick="admResetUserPassword()" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#111827;font-weight:700;font-size:13px;padding:11px 24px;border:none;border-radius:8px;cursor:pointer;">Reset Password</button>
         </div>
+        <!-- Create a login for an unclaimed listing — fixes the case where a
+             listing exists and shows on the marketplace (added directly, or
+             from before this business ever signed up), but there is no
+             matching `users` row, so the owner can't log in, can't reset a
+             password, and gets "business doesn't exist". -->
+        <div class="adm-card" style="margin-top:24px;border-color:rgba(74,222,128,.25);">
+          <div class="adm-card-title" style="margin-bottom:16px;">🔓 Create a Login for an Unclaimed Listing</div>
+          <p style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px;line-height:1.6;">Use this when a business shows up fine on the marketplace, but its owner gets "business doesn't exist" trying to log in, and Forgot Password says "no account found". That means the listing exists but was never linked to a login account — search for it below to create one.</p>
+          <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+            <input id="adm-unclaimed-search" type="text" placeholder="Business name or email" style="flex:1;min-width:200px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;padding:10px 12px;border-radius:8px;font-size:13px;box-sizing:border-box;" onkeydown="if(event.key==='Enter')admFindUnclaimedListing()">
+            <button onclick="admFindUnclaimedListing()" style="background:rgba(74,222,128,.15);color:#4ade80;border:1px solid rgba(74,222,128,.3);font-weight:700;font-size:13px;padding:10px 20px;border-radius:8px;cursor:pointer;">Search</button>
+          </div>
+          <div id="adm-unclaimed-result"></div>
+        </div>
       </div>
 
     </div><!-- /adm-main -->
@@ -11881,6 +12172,104 @@ async function admFixAccountRole(id, newRole, btn) {
     console.error('Fix role error:', e);
     btn.disabled = false; btn.textContent = original;
     alert('Error updating role: ' + (e.message || 'check your Supabase connection and try again.'));
+  }
+}
+
+// ── Finds a listing that's live on the marketplace but has no matching
+// `users` account — the exact cause of "business doesn't exist" when the
+// listing itself clearly exists. This happens whenever a listing gets into
+// the database some way other than the normal signup flow (bulk-added,
+// migrated, entered directly), since signup is the only place that creates
+// BOTH the login account and the listing together. ──
+async function admFindUnclaimedListing() {
+  const q = (document.getElementById('adm-unclaimed-search').value || '').trim();
+  const resultEl = document.getElementById('adm-unclaimed-result');
+  if(!q) { resultEl.innerHTML = '<div class="adm-empty">Enter a business name or email to search.</div>'; return; }
+  resultEl.innerHTML = '<div class="adm-empty">Searching…</div>';
+  try {
+    const isEmailLike = q.includes('@');
+    const listingRes = await nmSupaQuery(() =>
+      isEmailLike
+        ? _supa.from('listings').select('id,name,owner,email,owner_email').or('email.ilike.' + q + ',owner_email.ilike.' + q)
+        : _supa.from('listings').select('id,name,owner,email,owner_email').ilike('name', '%' + q + '%')
+    );
+    const listings = (listingRes && listingRes.data) || [];
+    if (listings.length === 0) {
+      resultEl.innerHTML = '<div class="adm-empty">No listing found matching that. Double-check the spelling, or try searching by email instead.</div>';
+      return;
+    }
+    // For each matching listing, check whether a users row already exists
+    // for its email — that's what tells apart "genuinely unclaimed" from
+    // "already has a login, this isn't the bug you're looking for".
+    const rows = await Promise.all(listings.map(async l => {
+      const email = l.email || l.owner_email || '';
+      let hasAccount = false;
+      if (email) {
+        const check = await nmSupaQuery(() => _supa.from('users').select('id').ilike('email', email).limit(1));
+        hasAccount = !!(check && check.data && check.data.length > 0);
+      }
+      return { ...l, email, hasAccount };
+    }));
+    resultEl.innerHTML = '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Business</th><th>Owner</th><th>Email</th><th>Status</th><th>Action</th></tr></thead><tbody>' +
+      rows.map(r => {
+        const statusCell = r.hasAccount
+          ? '<span style="color:#4ade80;font-weight:700;">✓ Already has a login</span>'
+          : '<span style="color:#fbbf24;font-weight:700;">⚠️ No login account</span>';
+        const actionCell = r.hasAccount
+          ? '<span style="font-size:11px;color:rgba(255,255,255,.3);">Use Password Resets above instead</span>'
+          : (r.email
+              ? '<button class="adm-btn" style="background:rgba(74,222,128,.1);color:#4ade80;border:1px solid rgba(74,222,128,.25);font-size:10px;" onclick="admCreateBusinessLogin(\'' + r.id + '\',this)">🔓 Create Login &amp; Email Password</button>'
+              : '<span style="font-size:11px;color:#f87171;">No email on this listing — add one via Edit Listing first</span>');
+        return '<tr><td style="font-weight:600;color:#fff;">' + nmSafe(r.name || '—') + '</td><td>' + nmSafe(r.owner || '—') + '</td><td style="color:#63b3ed;">' + nmSafe(r.email || '—') + '</td><td>' + statusCell + '</td><td>' + actionCell + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  } catch(e) {
+    console.error('Unclaimed listing search failed:', e);
+    resultEl.innerHTML = '<div class="adm-empty">⚠️ Search failed. Check your Supabase connection and try again.</div>';
+  }
+}
+
+// Creates a fresh `users` row for a listing that has none, using the
+// listing's OWN name/owner/email so it matches exactly what handleBizLogin
+// checks against — then emails the temporary password, same as a normal
+// password reset.
+async function admCreateBusinessLogin(listingId, btn) {
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Creating...';
+  try {
+    const listingRes = await nmSupaQuery(() => _supa.from('listings').select('*').eq('id', listingId).limit(1));
+    const listing = listingRes && listingRes.data && listingRes.data[0];
+    if (!listing) throw new Error('Listing not found — it may have been deleted.');
+    const email = listing.email || listing.owner_email;
+    if (!email) throw new Error('This listing has no email saved.');
+
+    // Double-check nothing was created in the meantime (e.g. two admins
+    // working at once, or the business signed up themselves just now).
+    const clash = await nmSupaQuery(() => _supa.from('users').select('id').ilike('email', email).limit(1));
+    if (clash && clash.data && clash.data.length > 0) {
+      throw new Error('An account with this email already exists now — use Password Resets above instead.');
+    }
+
+    const tempPassword = 'NoaMark' + Math.floor(1000 + Math.random() * 9000) + '!';
+    await saveUserToSupabase({
+      name: listing.name, owner: listing.owner || listing.name, email,
+      password: tempPassword, role: 'business', plan: 'Business'
+    });
+
+    const emailResult = await nmSendEmail(
+      email,
+      'Your NoaMark Business Login Is Ready',
+      'Hi,\n\nAn admin has created a login for your NoaMark business listing, "' + listing.name + '".\n\n' +
+      'Log in at noamark.com with:\nEmail: ' + email + '\nTemporary password: ' + tempPassword + '\n\n' +
+      'Please log in and set your own permanent password in Settings as soon as possible.\n\n' +
+      '— The NoaMark Team'
+    );
+
+    btn.textContent = emailResult && emailResult.ok ? '✓ Login created & emailed!' : '✓ Login created (email failed — tell them manually: ' + tempPassword + ')';
+    setTimeout(() => admFindUnclaimedListing(), 1500);
+  } catch(e) {
+    console.error('admCreateBusinessLogin failed:', e);
+    btn.disabled = false; btn.textContent = original;
+    alert('Error: ' + (e.message || 'check your Supabase connection and try again.'));
   }
 }
 
@@ -13596,6 +13985,116 @@ document.addEventListener('keydown', function(e) {
     };
     window.addEventListener('scroll', onScroll, {passive: true});
     onScroll();
+  }
+})();
+
+// ════════════════════════════════════════════════════════════
+// COOKIE CONSENT BANNER — POPIA (South Africa's Protection of
+// Personal Information Act) compliance.
+//
+// WHY THIS EXISTS: POPIA requires opt-in consent before a website uses
+// any non-essential cookies or similar tracking technologies (this
+// includes localStorage/sessionStorage, not just literal cookies), a
+// clear notice explaining what's used and why, an easy way to accept
+// or decline, and a way to change that choice later. Not having this
+// is a real compliance gap that can draw a fine from the Information
+// Regulator — this closes it without needing a paid consent-management
+// tool, since NoaMark only has two categories of storage to disclose:
+//
+//   • Necessary — login sessions, business/admin portal caches,
+//     "Near Me" preference, notification preferences. The site cannot
+//     function without these, so POPIA doesn't require consent for
+//     them — they're always on.
+//   • Analytics — the anonymous site-visit counter (nmTrackVisit, see
+//     above) that feeds the homepage stats bar. This is the only
+//     non-essential tracking NoaMark does today (no Google Analytics,
+//     no ad pixels), and it's now fully gated behind this consent —
+//     nmTrackVisit reads the same localStorage key this banner writes
+//     to and simply does nothing until "Allow All" is chosen.
+//
+// Consent is stored with a timestamp and expires after 12 months (the
+// validity period POPIA guidance recommends), at which point the
+// banner reappears automatically. The choice can also be reopened any
+// time via "Cookie Preferences" in the footer or the Privacy Policy
+// page, as POPIA requires withdrawal to be as easy as giving consent.
+// ════════════════════════════════════════════════════════════
+(function nmCookieConsent(){
+  var CONSENT_KEY = 'nm_cookie_consent_v1';
+  var CONSENT_MONTHS = 12;
+
+  function getConsent(){
+    try {
+      var raw = localStorage.getItem(CONSENT_KEY);
+      if(!raw) return null;
+      var c = JSON.parse(raw);
+      var ageMs = Date.now() - (c.ts || 0);
+      if(ageMs > CONSENT_MONTHS * 30 * 24 * 60 * 60 * 1000) return null; // expired — ask again
+      return c;
+    } catch(e){ return null; }
+  }
+
+  function setConsent(allowAnalytics){
+    try {
+      localStorage.setItem(CONSENT_KEY, JSON.stringify({ necessary: true, analytics: !!allowAnalytics, ts: Date.now() }));
+    } catch(e){}
+    // If analytics was just switched on, fire the visit log now — the
+    // original startup call to nmTrackVisit() ran before this consent
+    // existed and would have exited immediately without logging anything.
+    if(allowAnalytics && typeof nmTrackVisit === 'function') nmTrackVisit();
+  }
+
+  function buildBanner(){
+    if(document.getElementById('nm-cookie-banner')) return;
+    var wrap = document.createElement('div');
+    wrap.id = 'nm-cookie-banner';
+    wrap.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:10000;background:#0A0D0F;border-top:1px solid rgba(244,196,48,.25);padding:20px;font-family:Poppins,sans-serif;box-shadow:0 -8px 30px rgba(0,0,0,.4);';
+    wrap.innerHTML =
+      '<div style="max-width:920px;margin:0 auto;display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;">' +
+        '<div style="flex:1;min-width:240px;display:flex;gap:12px;align-items:flex-start;">' +
+          '<div style="width:34px;height:34px;background:rgba(244,196,48,.1);border:1px solid rgba(244,196,48,.25);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#F4C430;flex-shrink:0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.2C10.6 2.2 9.6 3.2 9.6 4.4C9.6 5 9.3 5.5 8.7 5.7C7.9 6 7.3 6.7 7.3 7.6C7.3 8.2 7 8.7 6.4 8.9C5.5 9.2 4.9 10.1 5.1 11.1C5.2 11.6 5 12.1 4.5 12.4C3.6 12.9 3.1 13.9 3.4 14.9C4.2 17.7 6.5 20.2 12 20.2C17 20.2 21 16.2 21 11.2C21 10.6 20.9 10.1 20.8 9.6C19.5 10 18 9.1 18 7.7C18 6.3 16.9 5.2 15.5 5.2C15.3 5.2 15.1 5.2 15 5.3C14.6 3.5 13.4 2.2 12 2.2Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="10" cy="10.5" r="0.9" fill="currentColor"/><circle cx="14.2" cy="9.3" r="0.9" fill="currentColor"/><circle cx="12" cy="14.2" r="0.9" fill="currentColor"/><circle cx="9" cy="15.3" r="0.9" fill="currentColor"/></svg></div>' +
+          '<div style="color:rgba(255,255,255,.75);font-size:12px;line-height:1.7;">' +
+            '<strong style="color:#F4C430;display:block;margin-bottom:4px;font-size:13px;">We use cookies</strong>' +
+            'NoaMark uses strictly necessary local storage to keep you logged in — this is always on. With your permission, we\'d also like to log anonymous site-visit stats to help us improve NoaMark. See our ' +
+            '<a onclick="nmOpenCookiePolicy()" style="color:#F4C430;text-decoration:underline;cursor:pointer;">Privacy Policy</a> for details.' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+          '<button onclick="nmCookieChoice(false)" style="background:transparent;border:1px solid rgba(255,255,255,.25);color:#fff;padding:10px 16px;font-size:11px;font-weight:600;letter-spacing:.5px;cursor:pointer;border-radius:6px;font-family:inherit;">Necessary Only</button>' +
+          '<button onclick="nmCookieChoice(true)" style="background:#F4C430;border:none;color:#111;padding:10px 20px;font-size:11px;font-weight:700;letter-spacing:.5px;cursor:pointer;border-radius:6px;font-family:inherit;">Allow All</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(wrap);
+  }
+
+  window.nmCookieChoice = function(allowAnalytics){
+    setConsent(allowAnalytics);
+    var el = document.getElementById('nm-cookie-banner');
+    if(el) el.remove();
+  };
+
+  window.nmOpenCookiePolicy = function(){
+    var el = document.getElementById('nm-cookie-banner');
+    if(el) el.remove();
+    if(typeof showPage === 'function') showPage('privacy');
+  };
+
+  // Reopen the banner at any time — wired to "Cookie Preferences" in the
+  // footer and the Privacy Policy page, so withdrawing/changing consent
+  // is exactly as easy as giving it, per POPIA guidance.
+  window.nmOpenCookiePrefs = function(){
+    var el = document.getElementById('nm-cookie-banner');
+    if(el) el.remove();
+    buildBanner();
+  };
+
+  if(!getConsent()){
+    // Wait for the page to be interactive so the banner doesn't fight
+    // with the anti-flash/loading sequence on first paint.
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', function(){ setTimeout(buildBanner, 400); });
+    } else {
+      setTimeout(buildBanner, 400);
+    }
   }
 })();
 </script>
