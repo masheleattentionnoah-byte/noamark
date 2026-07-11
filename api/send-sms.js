@@ -8,13 +8,17 @@
 // Then redeploy.
 
 export default async function handler(req, res) {
-  // Only allow POST
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).json({ ok: false, reason: 'method not allowed' });
-  }
-
   // Basic CORS lock-down — only allow calls from your own domain.
+  // This MUST run before any method check below. Cross-origin POST
+  // requests with a JSON body are "non-simple" requests, so the browser
+  // sends a silent OPTIONS preflight first and only proceeds with the
+  // real POST if that preflight succeeds. If the method check ran first
+  // (as it used to), every OPTIONS preflight was rejected with 405
+  // before ever reaching the OPTIONS-handling code below — so the
+  // browser would refuse to even attempt the real request, and it would
+  // fail completely silently on the frontend (caught by nmSendSMS's
+  // try/catch, logged only to the console). Setting CORS headers and
+  // answering OPTIONS first fixes that.
   const origin = req.headers.origin || '';
   const allowedOrigins = [
     'https://noamark.com',
@@ -30,6 +34,12 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
+  }
+
+  // Only allow POST for the actual request
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ ok: false, reason: 'method not allowed' });
   }
 
   try {
