@@ -3094,14 +3094,22 @@
             </div>
           </div>
         </div>
+        <div class="dash-card" style="margin-top:2px;">
+          <div class="dash-card-title">Account & Security</div>
+          <div style="font-size:12px;color:var(--white-dim);line-height:1.7;margin-bottom:14px;">Logged in with a temporary password an admin gave you? Set your own password here.</div>
+          <div class="auth-error" id="dash-cpw-error"></div>
+          <div class="auth-success" id="dash-cpw-success"></div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <input type="password" id="dash-cpw-current" placeholder="Current / temporary password" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 12px;font-size:12px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+            <input type="password" id="dash-cpw-new" placeholder="New password" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 12px;font-size:12px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+            <input type="password" id="dash-cpw-confirm" placeholder="Confirm new password" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 12px;font-size:12px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+            <button class="btn-ghost" id="dash-cpw-btn" style="justify-content:center;padding:12px 20px;font-size:10px;" onclick="nmChangePassword('dash-cpw-current','dash-cpw-new','dash-cpw-confirm','dash-cpw-error','dash-cpw-success','dash-cpw-btn')">Update Password</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </div>
-
-<!-- ════════════════════════════════════
-     PAGE: MARKETPLACE
-════════════════════════════════════ -->
 <div id="page-marketplace" class="page">
 
   <!-- SEARCH HERO -->
@@ -4123,6 +4131,27 @@
               <div class="bp-toggle-row"><div><div class="bp-toggle-label">Review alerts</div><div class="bp-toggle-desc">Alert when a review is posted</div></div><label class="bp-tgl"><input type="checkbox" id="notif-review" checked onchange="saveNotifPrefs()"><span class="bp-tgl-s"></span></label></div>
               <div class="bp-toggle-row"><div><div class="bp-toggle-label">Boost expiry reminders</div><div class="bp-toggle-desc">Remind before boost expires</div></div><label class="bp-tgl"><input type="checkbox" id="notif-boost" checked onchange="saveNotifPrefs()"><span class="bp-tgl-s"></span></label></div>
               <div class="bp-toggle-row"><div><div class="bp-toggle-label">AI tips</div><div class="bp-toggle-desc">Weekly AI improvement suggestions</div></div><label class="bp-tgl"><input type="checkbox" id="notif-ai" onchange="saveNotifPrefs()"><span class="bp-tgl-s"></span></label></div>
+            </div>
+          </div>
+          <div class="bp-card">
+            <div class="bp-card-title">Change Password</div>
+            <div style="font-size:12px;color:var(--white-dim);line-height:1.7;margin-bottom:16px;">Logged in with a temporary password an admin gave you? Set your own password here — you'll use it next time you log in.</div>
+            <div class="auth-error" id="bp-cpw-error"></div>
+            <div class="auth-success" id="bp-cpw-success"></div>
+            <div style="display:flex;flex-direction:column;gap:12px;max-width:420px;">
+              <div>
+                <label style="font-size:11px;color:var(--white-dim);display:block;margin-bottom:6px;">Current password</label>
+                <input type="password" id="bp-cpw-current" placeholder="Your current or temporary password" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--white-dim);display:block;margin-bottom:6px;">New password</label>
+                <input type="password" id="bp-cpw-new" placeholder="At least 8 characters, 1 uppercase, 1 number, 1 special" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--white-dim);display:block;margin-bottom:6px;">Confirm new password</label>
+                <input type="password" id="bp-cpw-confirm" placeholder="Re-enter your new password" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+              </div>
+              <button class="bp-btn bp-btn-gold" id="bp-cpw-btn" style="justify-content:center;" onclick="nmChangePassword('bp-cpw-current','bp-cpw-new','bp-cpw-confirm','bp-cpw-error','bp-cpw-success','bp-cpw-btn')">Update Password</button>
             </div>
           </div>
           <div class="bp-card">
@@ -8577,6 +8606,67 @@ async function nmVerifyPassword(password, storedStr) {
   } catch(e) {
     console.warn('Password verify error', e);
     return false;
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// CHANGE PASSWORD — lets a logged-in business owner or subscriber
+// set their own permanent password. This is the step that was
+// missing after an admin issues a temporary password via the
+// Admin → Resets panel: previously there was nowhere in the app
+// for the user to actually change it once logged in.
+// Shared between the business portal and the subscriber dashboard —
+// pass in the ids of the 3 password fields, the error/success
+// message divs, and the submit button for whichever form is calling it.
+// ────────────────────────────────────────────────────────────
+async function nmChangePassword(curId, newId, confId, errId, sucId, btnId) {
+  const curPass  = document.getElementById(curId).value;
+  const newPass  = document.getElementById(newId).value;
+  const confPass = document.getElementById(confId).value;
+
+  if (!currentUser || !currentUser.email) { showAuthError(errId, 'You must be logged in to change your password.'); return; }
+  if (!curPass || !newPass || !confPass)  { showAuthError(errId, 'Please fill in all three fields.'); return; }
+  if (!validateStrongPassword(newPass, errId)) return;
+  if (newPass !== confPass) { showAuthError(errId, 'New password and confirmation do not match.'); return; }
+  if (newPass === curPass)  { showAuthError(errId, 'Your new password must be different from your current one.'); return; }
+
+  const btn = document.getElementById(btnId);
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Updating...';
+
+  try {
+    // Re-fetch the stored hash fresh from Supabase — currentUser (in memory
+    // / localStorage) never holds the password, by design, so this is the
+    // only place we can verify the current password against.
+    const result = await nmSupaQuery(() =>
+      _supa.from('users').select('id,password').ilike('email', currentUser.email).limit(1)
+    );
+    const row = result && result.data && result.data[0];
+    if (!row) { showAuthError(errId, 'Could not find your account. Please contact support.'); return; }
+
+    const ok = await nmVerifyPassword(curPass, row.password);
+    if (!ok) { showAuthError(errId, 'Your current password is incorrect.'); return; }
+
+    const { stored } = await nmHashPassword(newPass);
+    const { data, error } = await nmSupaQuery(() =>
+      _supa.from('users').update({ password: stored }).eq('id', row.id).select()
+    );
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      // Same silent-RLS-block pattern as the admin delete buttons — verify
+      // the write actually landed instead of trusting an empty success.
+      throw new Error('The update did not go through. Please contact support.');
+    }
+
+    showAuthSuccess(sucId, '✓ Password updated. Use your new password next time you log in.');
+    document.getElementById(curId).value  = '';
+    document.getElementById(newId).value  = '';
+    document.getElementById(confId).value = '';
+  } catch(e) {
+    console.error('Change password error:', e);
+    showAuthError(errId, 'Something went wrong: ' + (e && e.message ? e.message : 'please try again.'));
+  } finally {
+    btn.disabled = false; btn.textContent = originalText;
   }
 }
 
