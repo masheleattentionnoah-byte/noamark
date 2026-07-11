@@ -4759,7 +4759,12 @@ function showPage(id, cb){
     showPage('marketplace', () => setTimeout(() => showMktView('admin'), 100));
     return;
   }
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
+  // The line above also clears any leftover inline style.display:none that
+  // showAdminDashboard() sets directly on every .page element. Without this,
+  // an inline style always wins over the .page.active{display:block} CSS
+  // rule below, so re-adding the 'active' class after leaving admin did
+  // nothing — the page stayed invisible (blank white screen after logout).
   // The admin dashboard (#page-admin) isn't part of the .page class system —
   // showAdminDashboard() shows it with a direct inline style.display, so it's
   // never touched by the .page toggling above. Without this, navigating away
@@ -12138,15 +12143,24 @@ async function admDeleteSub(id, btn) {
   const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = '⏳'; btn.style.opacity = '.6';
   try {
-    const { error } = await nmSupaQuery(() => _supa.from('subscription_requests').delete().eq('id', id));
+    // .select() after delete() makes Supabase return the rows it actually
+    // deleted. Without this, a delete blocked by a Row Level Security (RLS)
+    // policy still comes back with error:null (RLS filters rows silently,
+    // it doesn't throw) — so checking only `error` reports false success
+    // even when nothing was removed. Checking the returned array is the
+    // only reliable way to know the delete really happened.
+    const { data, error } = await nmSupaQuery(() => _supa.from('subscription_requests').delete().eq('id', id).select());
     if(error) throw error;
+    if(!data || data.length === 0) {
+      throw new Error('No row was deleted — this is likely a Supabase Row Level Security (RLS) policy blocking DELETE on subscription_requests for this account.');
+    }
     const row = btn.closest('tr');
     if(row) { row.style.opacity = '0'; row.style.transition = 'opacity .3s'; setTimeout(()=>row.remove(), 300); }
     setTimeout(()=>{ admLoadOverview(); }, 350);
   } catch(e) {
     console.error('Delete sub error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
-    alert('Delete failed. Check your Supabase connection and try again.');
+    alert('Delete failed: ' + (e && e.message ? e.message : 'Check your Supabase connection and try again.'));
   }
 }
 
