@@ -12008,13 +12008,18 @@ async function admLoadOverview() {
     // retry config than critical writes — 2 attempts at 5s each instead of
     // 3 attempts at 8s each — so a bad connection surfaces a retry button
     // in a few seconds instead of silently hanging for up to a minute.
-    const [bizRes, userRes, enqRes, pendingRes, subsRes] = await Promise.all([
+    const [bizRes, userRes, enqRes, pendingRes, subsRes, subUsersRes] = await Promise.all([
       nmSupaQuery(() => _supa.from('listings').select('id,status,boost_tier'), 2, 5000),
       nmSupaQuery(() => _supa.from('users').select('id,role'), 2, 5000),
       nmSupaQuery(() => _supa.from('enquiries').select('id'), 2, 5000),
       nmSupaQuery(() => _supa.from('listings').select('*').eq('status','pending').order('created_at',{ascending:false}).limit(5), 2, 5000),
       nmSupaQuery(() => _supa.from('subscription_requests').select('*').order('created_at',{ascending:false}).limit(10), 1, 5000)
         .catch(e => { console.warn('subscription_requests read failed (table may not exist yet):', e); return { data: [] }; }),
+      // Fetch existing learner accounts so the "Paid & Active" row can be
+      // cross-checked against a REAL login account with a matching plan —
+      // see the note above admMarkPaid for why this matters.
+      nmSupaQuery(() => _supa.from('users').select('email,plan').eq('role','subscriber'), 2, 5000)
+        .catch(() => ({ data: [] })),
     ]);
     const listings = bizRes.data || [];
     const users = userRes.data || [];
@@ -12052,6 +12057,7 @@ async function admLoadOverview() {
     }
 
     const subsData = subsRes.data || [];
+    const subUsers = subUsersRes.data || [];
     set('adm-stat-subs', subsData.filter(s => s.status === 'pending' || !s.status).length);
     // Map so admApproveSub/admRejectSub can look up name/phone/plan by id
     window._pendingSubsMap = window._pendingSubsMap || {};
@@ -12070,9 +12076,26 @@ async function admLoadOverview() {
             // them sitting in this list forever.
             const deleteLink = '<br><button class="adm-btn" style="background:none;color:rgba(248,113,113,.6);border:none;margin-top:4px;font-size:10px;text-decoration:underline;padding:2px 0;" onclick="admDeleteSub(\'' + s.id + '\',this)">🗑 Delete</button>';
             if(st === 'approved') {
-              actionCell = (s.payment_status === 'paid')
-                ? '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Paid &amp; Active</span><br><button class="adm-btn" style="background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.25);margin-top:4px;font-size:10px;" onclick="admUndoPaid(\'' + s.id + '\',this)">↩ Undo (not paid)</button>' + deleteLink
-                : '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Approved</span><br><button class="adm-btn" style="background:rgba(244,196,48,.15);color:#F4C430;border:1px solid rgba(244,196,48,.3);margin-top:4px;" onclick="admMarkPaid(\'' + s.id + '\',this)">💰 Mark as Paid</button><br><button class="adm-btn" style="background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.25);margin-top:4px;font-size:10px;" onclick="admUnapproveSub(\'' + s.id + '\',this)">↩ Un-approve</button>' + deleteLink;
+              if (s.payment_status === 'paid') {
+                // BUG THIS FIXES: "Paid & Active" used to display unconditionally
+                // the moment payment_status was set, even when there was no
+                // actual login account to grant the plan to — the request form
+                // never required the requester to have an account, so
+                // admMarkPaid's "upgrade the matching users row" step silently
+                // has nothing to upgrade. It DID flag this with a one-time
+                // alert() at click time, but that's easy to dismiss and
+                // forget — the row itself kept saying "Paid & Active" forever
+                // after, with no ongoing sign that the plan was never actually
+                // granted. This cross-checks against real accounts on every
+                // load and shows a persistent warning until it's genuinely fixed.
+                const matchingAcct = s.email ? subUsers.find(u => u.email && u.email.toLowerCase() === s.email.toLowerCase()) : null;
+                const planGranted = matchingAcct && matchingAcct.plan === s.plan;
+                actionCell = planGranted
+                  ? '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Paid &amp; Active</span><br><button class="adm-btn" style="background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.25);margin-top:4px;font-size:10px;" onclick="admUndoPaid(\'' + s.id + '\',this)">↩ Undo (not paid)</button>' + deleteLink
+                  : '<span style="color:#fbbf24;font-weight:700;font-size:11px;">⚠️ Paid, but no account yet</span><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;line-height:1.4;">They haven\'t signed up with ' + nmSafe(s.email||'this email') + ' yet — ask them to, then it applies automatically.</div><button class="adm-btn" style="background:rgba(244,196,48,.15);color:#F4C430;border:1px solid rgba(244,196,48,.3);margin-top:4px;font-size:10px;" onclick="admMarkPaid(\'' + s.id + '\',this)">↻ Re-check now</button>' + deleteLink;
+              } else {
+                actionCell = '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Approved</span><br><button class="adm-btn" style="background:rgba(244,196,48,.15);color:#F4C430;border:1px solid rgba(244,196,48,.3);margin-top:4px;" onclick="admMarkPaid(\'' + s.id + '\',this)">💰 Mark as Paid</button><br><button class="adm-btn" style="background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.25);margin-top:4px;font-size:10px;" onclick="admUnapproveSub(\'' + s.id + '\',this)">↩ Un-approve</button>' + deleteLink;
+              }
             } else if(st === 'rejected') {
               actionCell = '<span style="color:#f87171;font-weight:700;font-size:11px;">✗ Rejected</span><br><button class="adm-btn" style="background:rgba(99,179,237,.1);color:#63b3ed;border:1px solid rgba(99,179,237,.25);margin-top:4px;font-size:10px;" onclick="admUnapproveSub(\'' + s.id + '\',this)">↩ Reconsider</button>' + deleteLink;
             } else {
@@ -12233,7 +12256,12 @@ async function admApproveSub(id, btn) {
         ' plan request has been approved! To activate your account and complete payment (' + price + '), tap here: ' +
         activateLink + '. Your plan goes live as soon as payment is confirmed.';
       if(sub.phone) { try { await nmSendSMS(sub.phone, 'NoaMark: ' + bodyMsg); } catch(e) { console.warn('Approval SMS failed:', e); } }
-      if(sub.email) { try { await nmSendEmail(sub.email, 'Your NoaMark ' + planLabel + ' plan is approved', bodyMsg); } catch(e) { console.warn('Approval email failed:', e); } }
+      if(sub.email) {
+        try {
+          const emailResult = await nmSendEmail(sub.email, 'Your NoaMark ' + planLabel + ' plan is approved', bodyMsg);
+          if (!emailResult || !emailResult.ok) nmToast('⚠️ Approval email could not be sent to ' + sub.email + ' — check Resend setup.', 5000);
+        } catch(e) { console.warn('Approval email failed:', e); nmToast('⚠️ Approval email could not be sent to ' + sub.email + '.', 5000); }
+      }
     }
 
     btn.textContent = '✓ Done!'; btn.style.background = '#dcfce7'; btn.style.opacity = '1';
@@ -12293,7 +12321,12 @@ async function admMarkPaid(id, btn) {
     const bodyMsg = 'Payment confirmed! Your ' + planLabel + ' plan is now active. ' +
       'Log in to noamark.com to access your content.';
     if(sub.phone) { try { await nmSendSMS(sub.phone, 'NoaMark: ' + bodyMsg); } catch(e) { console.warn('Paid-confirmation SMS failed:', e); } }
-    if(sub.email) { try { await nmSendEmail(sub.email, 'Your NoaMark ' + planLabel + ' plan is active', bodyMsg); } catch(e) { console.warn('Paid-confirmation email failed:', e); } }
+    if(sub.email) {
+      try {
+        const emailResult = await nmSendEmail(sub.email, 'Your NoaMark ' + planLabel + ' plan is active', bodyMsg);
+        if (!emailResult || !emailResult.ok) nmToast('⚠️ Confirmation email could not be sent to ' + sub.email + ' — check Resend setup.', 5000);
+      } catch(e) { console.warn('Paid-confirmation email failed:', e); nmToast('⚠️ Confirmation email could not be sent to ' + sub.email + '.', 5000); }
+    }
 
     btn.textContent = '✓ Done!'; btn.style.background = '#dcfce7'; btn.style.opacity = '1';
     if(!accountFound) {
