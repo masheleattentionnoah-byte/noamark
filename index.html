@@ -4958,7 +4958,19 @@ window.addEventListener('popstate', function(e) {
   const _sessionRole = (currentUser && currentUser.type) || _getSessionRole();
   if (_sessionRole === 'business' && !_overlayOpen) {
     const state = e.state || {};
-    const isPortal = state.nmPage === 'marketplace' && state.nmView === 'admin';
+    // nmBizPreview: business owner previewing their OWN listing (opened via
+    // "View My Listing" in the portal). That flow deliberately shows the
+    // public profile page for a moment, and the booking modal can be opened
+    // from there to test the customer flow. Without this exception, closing
+    // that modal (or pressing back) landed on the profile state, which this
+    // block treated as "business account leaked onto a public page" and
+    // immediately punted them back into the portal — discarding the page
+    // they just tried to return to and pushing yet another entry on top.
+    // Repeat that a couple of times and the back button stops going
+    // anywhere the user expects, which is exactly what was being reported
+    // as the back button "exiting the whole site" from the business
+    // dashboard specifically (this path doesn't exist for public visitors).
+    const isPortal = (state.nmPage === 'marketplace' && state.nmView === 'admin') || state.nmBizPreview === true;
     if (!isPortal) {
       // Instantly hide homepage and any other page that might flash
       // BEFORE any rendering can happen — this eliminates the visual flash
@@ -6266,8 +6278,17 @@ function showBizProfile(id){
   // Store the current profile bizId on window so the lightbox back-button handler
   // can always reconstruct the correct profile state without relying on history state
   window._currentProfileBizId = String(id);
-  // Push profile state so phone back button returns to marketplace listing
-  if(!window._nmSupressHistoryPush) history.pushState({ nmPage: 'marketplace', nmView: 'profile', nmBizId: String(id) }, '', '#marketplace/profile/' + id);
+  // Push profile state so phone back button returns to marketplace listing.
+  // nmBizPreview marks "business owner previewing their own live listing"
+  // (set by bpViewMyListing) so the popstate handler's business-redirect
+  // logic (which normally forces business accounts straight to the portal
+  // on any non-portal state) knows to let this one state through instead
+  // of immediately bouncing them out of their own preview.
+  if(!window._nmSupressHistoryPush) {
+    const _previewFlag = window._nmBizPreview === true;
+    window._nmBizPreview = false;
+    history.pushState({ nmPage: 'marketplace', nmView: 'profile', nmBizId: String(id), nmBizPreview: _previewFlag }, '', '#marketplace/profile/' + id);
+  }
   const fullAddress=encodeURIComponent([biz.address,biz.area,biz.city,biz.province].filter(Boolean).join(', ')||biz.area||biz.name);
   const googleMapsUrl=`https://www.google.com/maps/search/?api=1&query=${fullAddress}`;
   // Embeddable map — shows the location right on the page instead of sending
@@ -10342,6 +10363,7 @@ function bpViewMyListing() {
     bpToast('Add your listing first to preview it live.');
     return;
   }
+  window._nmBizPreview = true;
   showPage('marketplace', () => setTimeout(() => showBizProfile(myListing.id), 100));
 }
 
@@ -13329,6 +13351,17 @@ function openBookingModal(bizId, bizName, bizCat) {
 
   const modal = document.getElementById('booking-modal');
   modal.style.display = 'flex';
+  // Lock background scroll. overflow:hidden on <body> alone does NOT
+  // reliably stop background scrolling on mobile (iOS/Android momentum
+  // scrolling bypasses it) — that's why the page behind the modal was
+  // still moving on phones even though it looked fixed on desktop.
+  // Freezing body in place at its current scroll offset with
+  // position:fixed works on every platform; we restore the exact
+  // scroll position when the modal closes.
+  window._bmScrollY = window.scrollY || window.pageYOffset || 0;
+  document.body.style.position = 'fixed';
+  document.body.style.top = '-' + window._bmScrollY + 'px';
+  document.body.style.width = '100%';
   document.body.style.overflow = 'hidden';
   document.body.classList.add('nm-scroll-locked');
 }
@@ -13382,8 +13415,12 @@ async function loadBmAvailability(bizId) {
 
 function closeBookingModal() {
   document.getElementById('booking-modal').style.display = 'none';
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.width = '';
   document.body.style.overflow = '';
   document.body.classList.remove('nm-scroll-locked');
+  window.scrollTo(0, window._bmScrollY || 0);
   // openBookingModal() pushes a history entry so the physical back button
   // can close the modal. But when the modal is closed some OTHER way (the
   // ✕ button, clicking outside it, ESC, or auto-close after a successful
