@@ -4540,7 +4540,7 @@
 <div class="chatbot-window" id="chat-window">
   <div class="chatbot-header">
     <div>
-      <div class="chatbot-name">Noah — Business Guide <span class="ai-powered-tag">AI</span></div>
+      <div class="chatbot-name">Maya — Business Guide <span class="ai-powered-tag">AI</span></div>
       <div class="chatbot-status">● Online · Ready to help</div>
     </div>
     <button class="chatbot-close" onclick="toggleChat()">×</button>
@@ -4548,7 +4548,7 @@
   <div class="chatbot-messages" id="c-msgs"></div>
   <div class="cquick-area" id="c-quick"></div>
   <div class="chatbot-input-wrap">
-    <input type="text" class="chatbot-input" id="c-input" placeholder="Ask Noah anything..." onkeydown="if(event.key==='Enter')cSend()">
+    <input type="text" class="chatbot-input" id="c-input" placeholder="Ask Maya anything..." onkeydown="if(event.key==='Enter')cSend()">
     <button class="chatbot-send" id="c-send-btn" onclick="cSend()">→</button>
   </div>
 </div>
@@ -8509,7 +8509,7 @@ function cSetQuick(opts,cb){
     document.getElementById('c-quick').appendChild(b);
   });
 }
-function askNoah(q){
+function askMaya(q){
   const type = currentUser?.type || 'guest';
   cAddBot('...');
   setTimeout(()=>{
@@ -8557,7 +8557,7 @@ function askNoah(q){
         cAddBot('I can help with business tips, customer growth, reviews and marketing. What do you need help with?');
         cSetQuick(['Get more customers','Marketing tips','View my portal'],r=>{
           if(r.includes('portal')) showPage('dashboard');
-          else askNoah(r);
+          else askMaya(r);
         });
       }
     } else {
@@ -8569,7 +8569,7 @@ function askNoah(q){
 function noahStart(){
   const type = currentUser?.type || 'guest';
   setTimeout(()=>{
-    cAddBot("Hi! I'm Noah, your NoaMark guide. 👋");
+    cAddBot("Hi! I'm Maya, your NoaMark guide. 👋");
     setTimeout(()=>{
       if(type === 'guest') {
         // Explorer — only marketplace/business discovery
@@ -8577,7 +8577,7 @@ function noahStart(){
         setTimeout(()=>{
           cSetQuick(["Find businesses near me","Search by category","How does NoaMark work?"],r=>{
             if(r.includes('Find')||r.includes('Search')) showPage('marketplace');
-            else askNoah(r);
+            else askMaya(r);
           });
         },600);
       } else if(type === 'subscriber') {
@@ -8587,7 +8587,7 @@ function noahStart(){
           cSetQuick(["Browse opportunities","Latest business ideas","How do I access content?"],r=>{
             if(r.includes('opportunit')) showPage('opportunities');
             else if(r.includes('content')||r.includes('ideas')) showPage('learning');
-            else askNoah(r);
+            else askMaya(r);
           });
         },600);
       } else if(type === 'business') {
@@ -8596,7 +8596,7 @@ function noahStart(){
         setTimeout(()=>{
           cSetQuick(["View my portal","Get business tips","How do I get more customers?"],r=>{
             if(r.includes('portal')) showPage('dashboard');
-            else askNoah(r);
+            else askMaya(r);
           });
         },600);
       } else {
@@ -8605,7 +8605,7 @@ function noahStart(){
         setTimeout(()=>{
           cSetQuick(["Find local businesses","How does NoaMark work?"],r=>{
             if(r.includes('local')) showPage('marketplace');
-            else askNoah(r);
+            else askMaya(r);
           });
         },600);
       }
@@ -8618,7 +8618,7 @@ function cSend(){
   document.getElementById('c-input').value='';
   cAddUser(val);
   cClearQuick();
-  askNoah(val);
+  askMaya(val);
 }
 
 
