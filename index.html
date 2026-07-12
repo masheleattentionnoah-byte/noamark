@@ -5136,6 +5136,12 @@ window.addEventListener('popstate', function(e) {
       const mktPage = document.getElementById('page-marketplace');
       if(mktPage) mktPage.classList.add('active');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      // showPage() always re-runs the scroll-reveal trigger after showing a
+      // page; this restore path didn't, so content that never got a chance
+      // to reveal (e.g. navigated away again within ~100ms of arriving)
+      // stayed permanently opacity:0 — page visible, content invisible,
+      // which looks identical to the page itself being blank.
+      setTimeout(initReveal, 100);
       // Restore the business profile — use state bizId, fall back to window var
       const restoreBizId = (view === 'profile')
         ? (e.state.nmBizId || window._currentProfileBizId || null)
@@ -5161,6 +5167,10 @@ window.addEventListener('popstate', function(e) {
       if(pageEl) {
         pageEl.classList.add('active');
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Same fix as the marketplace branch above — re-trigger scroll-reveal
+        // so content isn't stuck invisible if it never got revealed the
+        // first time this page was shown.
+        setTimeout(initReveal, 100);
         if(id === 'dashboard') renderDashboardStats();
         if(id === 'home') {
           // Business owners must never land on the homepage — send to portal
@@ -5195,6 +5205,7 @@ window.addEventListener('popstate', function(e) {
     if(home) home.classList.add('active');
     if(typeof applyRoleHomePage === 'function') setTimeout(() => applyRoleHomePage(currentUser), 50);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(initReveal, 100);
   }
 });
 
