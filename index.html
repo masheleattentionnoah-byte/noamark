@@ -5003,19 +5003,20 @@ window.addEventListener('popstate', function(e) {
   const gateOverlay = document.getElementById('gate-overlay');
   if(gateOverlay && gateOverlay.classList.contains('active')) {
     closeGate();
-    history.pushState(e.state || { nmPage: 'marketplace', nmView: 'main' }, '', window.location.href);
+    // replaceState, not pushState — see booking-modal note below for why.
+    history.replaceState(e.state || { nmPage: 'marketplace', nmView: 'main' }, '', window.location.href);
     return;
   }
   const activateOverlay = document.getElementById('activate-overlay');
   if(activateOverlay && activateOverlay.classList.contains('active')) {
     closeActivateOverlay();
-    history.pushState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
+    history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
     return;
   }
   const bizGateModal = document.getElementById('biz-gate-modal');
   if(bizGateModal) {
     closeBusinessGate();
-    history.pushState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
+    history.replaceState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
     return;
   }
 
@@ -5028,29 +5029,37 @@ window.addEventListener('popstate', function(e) {
     const forgotScreen = document.getElementById('auth-forgot-screen');
     if(forgotScreen && forgotScreen.style.display === 'block') {
       hideForgotPassword();
-      history.pushState({ nmPage: 'auth', nmView: 'modal' }, '', window.location.href);
+      history.replaceState({ nmPage: 'auth', nmView: 'modal' }, '', window.location.href);
       return;
     }
     if(!authRequired) {
-      authOverlay.classList.remove('active');
+      closeAuth();
     }
-    // Re-push state so we stay here
-    history.pushState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
+    // Re-confirm state so we stay here (replaceState — see booking-modal note)
+    history.replaceState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
     return;
   }
 
   // PRIORITY 1c: Booking modal open → close it, stay on page
+  // NOTE: by the time popstate fires, the browser has ALREADY navigated back
+  // to the entry below the modal's. Calling pushState() here (as this used
+  // to do) creates a NEW duplicate entry on top of that page instead of
+  // just confirming it — silently growing the history stack by one every
+  // time the modal is closed via back. Enough of those and a single back
+  // press starts skipping past the site's own pages entirely (straight to
+  // whatever was open before NoaMark, e.g. Google). Use replaceState
+  // instead — same fix already applied to the lightbox case above.
   const bookingModal = document.getElementById('booking-modal');
   if(bookingModal && bookingModal.style.display === 'flex') {
     closeBookingModal();
-    history.pushState(e.state || { nmPage: 'marketplace', nmView: 'profile' }, '', window.location.href);
+    history.replaceState(e.state || { nmPage: 'marketplace', nmView: 'profile' }, '', window.location.href);
     return;
   }
 
   // PRIORITY 2: AI chatbot open → close it, stay on page
   if(typeof chatOpen !== 'undefined' && chatOpen) {
     toggleChat();
-    history.pushState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
+    history.replaceState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
     return;
   }
 
@@ -5073,7 +5082,7 @@ window.addEventListener('popstate', function(e) {
   const arm = document.getElementById('admin-review-modal');
   if(arm && (arm.style.display === 'flex' || arm.style.display === 'block')) {
     arm.style.display = 'none';
-    history.pushState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
+    history.replaceState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
     return;
   }
 
@@ -8182,13 +8191,33 @@ async function handleSubscribe(){
     const isMatchingSubscriber = currentUser && currentUser.type === 'subscriber' &&
       currentUser.email && currentUser.email.toLowerCase() === email.toLowerCase();
     if(!isMatchingSubscriber) {
-      showSubPageError('Please create your free account first — you\'ll need to log in so we can activate your ' + plan.toUpperCase() + ' plan the moment your payment is confirmed. Opening sign up…');
+      // This used to always say "create your free account" and always pop
+      // open the Sign Up tab — even for someone who already has an account
+      // and simply isn't logged into it right now (or is logged into a
+      // different one). That forced existing users through account
+      // creation for no reason. We can't know for certain whether this
+      // email already has an account without a lookup, but someone typing
+      // a real email into this form is far more likely to already have
+      // one than not — so default to the Log In tab and word the message
+      // to cover both cases, rather than presuming "create".
+      showSubPageError('Please log in (or create a free account if you\'re new) so we can activate your ' + plan.toUpperCase() + ' plan the moment your payment is confirmed. Opening login…');
       setTimeout(() => {
+        window._nmAuthPrefillActive = true;
         openAuth('subscriber');
-        const nameEl = document.getElementById('sub-reg-name');
-        const emailEl = document.getElementById('sub-reg-email');
-        if(nameEl && !nameEl.value) nameEl.value = name;
-        if(emailEl && !emailEl.value) emailEl.value = email;
+        switchAuthMode('sub', 'login', document.querySelectorAll('#sub-mode-toggle .auth-mode-btn')[1]);
+        // Pre-fill both forms so whichever tab they end up on already has
+        // their details — login if they have an account, signup if not.
+        const loginNameEl  = document.getElementById('sub-login-name');
+        const loginEmailEl = document.getElementById('sub-login-email');
+        const signupNameEl  = document.getElementById('sub-reg-name');
+        const signupEmailEl = document.getElementById('sub-reg-email');
+        if(loginNameEl && !loginNameEl.value) loginNameEl.value = name;
+        if(loginEmailEl && !loginEmailEl.value) loginEmailEl.value = email;
+        if(signupNameEl && !signupNameEl.value) signupNameEl.value = name;
+        if(signupEmailEl && !signupEmailEl.value) signupEmailEl.value = email;
+        // Grace window over — from here on, closing the modal without
+        // logging in clears the form normally like any other abandoned attempt.
+        setTimeout(() => { window._nmAuthPrefillActive = false; }, 500);
       }, 1400);
       return;
     }
@@ -8405,6 +8434,7 @@ function showSubPageError(msg) {
   el.style.background = 'rgba(248,113,113,0.12)';
   el.style.color = '#f87171';
   el.style.border = '1px solid rgba(248,113,113,0.3)';
+  el.style.display = 'block';
   el.textContent = '❌ ' + msg;
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
@@ -8421,9 +8451,29 @@ function showSubPageSuccess(msg) {
   el.style.background = 'rgba(74,222,128,0.12)';
   el.style.color = '#4ade80';
   el.style.border = '1px solid rgba(74,222,128,0.3)';
+  el.style.display = 'block';
   el.textContent = msg;
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
+
+// Any edit to the subscribe form after an error/success message was shown
+// invalidates that message — most importantly, changing the plan dropdown
+// after seeing "please log in to activate your X plan" (X being whatever
+// was selected at the time). Without this, the banner just sits there
+// showing the OLD plan name while the form now shows something different,
+// which looks exactly like a contradiction/bug even though nothing was
+// actually wrong — it's just stale.
+document.addEventListener('DOMContentLoaded', function() {
+  const subPage = document.getElementById('page-subscribe');
+  if (!subPage) return;
+  ['input', 'change'].forEach(evt => {
+    subPage.addEventListener(evt, function(e) {
+      if (!e.target.matches('#sub_name,#sub_phone,#sub_email,#sub_plan,#sub_province')) return;
+      const msgEl = document.getElementById('sub-page-msg');
+      if (msgEl) msgEl.style.display = 'none';
+    });
+  });
+});
 
 // ── CHATBOT ──
 let chatOpen=false;
@@ -9149,6 +9199,18 @@ function closeAuth() {
   const modalBody = document.querySelector('.auth-modal-body');
   if(forgotScreen) forgotScreen.style.display = 'none';
   if(modalBody) modalBody.style.display = '';
+  // Wipe every login/signup field and error message on close — an
+  // abandoned attempt (wrong password, changed their mind, navigated away
+  // mid-typing) should never leave old text sitting in the form for the
+  // next time the modal opens, whether that's seconds later or on a
+  // completely separate future visit. This is skipped for a brief window
+  // right after openAuth() intentionally pre-fills name/email (e.g. from
+  // the subscribe page "please log in" flow) so that legitimate hand-off
+  // isn't immediately wiped out.
+  if (!window._nmAuthPrefillActive) {
+    document.querySelectorAll('#auth-overlay input.auth-input').forEach(el => { el.value = ''; });
+    document.querySelectorAll('#auth-overlay .auth-error').forEach(el => { el.textContent = ''; el.style.display = 'none'; });
+  }
 }
 
 // ──────────────────────────────────────────────────
