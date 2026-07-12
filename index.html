@@ -9924,10 +9924,15 @@ function applyRoleHomePage(user) {
 // that closes it the moment you scroll, and pushes a history entry so the
 // back button closes it first before doing anything else.
 // ────────────────────────────────────────────────────────────
+let _nmPreMobileNavState = null;
 function openMobileNav() {
   const nav = document.getElementById('main-nav');
   if (!nav || nav.classList.contains('nav-mobile-open')) return;
   nav.classList.add('nav-mobile-open');
+  // Remember what was current before we push the menu's own entry, so
+  // closeMobileNav() can restore it in place if the menu closes WITHOUT
+  // the back button (see closeMobileNav for why that matters).
+  _nmPreMobileNavState = history.state;
   history.pushState({ nmPage: 'mobile-nav' }, '', window.location.href);
   window.addEventListener('scroll', closeMobileNav, { passive: true });
 }
@@ -9937,6 +9942,27 @@ function closeMobileNav() {
   if (!nav) return;
   nav.classList.remove('nav-mobile-open');
   window.removeEventListener('scroll', closeMobileNav);
+  // BUG THIS FIXES: openMobileNav() pushes a 'mobile-nav' history entry so
+  // the back button closes the menu first. That's fine when the back
+  // button IS what closed it — the browser has already popped that entry
+  // off the stack by the time popstate fires, so history.state below is
+  // no longer 'mobile-nav' and this block is skipped.
+  // But every OTHER way of closing the menu (tapping a nav link, tapping
+  // the hamburger again, scrolling) calls this function directly with no
+  // navigation happening first, so the 'mobile-nav' entry is still sitting
+  // on top of the stack, unconsumed. If a nav link was tapped, showPage()
+  // immediately pushes ANOTHER entry on top of it — two entries stacked
+  // for what the user experienced as one tap. Pressing back once then only
+  // pops the newest entry and lands on the orphaned 'mobile-nav' state,
+  // which no popstate branch recognizes — every page gets hidden and
+  // nothing replaces them, i.e. a blank white screen that only resolves on
+  // a second back press.
+  // Fix: if the 'mobile-nav' entry is still the current one, overwrite it
+  // in place with whatever state preceded it, so it never lingers on the
+  // stack for a later navigation to stack on top of.
+  if (history.state && history.state.nmPage === 'mobile-nav') {
+    history.replaceState(_nmPreMobileNavState, '', window.location.href);
+  }
 }
 
 function toggleMobileNav() {
