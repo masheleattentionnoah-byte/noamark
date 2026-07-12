@@ -4983,7 +4983,7 @@ window.addEventListener('popstate', function(e) {
       history.pushState({ nmPage: 'marketplace', nmView: 'admin' }, '', '#marketplace/portal');
       const mktPage = document.getElementById('page-marketplace');
       if(mktPage) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
         mktPage.classList.add('active');
         mktPage.style.visibility = '';
       }
@@ -5124,7 +5124,15 @@ window.addEventListener('popstate', function(e) {
     }
 
     if(id === 'marketplace') {
-      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      // Also reset inline style.display, not just the 'active' class.
+      // showAdminDashboard() sets display:none directly on every .page
+      // element (inline styles beat the .page.active CSS rule). showPage()
+      // already clears this; this popstate restore path didn't, so back-
+      // navigating to a page after having visited the admin dashboard left
+      // it permanently blank — header visible, content area empty — until
+      // a full showPage() call happened to fix it. Same root cause as the
+      // "blank white screen after logout" bug showPage() already documents.
+      document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
       const mktPage = document.getElementById('page-marketplace');
       if(mktPage) mktPage.classList.add('active');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -5146,7 +5154,9 @@ window.addEventListener('popstate', function(e) {
         showMktView(view && ['main','boost','add','admin'].includes(view) ? view : 'main', false);
       }
     } else {
-      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      // Same fix as above — clear leftover inline display:none too, or a
+      // prior visit to the admin dashboard leaves this page invisible.
+      document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
       const pageEl = document.getElementById('page-' + id);
       if(pageEl) {
         pageEl.classList.add('active');
@@ -5180,7 +5190,7 @@ window.addEventListener('popstate', function(e) {
     }
     // pushState (not replaceState) so home sits ON TOP of the unknown entry.
     history.pushState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
     const home = document.getElementById('page-home');
     if(home) home.classList.add('active');
     if(typeof applyRoleHomePage === 'function') setTimeout(() => applyRoleHomePage(currentUser), 50);
@@ -9701,7 +9711,7 @@ function loginAs(user) {
       if(!currentUser || currentUser.type !== 'business') return;
       if(document.readyState === 'complete') {
         // Activate marketplace page then show admin sub-view — ONE history entry total
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
         const mktPage = document.getElementById('page-marketplace');
         if(mktPage) mktPage.classList.add('active');
         setTimeout(() => { if(currentUser && currentUser.type === 'business') showMktView('admin'); }, 150);
@@ -9717,7 +9727,7 @@ function loginAs(user) {
     const id = pendingBizId;
     closeGate();
     // Activate marketplace page silently, then open the profile (which pushes its own history)
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
     const mktPage = document.getElementById('page-marketplace');
     if(mktPage) mktPage.classList.add('active');
     setTimeout(() => { _originalShowBizProfile(id); }, 200);
