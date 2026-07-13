@@ -4656,6 +4656,11 @@
         <input type="tel" id="bm-cust-phone" placeholder="e.g. 063 418 9749" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;transition:border-color .2s;" onfocus="this.style.borderColor='var(--green-dark)'" onblur="this.style.borderColor='var(--border-soft)'">
       </div>
 
+      <div style="margin-bottom:16px;">
+        <label style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:8px;">Your Email <span style="font-weight:400;color:var(--white-dim);text-transform:none;letter-spacing:0;">(for email confirmation)</span></label>
+        <input type="email" id="bm-cust-email" placeholder="e.g. you@email.com" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;transition:border-color .2s;" onfocus="this.style.borderColor='var(--green-dark)'" onblur="this.style.borderColor='var(--border-soft)'">
+      </div>
+
       <div style="margin-bottom:20px;">
         <label style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:8px;">Additional Notes <span style="font-weight:400;color:var(--white-dim);text-transform:none;letter-spacing:0;">(optional)</span></label>
         <textarea id="bm-notes" rows="3" placeholder="Any special requests, preferences or details for the business…" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 14px;font-size:13px;font-family:var(--font-body);outline:none;resize:vertical;box-sizing:border-box;transition:border-color .2s;" onfocus="this.style.borderColor='var(--green-dark)'" onblur="this.style.borderColor='var(--border-soft)'"></textarea>
@@ -13432,6 +13437,7 @@ function openBookingModal(bizId, bizName, bizCat) {
   document.getElementById('bm-biz-name').textContent = bizName;
   document.getElementById('bm-notes').value   = '';
   document.getElementById('bm-cust-phone').value = currentUser.phone || '';
+  document.getElementById('bm-cust-email').value = currentUser.email || '';
   const st = document.getElementById('bm-status');
   st.style.display = 'none'; st.textContent = '';
   document.getElementById('bm-submit-btn').disabled = false;
@@ -13574,6 +13580,7 @@ async function submitBooking() {
   const partyVal   = (document.getElementById('bm-party') || {}).value || '';
   const notesVal   = document.getElementById('bm-notes').value.trim();
   const phoneVal   = document.getElementById('bm-cust-phone').value.trim();
+  const emailVal   = document.getElementById('bm-cust-email').value.trim();
   const custName   = currentUser.name || currentUser.email || 'Customer';
 
   // Validation
@@ -13592,6 +13599,8 @@ async function submitBooking() {
   if ((_bmType === 'service' || _bmType === 'enquiry') && !serviceVal) {
     showErr('⚠️ Please describe what you need.'); return;
   }
+  if (!emailVal) { showErr('⚠️ Please enter your email so we can send your confirmation.'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) { showErr('⚠️ Please enter a valid email address.'); return; }
 
   btn.disabled = true;
   btn.textContent = '⏳ Sending your request…';
@@ -13603,7 +13612,7 @@ async function submitBooking() {
     const bookRes = await nmSupaQuery(() => _supa.from('bookings').insert({
       listing_id:     _bmBizId,
       customer_name:  custName,
-      customer_email: currentUser.email || '',
+      customer_email: emailVal || currentUser.email || '',
       customer_phone: phoneVal || currentUser.phone || '',
       booking_type:   _bmType,
       booking_date:   dateVal || null,   // DATE column — null allowed for enquiry type
@@ -13626,11 +13635,16 @@ async function submitBooking() {
     const timeLabel  = timeVal ? (' at ' + fmtTime12h(timeVal)) : '';
     const smsToBiz   = 'NoaMark: New ' + typeLabel + ' from ' + custName + (dateLabel ? ' on ' + dateLabel + timeLabel : '') + '. Service: ' + serviceField + '. Login to noamark.com to manage.';
     const smsToUser  = 'NoaMark: Hi ' + custName.split(' ')[0] + ', your ' + typeLabel.toLowerCase() + ' at ' + _bmBizName + (dateLabel ? ' on ' + dateLabel + timeLabel : '') + ' was received. The business will confirm shortly.';
+    const bizEmailAddr = (listing && (listing.owner_email || listing.email)) || '';
+    const emailToBiz  = 'You have a new ' + typeLabel.toLowerCase() + ' request from ' + custName + (dateLabel ? ' on ' + dateLabel + timeLabel : '') + '.\n\nService: ' + serviceField + (notesVal ? '\nNotes: ' + notesVal : '') + '\nCustomer phone: ' + (phoneVal || 'not provided') + '\nCustomer email: ' + emailVal + '\n\nLog in to noamark.com to confirm, decline, or reschedule this request.';
+    const emailToUser = 'Hi ' + custName.split(' ')[0] + ',\n\nYour ' + typeLabel.toLowerCase() + ' at ' + _bmBizName + (dateLabel ? ' on ' + dateLabel + timeLabel : '') + ' was received.\n\n' + _bmBizName + ' will confirm your request shortly — you\'ll get another email (and SMS) as soon as they do.\n\nThanks for booking with NoaMark!';
 
-    // Send SMS via BulkSMS — await both so we know if they actually succeeded
-    const [bizSmsResult, userSmsResult] = await Promise.all([
+    // Send SMS + email in parallel — await all so we know what actually succeeded
+    const [bizSmsResult, userSmsResult, bizEmailResult, userEmailResult] = await Promise.all([
       listing?.phone ? bmSendSMS(listing.phone, smsToBiz) : Promise.resolve({ ok: false, reason: 'no business phone' }),
-      phoneVal       ? bmSendSMS(phoneVal, smsToUser)     : Promise.resolve({ ok: false, reason: 'no customer phone' })
+      phoneVal       ? bmSendSMS(phoneVal, smsToUser)     : Promise.resolve({ ok: false, reason: 'no customer phone' }),
+      bizEmailAddr   ? nmSendEmail(bizEmailAddr, 'New ' + typeLabel + ' request — ' + custName, emailToBiz) : Promise.resolve({ ok: false, reason: 'no business email' }),
+      emailVal       ? nmSendEmail(emailVal, 'Your booking request at ' + _bmBizName, emailToUser) : Promise.resolve({ ok: false, reason: 'no customer email' })
     ]);
 
     // Insert in-portal notification
@@ -13651,9 +13665,13 @@ async function submitBooking() {
     statusEl.style.border     = '1px solid var(--green-dark)';
     statusEl.style.color      = '#86efac';
     let smsNote = '';
-    if (userSmsResult.ok) smsNote = ' You will be notified by SMS.';
+    if (userSmsResult.ok) smsNote = ' You will be notified by SMS';
     else if (phoneVal)    smsNote = ' (SMS notification could not be sent — please check back on the site for updates.)';
-    statusEl.textContent      = '✅ Booking request sent! ' + _bmBizName + ' will confirm shortly.' + smsNote;
+    let emailNote = '';
+    if (userEmailResult.ok) emailNote = smsNote.startsWith(' You') ? ' and email.' : ' You will be notified by email.';
+    else if (!smsNote) emailNote = ' (Email notification could not be sent — please check back on the site for updates.)';
+    if (smsNote.startsWith(' You') && !emailNote) smsNote += '.';
+    statusEl.textContent      = '✅ Booking request sent! ' + _bmBizName + ' will confirm shortly.' + smsNote + emailNote;
     btn.textContent = '✅ Request Sent!';
     btn.style.background = 'rgba(22,101,52,.5)';
 
@@ -13670,6 +13688,7 @@ async function submitBooking() {
       const svcEl  = document.getElementById('bm-service'); if (svcEl) svcEl.value = '';
       const notesEl= document.getElementById('bm-notes'); if (notesEl) notesEl.value = '';
       const phoneEl= document.getElementById('bm-cust-phone'); if (phoneEl) phoneEl.value = '';
+      const emailEl= document.getElementById('bm-cust-email'); if (emailEl) emailEl.value = '';
     }, 1800);
 
   } catch (err) {
@@ -13892,20 +13911,34 @@ async function bpRescheduleBooking(bookingId, customerName, currentDate, current
         updated_at: new Date().toISOString()
       }).eq('id', bookingId)
     );
-    // Notify customer by SMS
-    let smsOk = false;
+    // Notify customer by SMS + email
+    let smsOk = false, emailOk = false, hadContact = false;
     try {
       const bRes = await nmSupaQuery(() =>
-        _supa.from('bookings').select('customer_name,customer_phone,booking_type').eq('id', bookingId).limit(1)
+        _supa.from('bookings').select('customer_name,customer_phone,customer_email,booking_type').eq('id', bookingId).limit(1)
       );
       const b = bRes && bRes.data && bRes.data[0];
-      if (b && b.customer_phone) {
+      if (b) {
         const dateLabel = new Date(newDate + 'T00:00:00').toLocaleDateString('en-ZA', { weekday:'short', day:'numeric', month:'short' });
-        const r = await nmSendSMS(b.customer_phone, 'NoaMark: Your ' + (b.booking_type || 'booking') + ' has been rescheduled to ' + dateLabel + ' at ' + fmtTime12h(newTime) + '. Please contact the business if this does not work for you.');
-        smsOk = !!r.ok;
+        if (b.customer_phone) {
+          hadContact = true;
+          const r = await nmSendSMS(b.customer_phone, 'NoaMark: Your ' + (b.booking_type || 'booking') + ' has been rescheduled to ' + dateLabel + ' at ' + fmtTime12h(newTime) + '. Please contact the business if this does not work for you.');
+          smsOk = !!r.ok;
+        }
+        if (b.customer_email) {
+          hadContact = true;
+          const custFirst = (b.customer_name || 'there').split(' ')[0];
+          const er = await nmSendEmail(b.customer_email, 'Your booking has been rescheduled', 'Hi ' + custFirst + ',\n\nYour ' + (b.booking_type || 'booking') + ' has been rescheduled to ' + dateLabel + ' at ' + fmtTime12h(newTime) + '.\n\nPlease contact the business directly if this new time doesn\'t work for you.\n\nThanks for using NoaMark.');
+          emailOk = !!er.ok;
+        }
       }
-    } catch(smsErr) { console.warn('Reschedule SMS failed:', smsErr); }
-    bpToast(smsOk ? 'Booking rescheduled. Customer notified by SMS.' : 'Booking rescheduled. ⚠ Customer SMS notification could not be sent.');
+    } catch(smsErr) { console.warn('Reschedule notification failed:', smsErr); }
+    const notifiedParts = [];
+    if (smsOk) notifiedParts.push('SMS');
+    if (emailOk) notifiedParts.push('email');
+    if (notifiedParts.length) bpToast('Booking rescheduled. Customer notified by ' + notifiedParts.join(' and ') + '.');
+    else if (hadContact) bpToast('Booking rescheduled. ⚠ Customer notification could not be sent.');
+    else bpToast('Booking rescheduled. No customer contact details on file — not notified.');
     await bpLoadBookings();
   } catch(e) {
     alert('Could not reschedule booking. Please try again.');
@@ -13929,27 +13962,42 @@ async function bpRespondBooking(bookingId, status) {
     await nmSupaQuery(() =>
       _supa.from('bookings').update({ status, updated_at: new Date().toISOString() }).eq('id', bookingId)
     );
-    // Notify customer by SMS
+    // Notify customer by SMS + email
     let smsOk = false, hadPhone = false;
+    let emailOk = false, hadEmail = false;
     try {
       const bRes = await nmSupaQuery(() =>
-        _supa.from('bookings').select('customer_name,customer_phone,booking_type,booking_date,service').eq('id', bookingId).limit(1)
+        _supa.from('bookings').select('customer_name,customer_phone,customer_email,booking_type,booking_date,service').eq('id', bookingId).limit(1)
       );
       const b = bRes && bRes.data && bRes.data[0];
-      if (b && b.customer_phone) {
-        hadPhone = true;
+      if (b) {
         const dateStr = b.booking_date ? new Date(b.booking_date + 'T00:00:00').toLocaleDateString('en-ZA', { weekday:'short', day:'numeric', month:'short' }) : '';
-        const statusMsg = status === 'confirmed'
-          ? 'NoaMark: Great news! Your ' + (b.booking_type || 'booking') + (dateStr ? ' on ' + dateStr : '') + ' has been CONFIRMED. See you then!'
-          : 'NoaMark: Your ' + (b.booking_type || 'booking') + (dateStr ? ' on ' + dateStr : '') + ' was declined. Please contact the business directly to reschedule.';
-        const r = await nmSendSMS(b.customer_phone, statusMsg);
-        smsOk = !!r.ok;
+        if (b.customer_phone) {
+          hadPhone = true;
+          const statusMsg = status === 'confirmed'
+            ? 'NoaMark: Great news! Your ' + (b.booking_type || 'booking') + (dateStr ? ' on ' + dateStr : '') + ' has been CONFIRMED. See you then!'
+            : 'NoaMark: Your ' + (b.booking_type || 'booking') + (dateStr ? ' on ' + dateStr : '') + ' was declined. Please contact the business directly to reschedule.';
+          const r = await nmSendSMS(b.customer_phone, statusMsg);
+          smsOk = !!r.ok;
+        }
+        if (b.customer_email) {
+          hadEmail = true;
+          const custFirst = (b.customer_name || 'there').split(' ')[0];
+          const emailBody = status === 'confirmed'
+            ? 'Hi ' + custFirst + ',\n\nGreat news — your ' + (b.booking_type || 'booking') + (dateStr ? ' on ' + dateStr : '') + ' has been CONFIRMED. See you then!\n\nThanks for booking with NoaMark.'
+            : 'Hi ' + custFirst + ',\n\nUnfortunately your ' + (b.booking_type || 'booking') + (dateStr ? ' on ' + dateStr : '') + ' was declined. Please contact the business directly if you\'d like to reschedule.\n\nThanks for using NoaMark.';
+          const er = await nmSendEmail(b.customer_email, status === 'confirmed' ? 'Your booking is confirmed!' : 'Update on your booking request', emailBody);
+          emailOk = !!er.ok;
+        }
       }
-    } catch(smsErr) { console.warn('Status SMS failed:', smsErr); }
+    } catch(smsErr) { console.warn('Status notification failed:', smsErr); }
     const statusLabel = status === 'confirmed' ? 'confirmed' : 'declined';
-    if (smsOk) bpToast('Booking ' + statusLabel + '. Customer notified by SMS.');
-    else if (hadPhone) bpToast('Booking ' + statusLabel + '. ⚠ Customer SMS notification could not be sent.');
-    else bpToast('Booking ' + statusLabel + '. No customer phone on file — not notified.');
+    const notifiedParts = [];
+    if (smsOk) notifiedParts.push('SMS');
+    if (emailOk) notifiedParts.push('email');
+    if (notifiedParts.length) bpToast('Booking ' + statusLabel + '. Customer notified by ' + notifiedParts.join(' and ') + '.');
+    else if (hadPhone || hadEmail) bpToast('Booking ' + statusLabel + '. ⚠ Customer notification could not be sent.');
+    else bpToast('Booking ' + statusLabel + '. No customer contact details on file — not notified.');
     await bpLoadBookings();
     bpRefreshNotifBadge();
   } catch(e) { alert('Could not update booking. Please try again.'); }
