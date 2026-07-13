@@ -3596,8 +3596,46 @@
         <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:48px;">
           <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:32px;">Step 6 — Contact Info <span style="color:var(--danger);margin-left:8px;">* Required fields</span></p>
           <div class="form-group"><label class="form-label">Owner Full Name *</label><input type="text" class="form-input" id="biz_owner" placeholder="Your full name"></div>
-          <div class="form-group"><label class="form-label">Phone Number *</label><input type="tel" class="form-input" id="biz_phone" placeholder="+27 XX XXX XXXX"></div>
-          <div class="form-group"><label class="form-label">WhatsApp Number *</label><input type="tel" class="form-input" id="biz_whatsapp" placeholder="+27 XX XXX XXXX"></div>
+          <div class="form-group">
+            <label class="form-label">Phone Number *</label>
+            <div style="display:flex;gap:8px;">
+              <select class="form-input" id="biz_phone_country" style="flex:0 0 128px;" onchange="nmUpdatePhonePlaceholders()">
+                <option value="27|9">🇿🇦 +27 (South Africa)</option>
+                <option value="263|9">🇿🇼 +263 (Zimbabwe)</option>
+                <option value="258|9">🇲🇿 +258 (Mozambique)</option>
+                <option value="267|8">🇧🇼 +267 (Botswana)</option>
+                <option value="264|9">🇳🇦 +264 (Namibia)</option>
+                <option value="266|8">🇱🇸 +266 (Lesotho)</option>
+                <option value="268|8">🇸🇿 +268 (Eswatini)</option>
+                <option value="234|10">🇳🇬 +234 (Nigeria)</option>
+                <option value="254|9">🇰🇪 +254 (Kenya)</option>
+                <option value="44|10">🇬🇧 +44 (UK)</option>
+                <option value="1|10">🇺🇸 +1 (USA / Canada / Jamaica)</option>
+              </select>
+              <input type="tel" class="form-input" id="biz_phone" placeholder="XX XXX XXXX" style="flex:1;">
+            </div>
+            <div id="biz_phone_hint" style="font-size:10px;color:var(--white-dim);margin-top:4px;">Enter 9 digits, no leading 0 — e.g. 82 123 4567</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">WhatsApp Number *</label>
+            <div style="display:flex;gap:8px;">
+              <select class="form-input" id="biz_whatsapp_country" style="flex:0 0 128px;" onchange="nmUpdatePhonePlaceholders()">
+                <option value="27|9">🇿🇦 +27 (South Africa)</option>
+                <option value="263|9">🇿🇼 +263 (Zimbabwe)</option>
+                <option value="258|9">🇲🇿 +258 (Mozambique)</option>
+                <option value="267|8">🇧🇼 +267 (Botswana)</option>
+                <option value="264|9">🇳🇦 +264 (Namibia)</option>
+                <option value="266|8">🇱🇸 +266 (Lesotho)</option>
+                <option value="268|8">🇸🇿 +268 (Eswatini)</option>
+                <option value="234|10">🇳🇬 +234 (Nigeria)</option>
+                <option value="254|9">🇰🇪 +254 (Kenya)</option>
+                <option value="44|10">🇬🇧 +44 (UK)</option>
+                <option value="1|10">🇺🇸 +1 (USA / Canada / Jamaica)</option>
+              </select>
+              <input type="tel" class="form-input" id="biz_whatsapp" placeholder="XX XXX XXXX" style="flex:1;">
+            </div>
+            <div id="biz_whatsapp_hint" style="font-size:10px;color:var(--white-dim);margin-top:4px;">Enter 9 digits, no leading 0 — e.g. 82 123 4567</div>
+          </div>
           <div class="form-group"><label class="form-label">Email Address *</label><input type="email" class="form-input" id="biz_email" placeholder="youremail@example.com"></div>
           <div class="form-group"><label class="form-label">Facebook Page <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(optional)</span></label><input type="text" class="form-input" id="biz_facebook" placeholder="Paste your Facebook page link" oninput="nmValidateSocialField('biz_facebook','facebook')"><p style="font-size:11px;color:var(--white-dim);margin-top:6px;line-height:1.5;">💡 On Facebook, open your Page → tap <b>Share</b> → <b>Copy Link</b> → paste it here. This makes sure it links to the right page.</p><div id="biz_facebook_feedback" style="font-size:11px;margin-top:4px;font-weight:600;"></div></div>
           <div class="form-group"><label class="form-label">Instagram Handle <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(optional)</span></label><input type="text" class="form-input" id="biz_instagram" placeholder="Paste your Instagram profile link" oninput="nmValidateSocialField('biz_instagram','instagram')"><p style="font-size:11px;color:var(--white-dim);margin-top:6px;line-height:1.5;">💡 On Instagram, open your profile → tap <b>Share Profile</b> → <b>Copy Link</b> → paste it here. This makes sure it links to the right account.</p><div id="biz_instagram_feedback" style="font-size:11px;margin-top:4px;font-weight:600;"></div></div>
@@ -6164,7 +6202,43 @@ function nmBuildHoursHTML(biz){
 }
 
 // ── SOCIAL MEDIA LINKS ────────────────────────────────────────────────────
-// Facebook/Instagram are collected at signup but were never rendered
+// ── PHONE NUMBER COUNTRY CODE HELPERS ──
+// The business signup form lets the owner pick their country (defaulting to
+// South Africa) instead of guessing at a dial code themselves, and enforces
+// that country's correct number LENGTH exactly — not "roughly close" —
+// since a phone/WhatsApp number that's a digit short or long will silently
+// fail to receive SMS/WhatsApp messages later with no obvious reason why.
+function nmUpdatePhonePlaceholders() {
+  ['biz_phone', 'biz_whatsapp'].forEach(prefix => {
+    const sel  = document.getElementById(prefix + '_country');
+    const hint = document.getElementById(prefix + '_hint');
+    const input = document.getElementById(prefix);
+    if (!sel || !hint || !input) return;
+    const [, lenStr] = sel.value.split('|');
+    const len = parseInt(lenStr, 10);
+    hint.textContent = 'Enter ' + len + ' digits, no leading 0';
+    input.setAttribute('maxlength', len + 4); // allow a little room for spaces while typing
+  });
+}
+
+// Validates one phone field against its selected country's required digit
+// length. Returns the clean E.164 number (e.g. "+27821234567") on success,
+// or null if it doesn't match — caller decides what message to show.
+function nmValidateCountryPhone(fieldId) {
+  const sel   = document.getElementById(fieldId + '_country');
+  const input = document.getElementById(fieldId);
+  if (!sel || !input) return null;
+  const [dialCode, lenStr] = sel.value.split('|');
+  const expectedLen = parseInt(lenStr, 10);
+  // Strip everything except digits, and drop one leading 0 if present
+  // (common when someone types a local-format number like 082... by habit).
+  let digits = input.value.replace(/[^0-9]/g, '');
+  if (digits.startsWith('0')) digits = digits.slice(1);
+  if (digits.length !== expectedLen) return null;
+  return '+' + dialCode + digits;
+}
+
+
 // anywhere on the public profile. Normalizes whatever format the owner
 // typed in (full URL, bare "facebook.com/x", or "@handle") into a working link.
 // Extracts a handle ONLY when we can be confident it's correct — a real
@@ -6208,9 +6282,14 @@ function nmNormalizeInstagramUrl(raw){
 // Deliberately lenient (just needs a dot and no spaces) since we're not
 // verifying the site exists, only that it's a plausible URL to link out to.
 function nmNormalizeWebsiteUrl(raw){
-  const s = (raw || '').trim();
+  let s = (raw || '').trim();
   if(!s) return '';
   if(/\s/.test(s)) return '';
+  // Repair common scheme typos before parsing — e.g. "https//:example.com"
+  // or "https:/example.com" (colon and slashes in the wrong order/count,
+  // very easy to type by accident) both clearly mean "https://example.com".
+  // Only touches the scheme portion; leaves everything else untouched.
+  s = s.replace(/^(https?)[:/]+/i, '$1://');
   const withScheme = /^https?:\/\//i.test(s) ? s : `https://${s}`;
   try {
     const u = new URL(withScheme);
@@ -6945,7 +7024,17 @@ function nextStep(n){
       const email=document.getElementById('biz_email').value.trim();
       if(!owner){alert('Please enter the Owner Full Name.');return false;}
       if(!phone){alert('Please enter a Phone Number.');return false;}
+      if(!nmValidateCountryPhone('biz_phone')){
+        const expLen = document.getElementById('biz_phone_country').value.split('|')[1];
+        alert('That phone number doesn\'t look right for the country selected — it should be exactly ' + expLen + ' digits (not counting the country code).');
+        return false;
+      }
       if(!wa){alert('Please enter a WhatsApp Number.');return false;}
+      if(!nmValidateCountryPhone('biz_whatsapp')){
+        const expLen = document.getElementById('biz_whatsapp_country').value.split('|')[1];
+        alert('That WhatsApp number doesn\'t look right for the country selected — it should be exactly ' + expLen + ' digits (not counting the country code).');
+        return false;
+      }
       if(!email){alert('Please enter an Email Address.');return false;}
       return true;
     }
@@ -6972,7 +7061,7 @@ async function submitBusiness(){
   }
   const name=document.getElementById('biz_name').value.trim();
   const cat=document.getElementById('biz_cat').value;
-  const phone=document.getElementById('biz_phone').value.trim();
+  const phone=nmValidateCountryPhone('biz_phone') || document.getElementById('biz_phone').value.trim();
   const area=document.getElementById('biz_area').value.trim();
   const city=document.getElementById('biz_city').value.trim();
   const address=document.getElementById('biz_address').value.trim();
@@ -6989,7 +7078,7 @@ async function submitBusiness(){
   const menu=document.getElementById('biz_menu').value.trim();
   const walkins=document.getElementById('biz_walkins')?document.getElementById('biz_walkins').value.trim():'';
   const owner=document.getElementById('biz_owner').value.trim();
-  const wa=document.getElementById('biz_whatsapp').value.trim();
+  const wa=nmValidateCountryPhone('biz_whatsapp') || document.getElementById('biz_whatsapp').value.trim();
   const email=document.getElementById('biz_email').value.trim();
   const facebook=document.getElementById('biz_facebook').value.trim();
   const instagram=document.getElementById('biz_instagram').value.trim();
@@ -7134,18 +7223,16 @@ async function submitBusiness(){
   const photoUrl = photoUrls[0] || '';
 
   // Use the structured _menuItems from the menu builder (name, price, photoFile)
-  // Upload any item photos and collect URLs
-  const menuItems = [];
-  for(let i = 0; i < _menuItems.length; i++) {
-    const m = _menuItems[i];
-    if(!m.name.trim()) continue; // skip blank rows
+  // Upload any item photos IN PARALLEL (not one at a time) — with up to 10
+  // menu items each potentially having their own photo, sequential uploads
+  // could take many times longer than necessary on a slow connection.
+  const menuUploadTasks = _menuItems.map((m, i) => (async () => {
+    if(!m.name.trim()) return null; // skip blank rows
     let itemPhotoUrl = m.photoUrl || ''; // keep existing photo URL by default
     if(m.photoFile) {
-      // Only upload if user selected a new photo file
       try {
         const compressed = await nmCompressImage(m.photoFile, 800, 400);
-        const ext = '.jpg';
-        const fileName = 'menu_' + Date.now() + '_' + i + ext;
+        const fileName = 'menu_' + Date.now() + '_' + i + '.jpg';
         const result = await nmSupaQuery(() =>
           _supa.storage.from('business-photos').upload(fileName, compressed, { upsert: true })
         );
@@ -7155,8 +7242,9 @@ async function submitBusiness(){
         }
       } catch(e){ console.warn('Menu item photo upload failed', e); }
     }
-    menuItems.push({ item: m.name.trim(), price: m.price.trim(), photo: itemPhotoUrl });
-  }
+    return { item: m.name.trim(), price: m.price.trim(), photo: itemPhotoUrl };
+  })());
+  const menuItems = (await Promise.all(menuUploadTasks)).filter(Boolean);
 
   // ── GEOCODE THE ADDRESS ──
   // Turns the free-text address/area/city/province into real coordinates so
@@ -7330,7 +7418,43 @@ async function submitBusiness(){
   // Clear editing mode
   window._editingListingId = null;
 
-  if(submitBtn) submitBtn.textContent = '⏳ Sending notification...';
+  if(submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Listing'; submitBtn.style.opacity = '1'; }
+  // Show correct message depending on whether this was an edit or new submission
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#166534;color:#fff;padding:20px 32px;border-radius:4px;font-size:14px;font-weight:500;z-index:9999;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.4);max-width:90vw;';
+  if (isEditMode) {
+    toast.innerHTML = '✅ Listing updated successfully!<br><span style="font-size:12px;opacity:.85;">Your changes have been saved.</span>';
+  } else {
+    toast.innerHTML = '✅ Listing submitted successfully!<br><span style="font-size:12px;opacity:.85;">Your business will be reviewed and approved within 24 hours. We will contact you at ' + phone + '.</span>';
+  }
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 5000);
+  // Clear form fields
+  ['biz_name','biz_cat','biz_type','biz_desc','biz_years','biz_address','biz_area','biz_city','biz_province','biz_landmark','biz_status','biz_price_hint','biz_menu','biz_owner','biz_phone','biz_whatsapp','biz_email','biz_facebook','biz_instagram','biz_website'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['biz_phone_country','biz_whatsapp_country'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+  nmUpdatePhonePlaceholders();
+  nmResetLogoField();
+  ['biz_hours_weekday_open','biz_hours_sat_open','biz_hours_sun_open'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='08:00';});
+  ['biz_hours_weekday_close','biz_hours_sat_close','biz_hours_sun_close'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='17:00';});
+  ['biz_hours_weekday_closed','biz_hours_sat_closed','biz_hours_sun_closed'].forEach(id=>{const el=document.getElementById(id);if(el){el.checked=false;}});
+  ['weekday','sat','sun'].forEach(day=>{ if(typeof nmToggleDayClosed==='function') nmToggleDayClosed(day); });
+  window._replacedPhotos = {};
+  window._removedPhotoIndexes = new Set();
+  if (isEditMode) {
+    // After editing — go back to the business portal, not the public marketplace
+    showPage('marketplace');
+    setTimeout(() => { showMktView('admin'); populateBizDashboard(); loadListingsFromSupabase(true); }, 200);
+  } else {
+    nextStep(1);
+  }
+  // Best-effort admin notification email — fired in the background AFTER the
+  // listing is already confirmed saved above. This is NOT critical: if it
+  // fails (Formspree down, blocked by an ad-blocker/privacy DNS, slow mobile
+  // connection), the listing itself is completely unaffected since it was
+  // already saved. It must never show an error to the business owner or make
+  // them think their submission failed — that was the exact cause of
+  // listings appearing to "fail" and forcing a full restart even though the
+  // listing (with all its photos) had already saved successfully.
   fetch('https://formspree.io/f/xaqajvvj',{
     method:'POST',
     headers:{'Content-Type':'application/json','Accept':'application/json'},
@@ -7342,38 +7466,7 @@ async function submitBusiness(){
       owner,phone,whatsapp:wa,email,facebook,instagram,website,
       transport_sub:document.getElementById('biz_transport_sub')?.value||'',boost,source:'NoaMark Business Listing Submission'
     })
-  }).then(r=>{
-    if(submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Listing'; submitBtn.style.opacity = '1'; }
-    // Show correct message depending on whether this was an edit or new submission
-    const toast = document.createElement('div');
-    toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#166534;color:#fff;padding:20px 32px;border-radius:4px;font-size:14px;font-weight:500;z-index:9999;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.4);max-width:90vw;';
-    if (isEditMode) {
-      toast.innerHTML = '✅ Listing updated successfully!<br><span style="font-size:12px;opacity:.85;">Your changes have been saved.</span>';
-    } else {
-      toast.innerHTML = '✅ Listing submitted successfully!<br><span style="font-size:12px;opacity:.85;">Your business will be reviewed and approved within 24 hours. We will contact you at ' + phone + '.</span>';
-    }
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 5000);
-    // Clear form fields
-    ['biz_name','biz_cat','biz_type','biz_desc','biz_years','biz_address','biz_area','biz_city','biz_province','biz_landmark','biz_status','biz_price_hint','biz_menu','biz_owner','biz_phone','biz_whatsapp','biz_email','biz_facebook','biz_instagram','biz_website'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    nmResetLogoField();
-    ['biz_hours_weekday_open','biz_hours_sat_open','biz_hours_sun_open'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='08:00';});
-    ['biz_hours_weekday_close','biz_hours_sat_close','biz_hours_sun_close'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='17:00';});
-    ['biz_hours_weekday_closed','biz_hours_sat_closed','biz_hours_sun_closed'].forEach(id=>{const el=document.getElementById(id);if(el){el.checked=false;}});
-    ['weekday','sat','sun'].forEach(day=>{ if(typeof nmToggleDayClosed==='function') nmToggleDayClosed(day); });
-    window._replacedPhotos = {};
-    window._removedPhotoIndexes = new Set();
-    if (isEditMode) {
-      // After editing — go back to the business portal, not the public marketplace
-      showPage('marketplace');
-      setTimeout(() => { showMktView('admin'); populateBizDashboard(); loadListingsFromSupabase(true); }, 200);
-    } else {
-      nextStep(1);
-    }
-  }).catch(()=>{
-    if(submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Listing'; submitBtn.style.opacity = '1'; }
-    alert('Connection error. Please email support@noamark.com');
-  });
+  }).catch((e)=>{ console.warn('Admin notification email failed to send (listing itself was already saved successfully):', e); });
 }
 
 // ── BOOST HANDLER ──
@@ -8798,38 +8891,58 @@ function nmObserveLazyImages() {
 // ════════════════════════════════════════════════════════════
 function nmCompressImage(file, maxPx = 800, maxKB = 200) {
   return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result) => { if (!settled) { settled = true; resolve(result); } };
+
+    // Hard safety net: if compression hasn't finished within 12 seconds for
+    // ANY reason (a corrupted file, an unusual format the browser chokes on,
+    // a huge file on a slow phone), fall back to the original file instead of
+    // hanging forever. Without this, one single bad photo among many would
+    // freeze the whole submission indefinitely with no error and no way out
+    // other than reloading and starting over.
+    const timeoutId = setTimeout(() => finish(file), 12000);
+
     const reader = new FileReader();
+    reader.onerror = () => { clearTimeout(timeoutId); finish(file); };
     reader.onload = (e) => {
       const img = new Image();
+      img.onerror = () => { clearTimeout(timeoutId); finish(file); };
       img.onload = () => {
-        let { width, height } = img;
-        if (width > maxPx || height > maxPx) {
-          const ratio = Math.min(maxPx / width, maxPx / height);
-          width  = Math.round(width  * ratio);
-          height = Math.round(height * ratio);
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width  = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
+        try {
+          let { width, height } = img;
+          if (width > maxPx || height > maxPx) {
+            const ratio = Math.min(maxPx / width, maxPx / height);
+            width  = Math.round(width  * ratio);
+            height = Math.round(height * ratio);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width  = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
 
-        // Start at 0.85 quality and reduce until under maxKB
-        let quality = 0.85;
-        const tryCompress = () => {
-          canvas.toBlob(blob => {
-            if (!blob) { resolve(file); return; }
-            if (blob.size > maxKB * 1024 && quality > 0.65) {
-              quality -= 0.1;
-              tryCompress();
-            } else {
-              // Return as a renamed File so upload code still works
-              const compressed = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
-              resolve(compressed);
-            }
-          }, 'image/jpeg', quality);
-        };
-        tryCompress();
+          // Start at 0.85 quality and reduce until under maxKB
+          let quality = 0.85;
+          const tryCompress = () => {
+            canvas.toBlob(blob => {
+              if (!blob) { clearTimeout(timeoutId); finish(file); return; }
+              if (blob.size > maxKB * 1024 && quality > 0.65) {
+                quality -= 0.1;
+                tryCompress();
+              } else {
+                // Return as a renamed File so upload code still works
+                const compressed = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+                clearTimeout(timeoutId);
+                finish(compressed);
+              }
+            }, 'image/jpeg', quality);
+          };
+          tryCompress();
+        } catch(err) {
+          // canvas/drawImage can throw on some corrupted or exotic image data
+          clearTimeout(timeoutId);
+          finish(file);
+        }
       };
       img.src = e.target.result;
     };
