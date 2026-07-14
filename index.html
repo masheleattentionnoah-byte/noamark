@@ -7,7 +7,7 @@
      The 5s gives DOMContentLoaded + Supabase time to finish and remove nm-anti-flash normally. -->
 <script>setTimeout(function(){var s=document.getElementById('nm-anti-flash');if(s)s.remove();},5000);</script>
 <meta charset="UTF-8">
-<meta name="description" content="NoaMark — South Africa's local business discovery platform. Find trusted businesses, trading services, and opportunities in Limpopo, Mpumalanga, Gauteng and beyond.">
+<meta name="description" content="NoaMark: South Africa's local business discovery platform. Find trusted businesses, trading services, and opportunities in Limpopo, Mpumalanga, Gauteng and beyond.">
 <meta name="keywords" content="NoaMark, South Africa local businesses, Limpopo businesses, Giyani businesses, Polokwane businesses, South Africa marketplace, local services South Africa, business directory SA">
 <meta name="author" content="NoaMark">
 <meta name="robots" content="index, follow">
@@ -20,11 +20,11 @@
 <link rel="apple-touch-icon" href="/favicon-512x512.png">
 <link rel="manifest" href="/site.webmanifest">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NoaMark — Discover Local Businesses in South Africa | Limpopo · Mpumalanga · Gauteng</title>
+<title>NoaMark: Discover Local Businesses in South Africa | Limpopo · Mpumalanga · Gauteng</title>
 
 <!-- Open Graph (Facebook, WhatsApp preview) -->
-<meta property="og:title" content="NoaMark — Discover Local Businesses in South Africa">
-<meta property="og:description" content="Find trusted local businesses, services, and opportunities across South Africa. Join NoaMark — the platform built for South African entrepreneurs.">
+<meta property="og:title" content="NoaMark: Discover Local Businesses in South Africa">
+<meta property="og:description" content="Find trusted local businesses, services, and opportunities across South Africa. Join NoaMark: the platform built for South African entrepreneurs.">
 <meta property="og:url" content="https://noamark.com/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="NoaMark">
@@ -35,7 +35,7 @@
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="NoaMark — Discover Local Businesses in South Africa">
+<meta name="twitter:title" content="NoaMark: Discover Local Businesses in South Africa">
 <meta name="twitter:description" content="Find trusted local businesses, services, and opportunities across South Africa.">
 <meta name="twitter:site" content="@noamark">
 <meta name="twitter:image" content="https://noamark.com/favicon-512x512.png">
@@ -462,7 +462,7 @@
   .listing-card{background:var(--black-2);border:1px solid var(--border-soft);overflow:hidden;cursor:pointer;transition:all .35s;position:relative;}
 
   /* ── SUBTLE MOTION ──────────────────────────────────────────────
-     Small, quick animations only — nothing flashy. A gentle fade+rise
+     Small, quick animations only, nothing flashy. A gentle fade+rise
      when cards/listings appear, and a light press-down on buttons so
      taps/clicks feel acknowledged. Both respect reduced-motion. */
   @keyframes nmFadeInUp{
@@ -1387,7 +1387,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style id="nm-motion-system">
 /* ============================================================
-   NM MOTION SYSTEM — subtle, professional scroll + hover motion
+   NM MOTION SYSTEM, subtle, professional scroll + hover motion
    Respects prefers-reduced-motion; degrades gracefully.
    ============================================================ */
 @media (prefers-reduced-motion: no-preference) {
@@ -1535,6 +1535,7 @@
 }
 .home-search-field input::placeholder { color: #9ca3af; }
 .home-search-field .si { color: #9ca3af; font-size: 16px; flex-shrink: 0; }
+.home-search-field .si-location { color: #ef4444; }
 .home-search-btn {
   background: #166534; color: #fff; border: none; padding: 0 28px;
   font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif;
@@ -1797,14 +1798,14 @@
   <div class="home-hero">
     <div class="home-hero-left">
       <h1 class="home-hero-h1">Whatever You Need<br><span class="green">It's Near You</span></h1>
-      <p class="home-hero-sub">Restaurants, barbers, mechanics, plumbers, accommodation, deals and more — every local business around you, in one place.</p>
+      <p class="home-hero-sub">Restaurants, barbers, mechanics, plumbers, accommodation, deals and more. Every local business around you, in one place.</p>
       <div class="home-search-bar">
         <div class="home-search-field">
           <span class="si"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span>
           <input type="text" id="home-search-business" placeholder="Search for businesses, food, services..." />
         </div>
         <div class="home-search-field" style="border-right:none; max-width:200px;">
-          <span class="si"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg></span>
+          <span class="si si-location"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg></span>
           <input type="text" id="home-search-area" placeholder="Enter your area (e.g. Soweto, Alex)" />
         </div>
         <button class="home-search-btn" onclick="homeSearchGo()">Search</button>
@@ -1910,18 +1911,18 @@
       <div class="what-card">
         <span class="what-card-icon">📊</span>
         <h3 class="what-card-title">Opportunity Analysis</h3>
-        <p class="what-card-body">We break down real business ideas with full startup costs, risk analysis, profit projections, and step-by-step setup guides — tailored for township and village markets.</p>
+        <p class="what-card-body">We break down real business ideas with full startup costs, risk analysis, profit projections, and step-by-step setup guides, tailored for township and village markets.</p>
       </div>
       <div class="what-card" style="border-color:rgba(22,101,52,.3);cursor:pointer;" onclick="if(currentUser&&currentUser.type==='business'){showPage('marketplace',()=>setTimeout(()=>showMktView('admin'),100));}else{showPage('marketplace');}">
         <span class="what-card-icon">📍</span>
         <h3 class="what-card-title" style="color:var(--green-dark);">Local Marketplace</h3>
-        <p class="what-card-body">Discover and promote real local businesses in your area. Food, shops, services, beauty, transport — all in one place. List your business free. Boost to reach more customers.</p>
+        <p class="what-card-body">Discover and promote real local businesses in your area. Food, shops, services, beauty, transport, all in one place. List your business free. Boost to reach more customers.</p>
         <div style="margin-top:20px;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green-dark);">Open Marketplace →</div>
       </div>
       <div class="what-card">
         <span class="what-card-icon">🎥</span>
         <h3 class="what-card-title">Business Education</h3>
-        <p class="what-card-body">Weekly videos, guides, and case studies that teach you how to start, run, and scale a business in the African market — from beginner to advanced entrepreneur.</p>
+        <p class="what-card-body">Weekly videos, guides, and case studies that teach you how to start, run, and scale a business in the African market, from beginner to advanced entrepreneur.</p>
       </div>
       <div class="what-card">
         <span class="what-card-icon">🧠</span>
@@ -2006,7 +2007,7 @@
           <li>Priority customer enquiries &amp; leads</li>
           <li>Unlimited photos &amp; media uploads</li>
         </ul>
-        <button class="boost-btn popular-btn" style="background:var(--green-dark);border-color:var(--green-fresh);" onclick="if(!currentUser||currentUser.type!=='business'){showBusinessGate('boost');}else{showPage('subscribe');}">Get Pro — R329.99/mo</button>
+        <button class="boost-btn popular-btn" style="background:var(--green-dark);border-color:var(--green-fresh);" onclick="if(!currentUser||currentUser.type!=='business'){showBusinessGate('boost');}else{showPage('subscribe');}">Get Pro · R329.99/mo</button>
       </div>
     </div>
   </div>
@@ -2325,8 +2326,8 @@
             <h3 style="font-size:15px;font-weight:700;color:#111827;">Cookies &amp; Similar Technologies</h3>
           </div>
           <p style="font-size:14px;color:#4b5563;line-height:1.8;">We use two categories of cookies and local browser storage:</p>
-          <p style="font-size:14px;color:#4b5563;line-height:1.8;margin-top:8px;"><strong>Strictly necessary</strong> — keep you logged in, remember your session and preferences, and let the site function. These are always on and don't require consent, as the site cannot work without them.</p>
-          <p style="font-size:14px;color:#4b5563;line-height:1.8;margin-top:8px;"><strong>Analytics</strong> — anonymous, aggregate site-visit counts that help us understand how NoaMark is used. These are off by default and only activate if you choose "Allow All" in the cookie banner.</p>
+          <p style="font-size:14px;color:#4b5563;line-height:1.8;margin-top:8px;"><strong>Strictly necessary:</strong> keep you logged in, remember your session and preferences, and let the site function. These are always on and don't require consent, as the site cannot work without them.</p>
+          <p style="font-size:14px;color:#4b5563;line-height:1.8;margin-top:8px;"><strong>Analytics:</strong> anonymous, aggregate site-visit counts that help us understand how NoaMark is used. These are off by default and only activate if you choose "Allow All" in the cookie banner.</p>
           <p style="font-size:14px;color:#4b5563;line-height:1.8;margin-top:8px;">Your choice is remembered for 12 months, after which we'll ask again. You can change your preference anytime via <a onclick="nmOpenCookiePrefs()" style="color:#16a34a;font-weight:600;cursor:pointer;text-decoration:underline;">Cookie Preferences</a> in the footer.</p>
         </div>
         <div>
@@ -2473,7 +2474,7 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <p class="footer-copy">© 2026 NoaMark — Noah's Foundation. All rights reserved.</p>
+      <p class="footer-copy">© 2026 NoaMark (a Noah's Foundation project). All rights reserved.</p>
       <p class="footer-reg">NoaMark is a business education and opportunity analysis platform. We are not financial advisors. All business ventures carry risk. Results vary based on individual effort and market conditions. NoaMark operates from Polokwane, Limpopo, South Africa.</p>
     </div>
   </footer>
@@ -2534,7 +2535,7 @@
           <div class="opp-lock-overlay">
             <div class="opp-lock-icon">🔒</div>
             <div class="opp-lock-label">VIP Members Only</div>
-            <a class="btn-primary" onclick="showPage('plans')" style="font-size:9px;padding:10px 20px;margin-top:4px;">Unlock — R99.99/mo</a>
+            <a class="btn-primary" onclick="showPage('plans')" style="font-size:9px;padding:10px 20px;margin-top:4px;">Unlock · R99.99/mo</a>
           </div>
         </div>
         <div class="opp-card locked">
@@ -2548,7 +2549,7 @@
           <div class="opp-lock-overlay">
             <div class="opp-lock-icon">🔒</div>
             <div class="opp-lock-label">VIP Members Only</div>
-            <a class="btn-primary" onclick="showPage('plans')" style="font-size:9px;padding:10px 20px;margin-top:4px;">Unlock — R99.99/mo</a>
+            <a class="btn-primary" onclick="showPage('plans')" style="font-size:9px;padding:10px 20px;margin-top:4px;">Unlock · R99.99/mo</a>
           </div>
         </div>
         <div class="opp-card locked">
@@ -2562,7 +2563,7 @@
           <div class="opp-lock-overlay">
             <div class="opp-lock-icon">🔒</div>
             <div class="opp-lock-label">VIP Members Only</div>
-            <a class="btn-primary" onclick="showPage('plans')" style="font-size:9px;padding:10px 20px;margin-top:4px;">Unlock — R99.99/mo</a>
+            <a class="btn-primary" onclick="showPage('plans')" style="font-size:9px;padding:10px 20px;margin-top:4px;">Unlock · R99.99/mo</a>
           </div>
         </div>
 
@@ -2578,7 +2579,7 @@
           <div class="opp-lock-overlay">
             <div class="opp-lock-icon">🔒</div>
             <div class="opp-lock-label">Premium Members Only</div>
-            <a class="btn-primary" onclick="showPage('plans')" style="font-size:9px;padding:10px 20px;margin-top:4px;">Unlock — R199.99/mo</a>
+            <a class="btn-primary" onclick="showPage('plans')" style="font-size:9px;padding:10px 20px;margin-top:4px;">Unlock · R199.99/mo</a>
           </div>
         </div>
       </div>
@@ -2600,7 +2601,7 @@
     <div class="reveal" style="text-align:center;">
       <span class="section-tag">Video Hub</span>
       <h2 class="section-title">Watch. <em>Learn.</em> Build.</h2>
-      <p style="font-size:14px;color:var(--white-dim);max-width:560px;margin:0 auto 50px;">Business education videos uploaded by NoaMark — free previews and premium deep-dives, organised by category.</p>
+      <p style="font-size:14px;color:var(--white-dim);max-width:560px;margin:0 auto 50px;">Business education videos uploaded by NoaMark: free previews and premium deep-dives, organised by category.</p>
       <div class="gold-divider"></div>
     </div>
 
@@ -2631,7 +2632,7 @@
           <div style="font-size:40px;margin-bottom:16px;">🔒</div>
           <h3 style="font-size:16px;font-weight:600;color:var(--white);margin-bottom:8px;">VIP videos coming soon</h3>
           <p style="font-size:13px;color:var(--white-dim);max-width:400px;margin:0 auto 24px;">Deep-dive business breakdowns will be uploaded here for VIP members. Upgrade to be ready when they drop.</p>
-          <a class="btn-primary" onclick="showPage('plans')" style="font-size:10px;padding:12px 28px;">Upgrade to VIP — R99.99/mo</a>
+          <a class="btn-primary" onclick="showPage('plans')" style="font-size:10px;padding:12px 28px;">Upgrade to VIP · R99.99/mo</a>
         </div>
       </div>
     </div>
@@ -2647,7 +2648,7 @@
           <div style="font-size:40px;margin-bottom:16px;">👑</div>
           <h3 style="font-size:16px;font-weight:600;color:var(--white);margin-bottom:8px;">Premium content coming soon</h3>
           <p style="font-size:13px;color:var(--white-dim);max-width:400px;margin:0 auto 24px;">Exclusive interviews, market reports, and advanced strategy sessions will be available here for Premium members.</p>
-          <a class="btn-primary" onclick="showPage('plans')" style="font-size:10px;padding:12px 28px;">Go Premium — R199.99/mo</a>
+          <a class="btn-primary" onclick="showPage('plans')" style="font-size:10px;padding:12px 28px;">Go Premium · R199.99/mo</a>
         </div>
       </div>
     </div>
@@ -2656,7 +2657,7 @@
     <div style="margin-top:80px;text-align:center;padding:48px;border:1px solid var(--border-soft);border-radius:12px;background:var(--black-2);" class="reveal">
       <div style="font-size:32px;margin-bottom:16px;">📺</div>
       <h3 style="font-family:var(--font-display);font-size:28px;font-weight:600;color:var(--white);margin-bottom:12px;">Videos drop weekly</h3>
-      <p style="font-size:13px;color:var(--white-dim);margin-bottom:28px;max-width:480px;margin-left:auto;margin-right:auto;">New content is uploaded by the NoaMark team regularly — business breakdowns, market insights, and entrepreneur stories. Subscribe to get notified.</p>
+      <p style="font-size:13px;color:var(--white-dim);margin-bottom:28px;max-width:480px;margin-left:auto;margin-right:auto;">New content is uploaded by the NoaMark team regularly, business breakdowns, market insights, and entrepreneur stories. Subscribe to get notified.</p>
       <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
         <a class="btn-primary" onclick="showPage('plans')">Subscribe for Updates</a>
         <a class="btn-ghost" onclick="showPage('opportunities')">Browse Opportunities Instead</a>
@@ -2694,11 +2695,11 @@
             </div>
             <div class="learn-lesson-expanded" style="border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
               <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:6px;">📖 How to find your first customer</div>
-              <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Start with people you know — friends, family, neighbours. Tell everyone what you are doing. Post on WhatsApp groups in your area. Your first customer is closer than you think.</div>
+              <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Start with people you know, friends, family, neighbours. Tell everyone what you are doing. Post on WhatsApp groups in your area. Your first customer is closer than you think.</div>
             </div>
             <div class="learn-lesson-expanded" style="border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
               <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:6px;">📖 How to price your product</div>
-              <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Add up what it costs you to make or provide it (materials, transport, time). Then add your profit margin — at minimum 30%. If the market pays more, charge more.</div>
+              <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Add up what it costs you to make or provide it (materials, transport, time). Then add your profit margin, at minimum 30%. If the market pays more, charge more.</div>
             </div>
             <div class="learn-lesson-expanded" style="border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
               <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:6px;">📖 Managing your first income</div>
@@ -2723,7 +2724,7 @@
           <div class="learn-lessons-expanded" style="display:none;margin-top:16px;">
             <div class="learn-lesson-expanded" style="border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
               <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:6px;">📖 Revenue vs profit</div>
-              <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Revenue is all the money coming in. Profit is what is left after you pay all your costs. A business can have high revenue and still lose money — always focus on profit.</div>
+              <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Revenue is all the money coming in. Profit is what is left after you pay all your costs. A business can have high revenue and still lose money. Always focus on profit.</div>
             </div>
             <div class="learn-lesson-expanded" style="border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
               <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:6px;">📖 Fixed vs variable costs</div>
@@ -2735,7 +2736,7 @@
             </div>
             <div class="learn-lesson-expanded" style="border-left:2px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:rgba(212,175,55,.04);">
               <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:6px;">📖 When to reinvest</div>
-              <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Reinvest when your business is consistently profitable — not before. Put money back into things that directly help you earn more: stock, tools, or marketing.</div>
+              <div style="font-size:12px;color:var(--white-dim);line-height:1.75;">Reinvest when your business is consistently profitable, not before. Put money back into things that directly help you earn more: stock, tools, or marketing.</div>
             </div>
           </div>
             <div class="learn-lesson">Fixed vs variable costs</div>
@@ -2763,7 +2764,7 @@
         <div class="learn-content">
           <span class="learn-tag">Beginner · Free</span>
           <h3 class="learn-title">Startup Mistakes to Avoid</h3>
-          <p class="learn-body">The most expensive lessons — learned by others so you don't have to. Real stories, real mistakes.</p>
+          <p class="learn-body">The most expensive lessons, learned by others so you don't have to. Real stories, real mistakes.</p>
           <div class="learn-lessons">
             <div class="learn-lesson">Overspending before earning</div>
           <div class="learn-expand-btn" style="margin-top:16px;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);cursor:pointer;">▸ START LESSON</div>
@@ -2873,7 +2874,7 @@
           <li class="locked-feat">❌ Premium exclusive videos</li>
           <li class="locked-feat">❌ Community access</li>
         </ul>
-        <a class="btn-primary" onclick="showPage('subscribe');setTimeout(()=>{const el=document.getElementById('sub_plan');if(el)el.value='vip'},100)" style="font-size:10px;padding:16px 28px;width:100%;text-align:center;display:block;">Start VIP — R99.99/mo</a>
+        <a class="btn-primary" onclick="showPage('subscribe');setTimeout(()=>{const el=document.getElementById('sub_plan');if(el)el.value='vip'},100)" style="font-size:10px;padding:16px 28px;width:100%;text-align:center;display:block;">Start VIP · R99.99/mo</a>
         <p class="tier-disclaimer">Cancel anytime. No lock-in contracts.</p>
       </div>
 
@@ -2897,7 +2898,7 @@
           <li>Community access (verified members)</li>
           <li>WhatsApp/Telegram group invite</li>
         </ul>
-        <a class="btn-primary" onclick="showPage('subscribe');setTimeout(()=>{const el=document.getElementById('sub_plan');if(el)el.value='premium'},100)" style="font-size:10px;padding:16px 28px;width:100%;text-align:center;display:block;background:var(--black-3);border:1px solid var(--gold);color:var(--gold);">Go Premium — R199.99/mo</a>
+        <a class="btn-primary" onclick="showPage('subscribe');setTimeout(()=>{const el=document.getElementById('sub_plan');if(el)el.value='premium'},100)" style="font-size:10px;padding:16px 28px;width:100%;text-align:center;display:block;background:var(--black-3);border:1px solid var(--gold);color:var(--gold);">Go Premium · R199.99/mo</a>
         <p class="tier-disclaimer">Cancel anytime. No lock-in contracts.</p>
       </div>
     </div>
@@ -2978,9 +2979,9 @@
         <span class="section-tag">Join NoaMark</span>
         <h2 class="form-title">Start Your <em style="color:var(--gold);font-style:italic;">Journey</em> Today</h2>
         <p class="form-description">Join NoaMark and get access to real business opportunities in townships, villages, and emerging African markets.</p>
-        <div class="form-benefit"><div class="form-benefit-dot"></div><div class="form-benefit-text">Free to join — no credit card required</div></div>
+        <div class="form-benefit"><div class="form-benefit-dot"></div><div class="form-benefit-text">Free to join, no credit card required</div></div>
         <div class="form-benefit"><div class="form-benefit-dot"></div><div class="form-benefit-text">Upgrade to VIP or Premium at any time</div></div>
-        <div class="form-benefit"><div class="form-benefit-dot"></div><div class="form-benefit-text">Cancel anytime — no lock-in contracts</div></div>
+        <div class="form-benefit"><div class="form-benefit-dot"></div><div class="form-benefit-text">Cancel anytime, no lock-in contracts</div></div>
         <div class="form-benefit"><div class="form-benefit-dot"></div><div class="form-benefit-text">Built for South African entrepreneurs</div></div>
         <div style="margin-top:48px;padding:28px;border:1px solid var(--border);background:var(--black);">
           <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;">Payment Options</p>
@@ -3005,9 +3006,9 @@
           <label class="form-label">Choose Your Plan</label>
           <select class="form-input" id="sub_plan">
             <option value="">Select a plan...</option>
-            <option value="free">Free Plan — R0/month</option>
-            <option value="vip">VIP Plan — R99.99/month</option>
-            <option value="premium">Premium Plan — R199.99/month</option>
+            <option value="free">Free Plan · R0/month</option>
+            <option value="vip">VIP Plan · R99.99/month</option>
+            <option value="premium">Premium Plan · R199.99/month</option>
           </select>
         </div>
         <div class="form-group">
@@ -3034,7 +3035,7 @@
     <div class="dashboard-header">
       <div>
         <div class="dashboard-greeting">Welcome back, <span>Entrepreneur</span></div>
-        <p style="font-size:13px;color:var(--white-dim);margin-top:6px;">Your NoaMark dashboard — everything in one place.</p>
+        <p style="font-size:13px;color:var(--white-dim);margin-top:6px;">Your NoaMark dashboard: everything in one place.</p>
       </div>
       <div style="display:flex;gap:12px;align-items:center;">
         <div class="dash-tier-badge">VIP Member</div>
@@ -3088,7 +3089,7 @@
             </div>
             <div class="sidebar-item" onclick="showPage('plans')">
               <span class="sidebar-item-tag">VIP</span>
-              <div class="sidebar-item-title">🔒 Unlock full library — R99.99/mo</div>
+              <div class="sidebar-item-title">🔒 Unlock full library · R99.99/mo</div>
             </div>
           </div>
         </div>
@@ -3367,11 +3368,11 @@
       <!-- STEP 1: BASIC INFO -->
       <div class="onboard-form-panel active" id="step-1">
         <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:48px;">
-          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:32px;">Step 1 — Basic Info <span style="color:var(--danger);margin-left:8px;">* All fields required</span></p>
+          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:32px;">Step 1: Basic Info <span style="color:var(--danger);margin-left:8px;">* All fields required</span></p>
           <div class="form-group"><label class="form-label">Business Name *</label><input type="text" class="form-input" id="biz_name" placeholder="e.g. Mama Thandi's Kitchen"></div>
           <div class="form-group">
             <label class="form-label">Business Logo <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(optional)</span></label>
-            <p style="font-size:11px;color:var(--white-dim);margin-bottom:10px;line-height:1.5;">A square logo (not your shop photos) — shown on your listing card and profile. Ideally your actual logo on a plain background.</p>
+            <p style="font-size:11px;color:var(--white-dim);margin-bottom:10px;line-height:1.5;">A square logo (not your shop photos), shown on your listing card and profile. Ideally your actual logo on a plain background.</p>
             <div style="display:flex;align-items:center;gap:16px;">
               <div id="biz_logo_preview" style="width:64px;height:64px;border:1px solid var(--border-soft);background:var(--black-3);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--white-dim);flex-shrink:0;overflow:hidden;">📷</div>
               <input type="file" accept="image/*" id="biz_logo_input" style="display:none;" onchange="nmPreviewLogo(this)">
@@ -3400,7 +3401,7 @@
             </div>
           </div>
           <div class="form-group"><label class="form-label">Business Type *</label><input type="text" class="form-input" id="biz_type" placeholder="e.g. Spaza Shop, Hair Salon, Taxi, Restaurant, Mechanic..."></div>
-          <div class="form-group"><label class="form-label">Business Description * <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(keep it short or detailed — just tell customers what you offer)</span></label><textarea class="form-input" id="biz_desc" rows="4" placeholder="e.g. We sell groceries, airtime and cold drinks. Open 7 days." style="resize:vertical;"></textarea></div>
+          <div class="form-group"><label class="form-label">Business Description * <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(keep it short or detailed, just tell customers what you offer)</span></label><textarea class="form-input" id="biz_desc" rows="4" placeholder="e.g. We sell groceries, airtime and cold drinks. Open 7 days." style="resize:vertical;"></textarea></div>
           <div class="form-group"><label class="form-label">Years in Business *</label>
             <select class="form-input" id="biz_years">
               <option value="">Select...</option>
@@ -3414,7 +3415,7 @@
       <!-- STEP 2: LOCATION -->
       <div class="onboard-form-panel" id="step-2">
         <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:48px;">
-          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:32px;">Step 2 — Location <span style="color:var(--danger);margin-left:8px;">* All fields required</span></p>
+          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:32px;">Step 2: Location <span style="color:var(--danger);margin-left:8px;">* All fields required</span></p>
           <div class="form-group"><label class="form-label">Street Address * <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(used for Google Maps & Bolt links on your profile)</span></label><input type="text" class="form-input" id="biz_address" placeholder="e.g. 12 Main Street, near Shell Garage, Section 3"></div>
           <div class="form-group"><label class="form-label">Area / Township / Village *</label><input type="text" class="form-input" id="biz_area" placeholder="e.g. Soweto, Alexandra, Seshego, Mamelodi"></div>
           <div class="form-group"><label class="form-label">City *</label><input type="text" class="form-input" id="biz_city" placeholder="e.g. Johannesburg, Pretoria, Durban"></div>
@@ -3437,8 +3438,8 @@
       <!-- STEP 3: OPERATING HOURS -->
       <div class="onboard-form-panel" id="step-3">
         <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:48px;">
-          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:8px;">Step 3 — Operating Hours *</p>
-          <p style="font-size:11px;color:var(--white-dim);margin-bottom:28px;">Pick your exact opening and closing times — these will be used exactly as set, everywhere on NoaMark (your listing, your dashboard, and your booking calendar).</p>
+          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:8px;">Step 3: Operating Hours *</p>
+          <p style="font-size:11px;color:var(--white-dim);margin-bottom:28px;">Pick your exact opening and closing times, these will be used exactly as set, everywhere on NoaMark (your listing, your dashboard, and your booking calendar).</p>
 
           <div class="form-group">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -3503,16 +3504,16 @@
 
       <div class="onboard-form-panel" id="step-4">
         <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:48px;">
-          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:8px;">Step 4 — Menu & Pricing *</p>
+          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:8px;">Step 4: Menu & Pricing *</p>
           <p style="font-size:12px;color:var(--white-dim);margin-bottom:28px;">Add what you offer with a price and an optional photo for each item. Minimum 3 items, maximum 10.</p>
 
           <div class="form-group">
-            <label class="form-label">Price Range Summary <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(optional) — Shown as a quick summary on your profile</span></label>
+            <label class="form-label">Price Range Summary <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(optional), Shown as a quick summary on your profile</span></label>
             <input type="text" class="form-input" id="biz_price_hint" placeholder="e.g. Meals from R30 · Cuts from R50 · Delivery from R20">
           </div>
 
           <div class="form-group">
-            <label class="form-label">Menu / Services * <span style="font-size:10px;color:var(--white-dim);font-weight:400;">At least 3 items required — up to 10</span></label>
+            <label class="form-label">Menu / Services * <span style="font-size:10px;color:var(--white-dim);font-weight:400;">At least 3 items required, up to 10</span></label>
             <div class="menu-builder" id="menu-builder-list"></div>
             <button type="button" class="menu-add-btn" id="menu-add-btn" onclick="menuBuilderAdd()">+ Add Item</button>
             <input type="hidden" id="biz_menu" value="">
@@ -3528,7 +3529,7 @@
       <!-- STEP 5: MEDIA UPLOAD -->
       <div class="onboard-form-panel" id="step-5">
         <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:48px;">
-          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:8px;">Step 5 — Business Photos</p>
+          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:8px;">Step 5: Business Photos</p>
           <p style="font-size:13px;color:var(--white-dim);margin-bottom:4px;">Great photos build customer trust. Upload up to <strong style="color:var(--white-soft);">5 photos</strong> per section.</p>
           <p style="font-size:11px;color:var(--gold);margin-bottom:32px;" id="step5-subtitle">✔ At least 1 work photo is required to continue.</p>
 
@@ -3551,7 +3552,7 @@
               <input type="file" id="biz_place_photos" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" onchange="previewMedia(this,'place-photo-preview','image',5)">
             </div>
             <div id="section1-skipped" style="display:none;padding:16px 20px;background:var(--black-3);border:1px dashed var(--border-soft);border-radius:4px;text-align:center;">
-              <span style="font-size:12px;color:var(--white-dim);">Skipped — no photos for this section.</span>
+              <span style="font-size:12px;color:var(--white-dim);">Skipped, no photos for this section.</span>
               <button type="button" onclick="toggleSkipSection(1)" style="margin-left:12px;font-size:11px;color:var(--gold);background:transparent;border:none;cursor:pointer;text-decoration:underline;">Add photos</button>
             </div>
           </div>
@@ -3559,7 +3560,7 @@
           <!-- Section 2 — Work/Portfolio (required, changes by category) -->
           <div class="form-group" id="section2-wrap">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-              <label class="form-label" style="margin-bottom:0;" id="section2-label">📷 Work Photos <span style="color:var(--danger);">*</span> <span style="font-size:10px;color:var(--white-dim);font-weight:400;" id="section2-sublabel">Up to 5 photos — required</span></label>
+              <label class="form-label" style="margin-bottom:0;" id="section2-label">📷 Work Photos <span style="color:var(--danger);">*</span> <span style="font-size:10px;color:var(--white-dim);font-weight:400;" id="section2-sublabel">Up to 5 photos, required</span></label>
             </div>
             <div id="food-photo-preview" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;min-height:0;"></div>
             <label for="biz_food_photos" class="upload-label-row" style="display:flex;align-items:center;gap:16px;padding:24px 28px;border:2px dashed var(--border-soft);cursor:pointer;transition:border-color .3s,background .3s;background:var(--black-3);border-radius:4px;" onmouseover="this.style.borderColor='var(--gold)';this.style.background='rgba(212,175,55,.04)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.background='var(--black-3)'">
@@ -3586,7 +3587,7 @@
 
       <div class="onboard-form-panel" id="step-6">
         <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:48px;">
-          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:32px;">Step 6 — Contact Info <span style="color:var(--danger);margin-left:8px;">* Required fields</span></p>
+          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:32px;">Step 6: Contact Info <span style="color:var(--danger);margin-left:8px;">* Required fields</span></p>
           <div class="form-group"><label class="form-label">Owner Full Name *</label><input type="text" class="form-input" id="biz_owner" placeholder="Your full name"></div>
           <div class="form-group">
             <label class="form-label">Phone Number *</label>
@@ -3606,7 +3607,7 @@
               </select>
               <input type="tel" class="form-input" id="biz_phone" placeholder="XX XXX XXXX" style="flex:1;">
             </div>
-            <div id="biz_phone_hint" style="font-size:10px;color:var(--white-dim);margin-top:4px;">Enter 9 digits, no leading 0 — e.g. 82 123 4567</div>
+            <div id="biz_phone_hint" style="font-size:10px;color:var(--white-dim);margin-top:4px;">Enter 9 digits, no leading 0, e.g. 82 123 4567</div>
           </div>
           <div class="form-group">
             <label class="form-label">WhatsApp Number *</label>
@@ -3626,12 +3627,12 @@
               </select>
               <input type="tel" class="form-input" id="biz_whatsapp" placeholder="XX XXX XXXX" style="flex:1;">
             </div>
-            <div id="biz_whatsapp_hint" style="font-size:10px;color:var(--white-dim);margin-top:4px;">Enter 9 digits, no leading 0 — e.g. 82 123 4567</div>
+            <div id="biz_whatsapp_hint" style="font-size:10px;color:var(--white-dim);margin-top:4px;">Enter 9 digits, no leading 0, e.g. 82 123 4567</div>
           </div>
           <div class="form-group"><label class="form-label">Email Address *</label><input type="email" class="form-input" id="biz_email" placeholder="youremail@example.com"></div>
           <div class="form-group"><label class="form-label">Facebook Page <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(optional)</span></label><input type="text" class="form-input" id="biz_facebook" placeholder="Paste your Facebook page link" oninput="nmValidateSocialField('biz_facebook','facebook')"><p style="font-size:11px;color:var(--white-dim);margin-top:6px;line-height:1.5;">💡 On Facebook, open your Page → tap <b>Share</b> → <b>Copy Link</b> → paste it here. This makes sure it links to the right page.</p><div id="biz_facebook_feedback" style="font-size:11px;margin-top:4px;font-weight:600;"></div></div>
           <div class="form-group"><label class="form-label">Instagram Handle <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(optional)</span></label><input type="text" class="form-input" id="biz_instagram" placeholder="Paste your Instagram profile link" oninput="nmValidateSocialField('biz_instagram','instagram')"><p style="font-size:11px;color:var(--white-dim);margin-top:6px;line-height:1.5;">💡 On Instagram, open your profile → tap <b>Share Profile</b> → <b>Copy Link</b> → paste it here. This makes sure it links to the right account.</p><div id="biz_instagram_feedback" style="font-size:11px;margin-top:4px;font-weight:600;"></div></div>
-          <div class="form-group"><label class="form-label">Website <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(optional — leave blank if you don't have one)</span></label><input type="text" class="form-input" id="biz_website" placeholder="e.g. www.yourbusiness.co.za" oninput="nmValidateWebsiteField('biz_website')"><div id="biz_website_feedback" style="font-size:11px;margin-top:4px;font-weight:600;"></div></div>
+          <div class="form-group"><label class="form-label">Website <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(optional, leave blank if you don't have one)</span></label><input type="text" class="form-input" id="biz_website" placeholder="e.g. www.yourbusiness.co.za" oninput="nmValidateWebsiteField('biz_website')"><div id="biz_website_feedback" style="font-size:11px;margin-top:4px;font-weight:600;"></div></div>
           <div style="display:flex;gap:12px;">
             <button class="btn-ghost" onclick="nextStep(5)" style="flex:1;padding:16px;">← Back</button>
             <button class="form-submit" onclick="nextStep(7)" style="flex:2;margin-top:0;">Continue →</button>
@@ -3642,32 +3643,32 @@
       <!-- STEP 7: BOOST SELECTION -->
       <div class="onboard-form-panel" id="step-7">
         <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:48px;">
-          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:12px;">Step 7 — Boost Your Listing</p>
+          <p style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:12px;">Step 7: Boost Your Listing</p>
           <p style="font-size:13px;color:var(--white-dim);margin-bottom:36px;">Optional. Boost to appear at the top and get more visibility. You can skip for now.</p>
           <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:36px;">
             <label style="display:flex;align-items:center;gap:16px;padding:20px;border:1px solid var(--border-soft);cursor:pointer;transition:border-color .3s;" onmouseover="this.style.borderColor='var(--white-dim)'" onmouseout="this.style.borderColor='var(--border-soft)'">
               <input type="radio" name="boost_select" value="none" checked style="accent-color:var(--gold);">
-              <div><div style="font-size:13px;color:var(--white-soft);font-weight:500;">No Boost — Free listing</div><div style="font-size:11px;color:var(--white-dim);margin-top:4px;">Standard placement, appear in latest listings</div></div>
+              <div><div style="font-size:13px;color:var(--white-soft);font-weight:500;">No Boost, Free listing</div><div style="font-size:11px;color:var(--white-dim);margin-top:4px;">Standard placement, appear in latest listings</div></div>
             </label>
             <label style="display:flex;align-items:center;gap:16px;padding:20px;border:1px solid var(--border-soft);cursor:pointer;transition:border-color .3s;" onmouseover="this.style.borderColor='var(--white-dim)'" onmouseout="this.style.borderColor='var(--border-soft)'">
               <input type="radio" name="boost_select" value="starter" style="accent-color:var(--gold);">
-              <div><div style="font-size:13px;color:var(--white-soft);font-weight:500;">🟡 Starter Boost — <span style="color:var(--gold);">R49.99 / 3 days</span></div><div style="font-size:11px;color:var(--white-dim);margin-top:4px;">Ranking increase above free listings</div></div>
+              <div><div style="font-size:13px;color:var(--white-soft);font-weight:500;">🟡 Starter Boost, <span style="color:var(--gold);">R49.99 / 3 days</span></div><div style="font-size:11px;color:var(--white-dim);margin-top:4px;">Ranking increase above free listings</div></div>
             </label>
             <label style="display:flex;align-items:center;gap:16px;padding:20px;border:1px solid rgba(212,175,55,.3);cursor:pointer;background:rgba(212,175,55,.03);">
               <input type="radio" name="boost_select" value="growth" style="accent-color:var(--gold);">
-              <div><div style="font-size:13px;color:var(--gold);font-weight:500;">⭐ Growth Boost — <span>R99.99 / 7 days</span></div><div style="font-size:11px;color:var(--white-dim);margin-top:4px;">Featured section, gold highlight, high impressions</div></div>
+              <div><div style="font-size:13px;color:var(--gold);font-weight:500;">⭐ Growth Boost, <span>R99.99 / 7 days</span></div><div style="font-size:11px;color:var(--white-dim);margin-top:4px;">Featured section, gold highlight, high impressions</div></div>
             </label>
             <label style="display:flex;align-items:center;gap:16px;padding:20px;border:1px solid rgba(212,175,55,.5);cursor:pointer;background:rgba(212,175,55,.05);position:relative;overflow:hidden;">
               <div style="position:absolute;top:0;left:0;right:0;height:1px;background:var(--gold);box-shadow:0 0 8px rgba(212,175,55,.4);"></div>
               <input type="radio" name="boost_select" value="dominance" style="accent-color:var(--gold);">
-              <div><div style="font-size:13px;color:var(--gold);font-weight:600;">🔥 Dominance Boost — <span>R199.99 / 14 days</span></div><div style="font-size:11px;color:var(--white-dim);margin-top:4px;">Priority #1 ranking, glowing badge, maximum exposure</div></div>
+              <div><div style="font-size:13px;color:var(--gold);font-weight:600;">🔥 Dominance Boost, <span>R199.99 / 14 days</span></div><div style="font-size:11px;color:var(--white-dim);margin-top:4px;">Priority #1 ranking, glowing badge, maximum exposure</div></div>
             </label>
             <label style="display:flex;align-items:center;gap:16px;padding:20px;border:2px solid var(--gold);cursor:pointer;background:linear-gradient(135deg,rgba(212,175,55,.08),rgba(212,175,55,.03));position:relative;overflow:hidden;">
               <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--gold),#fff8dc,var(--gold));box-shadow:0 0 12px rgba(212,175,55,.6);"></div>
               <div style="position:absolute;top:10px;right:12px;font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;background:var(--gold);color:#111827;padding:3px 8px;">BEST VALUE</div>
               <input type="radio" name="boost_select" value="pro" style="accent-color:var(--gold);">
               <div>
-                <div style="font-size:13px;color:var(--gold);font-weight:700;">👑 Pro Listing — <span style="color:var(--white-soft);">R329.99 / month</span></div>
+                <div style="font-size:13px;color:var(--gold);font-weight:700;">👑 Pro Listing, <span style="color:var(--white-soft);">R329.99 / month</span></div>
                 <div style="font-size:11px;color:var(--white-dim);margin-top:4px;">Permanent featured placement · Verified badge · Priority leads · Unlimited media uploads · Monthly renewal</div>
               </div>
             </label>
@@ -3866,7 +3867,7 @@
           <div class="bp-2col" style="margin-top:24px;">
             <div class="bp-card">
               <div class="bp-card-title">AI Description Enhancer</div>
-              <p style="font-size:12px;color:var(--white-dim);line-height:1.7;margin-bottom:14px;">Tell AI what to improve — it will rewrite your business description to attract more customers.</p>
+              <p style="font-size:12px;color:var(--white-dim);line-height:1.7;margin-bottom:14px;">Tell AI what to improve, it will rewrite your business description to attract more customers.</p>
               <textarea id="bp-enhance-prompt" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);padding:12px;font-size:12px;font-family:var(--font-body);color:var(--white);resize:none;min-height:64px;margin-bottom:10px;" placeholder="e.g. Make it sound more professional and highlight same-day service..."></textarea>
               <button class="bp-btn bp-btn-g" onclick="bpEnhanceDesc()">✦ Enhance with AI</button>
               <div id="bp-enhance-out" style="display:none;margin-top:14px;">
@@ -3906,7 +3907,7 @@
           </div>
           <!-- Test enquiry entry -->
           <div class="bp-card" style="border-color:rgba(22,101,52,.3);">
-            <div class="bp-card-title">Add enquiry <span style="text-transform:none;letter-spacing:0;font-weight:400;font-size:11px;color:var(--white-dim);">— simulate a customer message</span></div>
+            <div class="bp-card-title">Add enquiry <span style="text-transform:none;letter-spacing:0;font-weight:400;font-size:11px;color:var(--white-dim);">(simulate a customer message)</span></div>
             <div class="bp-form-grid" style="margin-bottom:14px;">
               <div class="bp-form-field"><label>Customer name</label><input id="bp-enq-name" placeholder="e.g. Thabo Nkosi"/></div>
               <div class="bp-form-field"><label>Subject</label><input id="bp-enq-subj" placeholder="e.g. Delivery enquiry"/></div>
@@ -3934,7 +3935,7 @@
 
           <!-- Availability Settings -->
           <div class="bp-card" style="margin-bottom:20px;border-color:rgba(22,101,52,.3);background:linear-gradient(135deg,rgba(22,101,52,.04),transparent);">
-            <div class="bp-card-title">⏰ Your Availability <span style="text-transform:none;letter-spacing:0;font-weight:400;font-size:11px;color:var(--white-dim);">— customers see these hours when booking</span></div>
+            <div class="bp-card-title">⏰ Your Availability <span style="text-transform:none;letter-spacing:0;font-weight:400;font-size:11px;color:var(--white-dim);">(customers see these hours when booking)</span></div>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px;" id="bp-avail-grid">
               <!-- populated by JS -->
             </div>
@@ -3971,7 +3972,7 @@
               </div>
             </div>
             <div class="bp-card">
-              <div class="bp-card-title">Add a review <span style="text-transform:none;letter-spacing:0;font-weight:400;font-size:11px;color:var(--white-dim);">— simulate customer feedback</span></div>
+              <div class="bp-card-title">Add a review <span style="text-transform:none;letter-spacing:0;font-weight:400;font-size:11px;color:var(--white-dim);">(simulate customer feedback)</span></div>
               <div class="bp-form-field"><label>Customer name</label><input id="bp-rev-name" placeholder="e.g. Nomsa Dlamini"/></div>
               <div class="bp-form-field">
                 <label>Rating</label>
@@ -4002,7 +4003,7 @@
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
               <div>
                 <div style="font-family:var(--font-display);font-size:32px;font-weight:300;color:var(--gold-dim);" id="bp-boost-current-val">None</div>
-                <div style="font-size:12px;color:var(--white-dim);" id="bp-boost-current-sub">No boost active — your listing appears in standard order</div>
+                <div style="font-size:12px;color:var(--white-dim);" id="bp-boost-current-sub">No boost active, your listing appears in standard order</div>
               </div>
               <button class="bp-btn bp-btn-gold" onclick="bpGetBoostAdvice()">✦ Which boost is right for me?</button>
             </div>
@@ -4019,9 +4020,9 @@
                 <div style="font-family:var(--font-display);font-size:40px;font-weight:300;color:var(--white);margin-bottom:4px;"><sup style="font-size:16px;color:var(--gold-dim);">R</sup>49.99</div>
                 <div style="font-size:10px;color:var(--white-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;">/ 3 days</div>
                 <ul style="list-style:none;font-size:12px;color:var(--white-dim);text-align:left;margin-bottom:24px;display:flex;flex-direction:column;gap:10px;">
-                  <li>— Priority above free listings</li>
-                  <li>— 🟡 Starter badge</li>
-                  <li>— Basic visibility boost</li>
+                  <li>✓ Priority above free listings</li>
+                  <li>✓ 🟡 Starter badge</li>
+                  <li>✓ Basic visibility boost</li>
                 </ul>
                 <button class="bp-btn" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Starter','R49.99/3 days')">Select Starter</button>
               </div>
@@ -4032,10 +4033,10 @@
                 <div style="font-family:var(--font-display);font-size:40px;font-weight:300;color:var(--white);margin-bottom:4px;"><sup style="font-size:16px;color:var(--gold-dim);">R</sup>99.99</div>
                 <div style="font-size:10px;color:var(--white-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;">/ 7 days</div>
                 <ul style="list-style:none;font-size:12px;color:var(--white-dim);text-align:left;margin-bottom:24px;display:flex;flex-direction:column;gap:10px;">
-                  <li>— Featured in marketplace</li>
-                  <li>— ⭐ Growth badge</li>
-                  <li>— Homepage showcase</li>
-                  <li>— Above Starter listings</li>
+                  <li>✓ Featured in marketplace</li>
+                  <li>✓ ⭐ Growth badge</li>
+                  <li>✓ Homepage showcase</li>
+                  <li>✓ Above Starter listings</li>
                 </ul>
                 <button class="bp-btn bp-btn-gold" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Growth','R99.99/7 days')">Select Growth</button>
               </div>
@@ -4046,10 +4047,10 @@
                 <div style="font-family:var(--font-display);font-size:40px;font-weight:300;color:var(--white);margin-bottom:4px;"><sup style="font-size:16px;color:var(--gold);">R</sup>199.99</div>
                 <div style="font-size:10px;color:var(--white-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;">/ 14 days</div>
                 <ul style="list-style:none;font-size:12px;color:var(--white-dim);text-align:left;margin-bottom:24px;display:flex;flex-direction:column;gap:10px;">
-                  <li>— Priority #1 ranking</li>
-                  <li>— 🔥 Glowing gold border</li>
-                  <li>— Maximum exposure</li>
-                  <li>— Top of Featured section</li>
+                  <li>✓ Priority #1 ranking</li>
+                  <li>✓ 🔥 Glowing gold border</li>
+                  <li>✓ Maximum exposure</li>
+                  <li>✓ Top of Featured section</li>
                 </ul>
                 <button class="bp-btn bp-btn-gold" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Dominance','R199.99/14 days')">Select Dominance</button>
               </div>
@@ -4061,11 +4062,11 @@
                 <div style="font-family:var(--font-display);font-size:40px;font-weight:300;color:var(--white);margin-bottom:4px;"><sup style="font-size:16px;color:var(--gold);">R</sup>329.99</div>
                 <div style="font-size:10px;color:var(--white-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;">/ month</div>
                 <ul style="list-style:none;font-size:12px;color:var(--white-dim);text-align:left;margin-bottom:24px;display:flex;flex-direction:column;gap:10px;">
-                  <li>— Permanent top placement</li>
-                  <li>— ✅ Verified badge</li>
-                  <li>— Priority leads</li>
-                  <li>— Unlimited photos</li>
-                  <li>— Monthly auto-renewal</li>
+                  <li>✓ Permanent top placement</li>
+                  <li>✓ ✅ Verified badge</li>
+                  <li>✓ Priority leads</li>
+                  <li>✓ Unlimited photos</li>
+                  <li>✓ Monthly auto-renewal</li>
                 </ul>
                 <button class="bp-btn bp-btn-gold" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Pro','R329.99/month')">👑 Select Pro</button>
               </div>
@@ -4187,7 +4188,7 @@
                 <div>
                   <label style="font-size:11px;color:var(--white-dim);display:block;margin-bottom:6px;">Email address</label>
                   <input type="email" id="bps-email-input" placeholder="you@example.com" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
-                  <div style="font-size:10px;color:var(--white-dim);margin-top:6px;">⚠️ This is also the email you log in with — you'll use the new one next time.</div>
+                  <div style="font-size:10px;color:var(--white-dim);margin-top:6px;">⚠️ This is also the email you log in with, you'll use the new one next time.</div>
                 </div>
                 <div style="display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border-soft);">
                   <div style="font-size:12px;color:var(--white-dim);">Plan</div>
@@ -4215,7 +4216,7 @@
           </div>
           <div class="bp-card">
             <div class="bp-card-title">Change Password</div>
-            <div style="font-size:12px;color:var(--white-dim);line-height:1.7;margin-bottom:16px;">Logged in with a temporary password an admin gave you? Set your own password here — you'll use it next time you log in.</div>
+            <div style="font-size:12px;color:var(--white-dim);line-height:1.7;margin-bottom:16px;">Logged in with a temporary password an admin gave you? Set your own password here, you'll use it next time you log in.</div>
             <div class="auth-error" id="bp-cpw-error"></div>
             <div class="auth-success" id="bp-cpw-success"></div>
             <div style="display:flex;flex-direction:column;gap:12px;max-width:420px;">
@@ -4263,7 +4264,7 @@
 </div><!-- /page-marketplace -->
 
 <!-- ════════════════════════════════════
-     AUTH MODAL — Three-portal login/signup
+     AUTH MODAL, Three-portal login/signup
 ════════════════════════════════════ -->
 <div class="auth-overlay" id="auth-overlay" onclick="if(event.target===this&&!authRequired)closeAuth()">
   <div class="auth-modal">
@@ -4478,7 +4479,7 @@
           </div>
           <button class="auth-btn auth-btn-primary" onclick="handleGuestSignup()">Explore Businesses →</button>
           <div class="auth-divider">want full access?</div>
-          <button class="auth-btn" style="background:var(--black-3);color:var(--green-dark);border:1px solid var(--green-dark);" onclick="switchAuthType('subscriber',document.querySelectorAll('.auth-tab')[1])">Sign Up Free — Unlock Everything →</button>
+          <button class="auth-btn" style="background:var(--black-3);color:var(--green-dark);border:1px solid var(--green-dark);" onclick="switchAuthType('subscriber',document.querySelectorAll('.auth-tab')[1])">Sign Up Free, Unlock Everything →</button>
         </div>
 
         <!-- ── GUEST LOG IN ── -->
@@ -4537,7 +4538,7 @@
   <div class="gate-modal">
     <div class="gate-icon">🔐</div>
     <h2 class="gate-heading">Sign In to View Details</h2>
-    <p class="gate-sub">To see full business info — prices, contact details, photos and more — you need a NoaMark account.<br><br>It's <strong>free</strong> and takes under a minute.</p>
+    <p class="gate-sub">To see full business info, prices, contact details, photos and more, you need a NoaMark account.<br><br>It's <strong>free</strong> and takes under a minute.</p>
     <div class="gate-actions">
       <button class="auth-btn auth-btn-primary" style="width:auto;padding:13px 28px;" onclick="closeGate();openAuth('subscriber')">Sign Up Free</button>
       <button class="auth-btn auth-btn-gold" style="width:auto;padding:13px 28px;" onclick="closeGate();openAuth('guest')">Quick Access</button>
@@ -4570,7 +4571,7 @@
 <div class="chatbot-window" id="chat-window">
   <div class="chatbot-header">
     <div>
-      <div class="chatbot-name">Maya — Business Guide <span class="ai-powered-tag">AI</span></div>
+      <div class="chatbot-name">Maya, Business Guide <span class="ai-powered-tag">AI</span></div>
       <div class="chatbot-status">● Online · Ready to help</div>
     </div>
     <button class="chatbot-close" onclick="toggleChat()">×</button>
@@ -5519,7 +5520,7 @@ async function nmActivateNearMe(btn, isAutoRestore){
         const status = await navigator.permissions.query({ name: 'geolocation' });
         alreadyGranted = status.state === 'granted';
       }
-    } catch(e){ /* Permissions API not supported here — just proceed */ }
+    } catch(e){ /* Permissions API not supported here, just proceed */ }
     if(!alreadyGranted){
       nmToast('📍 Please tap "Allow" when your browser asks for your location.', 4500);
     }
@@ -5560,7 +5561,7 @@ async function nmActivateNearMe(btn, isAutoRestore){
       // for something the person didn't just click.
       if(!isAutoRestore){
         if(err.code === err.PERMISSION_DENIED){
-          nmToast('⚠️ Location access is off for NoaMark. Please allow location for this site in your browser settings — or turn on Location Services on your device — then tap Near Me Now again.', 6000);
+          nmToast('⚠️ Location access is off for NoaMark. Please allow location for this site in your browser settings, or turn on Location Services on your device, then tap Near Me Now again.', 6000);
         } else if(err.code === err.POSITION_UNAVAILABLE){
           nmToast('⚠️ We couldn\'t work out your location. Please check Location Services are turned on for your device, then try again.', 6000);
         } else {
@@ -6167,7 +6168,7 @@ function nmBuildHoursHTML(biz){
       { label: 'Saturday',  value: biz.hoursSat,     isToday: d => d === 6 },
       { label: 'Sunday & Public Holidays', value: biz.hoursSun, isToday: d => d === 0 },
     ];
-    if(!rows.some(r => r.value)) return ''; // nothing collected — don't show an empty card
+    if(!rows.some(r => r.value)) return ''; // nothing collected, don't show an empty card
 
     const todayIdx = new Date().getDay(); // 0=Sun ... 6=Sat, based on the visitor's local time
     const rowsHTML = rows.map(r => {
@@ -6345,7 +6346,7 @@ function nmValidateSocialField(inputId, platform){
     feedback.textContent = `✓ Will link to ${platform}.com/${handle}`;
   } else {
     feedback.style.color = '#EF4444';
-    feedback.textContent = `⚠ We can't confirm this is a valid ${platform === 'facebook' ? 'page' : 'profile'} link or handle — paste the link from the app to be sure.`;
+    feedback.textContent = `⚠ We can't confirm this is a valid ${platform === 'facebook' ? 'page' : 'profile'} link or handle, paste the link from the app to be sure.`;
   }
 }
 function nmBuildSocialHTML(biz){
@@ -6393,7 +6394,7 @@ async function nmShareBusiness(id, name){
   // Desktop fallback: copy link to clipboard
   try {
     await navigator.clipboard.writeText(shareUrl);
-    nmToast('🔗 Link copied — paste it anywhere to share!');
+    nmToast('🔗 Link copied, paste it anywhere to share!');
   } catch(e) {
     nmToast('Could not copy the link automatically. URL: ' + shareUrl);
   }
@@ -6630,7 +6631,7 @@ async function pubLoadReviews(listingId) {
       _supa.from('reviews').select('*').eq('listing_id', listingId).order('created_at', { ascending: false }).limit(10)
     );
     if (error || !data || data.length === 0) {
-      el.innerHTML = '<div style="font-size:12px;color:var(--white-dim);padding:8px 0;">No reviews yet — be the first!</div>';
+      el.innerHTML = '<div style="font-size:12px;color:var(--white-dim);padding:8px 0;">No reviews yet, be the first!</div>';
       return;
     }
     el.innerHTML = data.map(r => {
@@ -6742,18 +6743,18 @@ async function pubSubmitEnquiry(listingId, bizName) {
 
 // ── STEP 5 PHOTO LOGIC ──
 const PHOTO_LABELS = {
-  food:      { s1: { icon:'🍳', label:'Kitchen / Shop Photos', sub:'Your kitchen, cooking space or shop front — optional', upload:'Click to select kitchen or shop photos' },
-                s2: { icon:'🍔', label:'Food & Menu Photos *', sub:'Your dishes, menu items, specials — required', upload:'Click to select food photos', tip:'Show your most popular dishes in good lighting.' } },
-  shops:     { s1: { icon:'🏪', label:'Shop Front Photos', sub:'Your shop exterior, entrance, signage — optional', upload:'Click to select shop front photos' },
-                s2: { icon:'🛒', label:'Products & Stock Photos *', sub:'Items you sell, shelves, stock — required', upload:'Click to select product photos', tip:'Clear shelf and product shots help customers know what to expect.' } },
-  beauty:    { s1: { icon:'💇', label:'Salon / Home Setup Photos', sub:'Your salon, chair, workspace or home setup — optional', upload:'Click to select workspace photos' },
-                s2: { icon:'✂️', label:'Your Work & Styles *', sub:'Haircuts, braids, nails, makeup you have done — required', upload:'Click to select your work photos', tip:'Before & after shots or finished styles build instant trust.' } },
-  laundry:   { s1: { icon:'🧺', label:'Shop / Drop-off Point Photos', sub:'Your laundry shop or collection point — optional', upload:'Click to select shop photos' },
-                s2: { icon:'👗', label:'Your Work Photos *', sub:'Clean laundry, folded clothes, ironing — required', upload:'Click to select work photos', tip:'Show clean, neatly folded results to build confidence.' } },
-  services:  { s1: { icon:'🔧', label:'Workspace / Setup Photos', sub:'Your tools, vehicle, workspace or home base — optional', upload:'Click to select workspace photos' },
-                s2: { icon:'🧰', label:'Your Work Examples *', sub:'Completed jobs, before & after, in-action shots — required', upload:'Click to select work example photos', tip:'Show a completed job — even phone photos work great.' } },
-  transport: { s1: { icon:'🚕', label:'Vehicle Photos', sub:'Your car, bakkie or taxi — optional', upload:'Click to select vehicle photos' },
-                s2: { icon:'🛣️', label:'More Vehicle / Route Photos *', sub:'Interior, boot space, route areas — required', upload:'Click to select more photos', tip:'Show a clean interior — customers feel safer booking.' } },
+  food:      { s1: { icon:'🍳', label:'Kitchen / Shop Photos', sub:'Your kitchen, cooking space or shop front, optional', upload:'Click to select kitchen or shop photos' },
+                s2: { icon:'🍔', label:'Food & Menu Photos *', sub:'Your dishes, menu items, specials, required', upload:'Click to select food photos', tip:'Show your most popular dishes in good lighting.' } },
+  shops:     { s1: { icon:'🏪', label:'Shop Front Photos', sub:'Your shop exterior, entrance, signage, optional', upload:'Click to select shop front photos' },
+                s2: { icon:'🛒', label:'Products & Stock Photos *', sub:'Items you sell, shelves, stock, required', upload:'Click to select product photos', tip:'Clear shelf and product shots help customers know what to expect.' } },
+  beauty:    { s1: { icon:'💇', label:'Salon / Home Setup Photos', sub:'Your salon, chair, workspace or home setup, optional', upload:'Click to select workspace photos' },
+                s2: { icon:'✂️', label:'Your Work & Styles *', sub:'Haircuts, braids, nails, makeup you have done, required', upload:'Click to select your work photos', tip:'Before & after shots or finished styles build instant trust.' } },
+  laundry:   { s1: { icon:'🧺', label:'Shop / Drop-off Point Photos', sub:'Your laundry shop or collection point, optional', upload:'Click to select shop photos' },
+                s2: { icon:'👗', label:'Your Work Photos *', sub:'Clean laundry, folded clothes, ironing, required', upload:'Click to select work photos', tip:'Show clean, neatly folded results to build confidence.' } },
+  services:  { s1: { icon:'🔧', label:'Workspace / Setup Photos', sub:'Your tools, vehicle, workspace or home base, optional', upload:'Click to select workspace photos' },
+                s2: { icon:'🧰', label:'Your Work Examples *', sub:'Completed jobs, before & after, in-action shots, required', upload:'Click to select work example photos', tip:'Show a completed job, even phone photos work great.' } },
+  transport: { s1: { icon:'🚕', label:'Vehicle Photos', sub:'Your car, bakkie or taxi, optional', upload:'Click to select vehicle photos' },
+                s2: { icon:'🛣️', label:'More Vehicle / Route Photos *', sub:'Interior, boot space, route areas, required', upload:'Click to select more photos', tip:'Show a clean interior, customers feel safer booking.' } },
 };
 
 function applyStep5Labels() {
@@ -7037,13 +7038,13 @@ function nextStep(n){
       if(!phone){alert('Please enter a Phone Number.');return false;}
       if(!nmValidateCountryPhone('biz_phone')){
         const expLen = document.getElementById('biz_phone_country').value.split('|')[1];
-        alert('That phone number doesn\'t look right for the country selected — it should be exactly ' + expLen + ' digits (not counting the country code).');
+        alert('That phone number doesn\'t look right for the country selected, it should be exactly ' + expLen + ' digits (not counting the country code).');
         return false;
       }
       if(!wa){alert('Please enter a WhatsApp Number.');return false;}
       if(!nmValidateCountryPhone('biz_whatsapp')){
         const expLen = document.getElementById('biz_whatsapp_country').value.split('|')[1];
-        alert('That WhatsApp number doesn\'t look right for the country selected — it should be exactly ' + expLen + ' digits (not counting the country code).');
+        alert('That WhatsApp number doesn\'t look right for the country selected, it should be exactly ' + expLen + ' digits (not counting the country code).');
         return false;
       }
       if(!email){alert('Please enter an Email Address.');return false;}
@@ -7166,8 +7167,8 @@ async function submitBusiness(){
     if (selectedNewFiles.length > availableSlots) {
       const droppedCount = selectedNewFiles.length - availableSlots;
       alert(availableSlots === 0
-        ? `⚠️ You already have 10 photos (the maximum). Remove an existing photo first — using the ✕ on one of the "Saved" thumbnails above — before adding a new one.`
-        : `⚠️ You're at the 10-photo limit — only ${availableSlots} of your ${selectedNewFiles.length} new photo(s) could be added. Remove an existing photo to make room for the rest.`);
+        ? `⚠️ You already have 10 photos (the maximum). Remove an existing photo first, using the ✕ on one of the "Saved" thumbnails above, before adding a new one.`
+        : `⚠️ You're at the 10-photo limit, only ${availableSlots} of your ${selectedNewFiles.length} new photo(s) could be added. Remove an existing photo to make room for the rest.`);
     }
 
     for(const file of newFiles) {
@@ -7651,7 +7652,7 @@ async function adminAction(btn, action, listingId) {
     row.style.opacity = '.4';
     row.style.transition = 'opacity .5s';
     if(action === 'approve') {
-      btn.closest('td').innerHTML = '<span style="color:var(--success);font-size:11px;font-weight:600;">✓ Approved — Now Live</span>';
+      btn.closest('td').innerHTML = '<span style="color:var(--success);font-size:11px;font-weight:600;">✓ Approved, Now Live</span>';
       // Add to LISTINGS so it shows in marketplace immediately
       loadListingsFromSupabase(true);
     } else {
@@ -7676,7 +7677,7 @@ async function loadPendingListings() {
     if(error) throw error;
 
     if(!data || data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--white-dim);">✅ No pending listings — all caught up!</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--white-dim);">✅ No pending listings, all caught up!</td></tr>';
       document.getElementById('admin-pending-count').textContent = '0';
       return;
     }
@@ -7995,7 +7996,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       saved._isRestore = true; // force portal redirect regardless of current hash
     } else if(hashPage && hashPage !== 'home' && hashPage !== '') {
       // Non-business users: if already on a specific page, don't redirect to portal
-      saved._isRestore = false; // suppress portal redirect — user is already on their page
+      saved._isRestore = false; // suppress portal redirect, user is already on their page
     }
     loginAs(saved);
     setTimeout(()=>{
@@ -8227,7 +8228,7 @@ async function nmTrackVisit() {
     if (sessionStorage.getItem('nm_visit_logged')) return;
     sessionStorage.setItem('nm_visit_logged', '1');
     await nmSupaQuery(() => _supa.from('site_visits').insert({ created_at: new Date().toISOString() }));
-  } catch(e) { /* table may not exist yet — fail silently, don't block the site */ }
+  } catch(e) { /* table may not exist yet, fail silently, don't block the site */ }
 }
 
 // ── SUBSCRIBE HANDLER ──
@@ -8448,7 +8449,7 @@ async function openActivateOverlay(subId) {
       ${alreadyPaid
         ? `<p style="font-size:13px;color:var(--white-dim);line-height:1.7;">Your ${planLabel} plan is active. Just log in below to get started.</p>`
         : `<p style="font-size:13px;color:var(--white-dim);line-height:1.7;">Pay <strong style="color:#fff;">${nmSafe(price)}</strong> for your <strong style="color:#fff;">${nmSafe(planLabel)}</strong> plan via EFT or SnapScan:</p>
-           <p style="font-size:13px;color:#fff;line-height:1.9;margin-top:8px;">📱 SnapScan / EFT: contact <strong>+27 63 418 9749</strong><br>✉️ Or email <a href="mailto:support@noamark.com" style="color:var(--green-dark);font-weight:600;">support@noamark.com</a> with your proof of payment.<br>Your plan activates as soon as we confirm payment — usually within a few hours.</p>`}
+           <p style="font-size:13px;color:#fff;line-height:1.9;margin-top:8px;">📱 SnapScan / EFT: contact <strong>+27 63 418 9749</strong><br>✉️ Or email <a href="mailto:support@noamark.com" style="color:var(--green-dark);font-weight:600;">support@noamark.com</a> with your proof of payment.<br>Your plan activates as soon as we confirm payment, usually within a few hours.</p>`}
     </div>`;
 
   // Check if an account already exists for this email — if so, skip the
@@ -8463,7 +8464,7 @@ async function openActivateOverlay(subId) {
     body.innerHTML = `
       <div class="gate-icon" style="text-align:center;">✅</div>
       <h2 class="gate-heading" style="text-align:center;">You're Almost There, ${nmSafe((sub.name||'').split(' ')[0] || '')}!</h2>
-      <p class="gate-sub" style="text-align:center;">You already have a NoaMark account with this email — just log in to continue.</p>
+      <p class="gate-sub" style="text-align:center;">You already have a NoaMark account with this email, just log in to continue.</p>
       <div style="text-align:center;"><button class="auth-btn auth-btn-primary" style="width:auto;padding:13px 28px;" onclick="closeActivateOverlay();openAuth('subscriber')">Log In</button></div>
       ${paymentHtml}`;
     return;
@@ -8475,7 +8476,7 @@ async function openActivateOverlay(subId) {
   body.innerHTML = `
     <div class="gate-icon" style="text-align:center;">🎉</div>
     <h2 class="gate-heading" style="text-align:center;">Your ${nmSafe(planLabel)} Plan is Approved!</h2>
-    <p class="gate-sub" style="text-align:center;">Set a password to activate your login — you'll use it to access your account once payment is confirmed.</p>
+    <p class="gate-sub" style="text-align:center;">Set a password to activate your login, you'll use it to access your account once payment is confirmed.</p>
     <div style="margin-bottom:12px;">
       <label style="font-size:11px;color:var(--white-dim);display:block;margin-bottom:6px;">Name</label>
       <input class="auth-input" id="activate-name" value="${nmSafe(sub.name || '')}">
@@ -8525,7 +8526,7 @@ async function handleActivateAccountSignup(subId, email, plan) {
       <p class="gate-sub" style="text-align:center;">Your login is ready. Now just complete payment below and your ${nmSafe((plan||'').toUpperCase())} plan activates automatically.</p>
       <div style="background:var(--black-3);border:1px solid var(--border-soft);border-radius:10px;padding:18px;margin-top:6px;">
         <div style="font-weight:700;color:var(--gold);font-size:13px;margin-bottom:10px;">💳 Complete Your Payment</div>
-        <p style="font-size:13px;color:#fff;line-height:1.9;">📱 SnapScan / EFT: contact <strong>+27 63 418 9749</strong><br>✉️ Or email <a href="mailto:support@noamark.com" style="color:var(--green-dark);font-weight:600;">support@noamark.com</a> with your proof of payment.<br>Your plan activates as soon as we confirm payment — usually within a few hours.</p>
+        <p style="font-size:13px;color:#fff;line-height:1.9;">📱 SnapScan / EFT: contact <strong>+27 63 418 9749</strong><br>✉️ Or email <a href="mailto:support@noamark.com" style="color:var(--green-dark);font-weight:600;">support@noamark.com</a> with your proof of payment.<br>Your plan activates as soon as we confirm payment, usually within a few hours.</p>
       </div>
       <div style="text-align:center;margin-top:18px;"><button class="auth-btn auth-btn-gold" onclick="closeActivateOverlay();showPage('dashboard')" style="width:auto;padding:13px 28px;">Go to My Dashboard</button></div>`;
   } catch(e) {
@@ -8647,10 +8648,10 @@ function askMaya(q){
     const q2=q.toLowerCase();
     if(type === 'guest') {
       if(q2.includes('find')||q2.includes('business')||q2.includes('near')||q2.includes('marketplace')||q2.includes('category')){
-        cAddBot('The NoaMark Marketplace has local businesses in your area — food, beauty, services, transport and more. Browse and connect instantly!');
+        cAddBot('The NoaMark Marketplace has local businesses in your area, food, beauty, services, transport and more. Browse and connect instantly!');
         cSetQuick(['Open Marketplace'],r=>{ showPage('marketplace'); });
       } else if(q2.includes('how')||q2.includes('noamark')||q2.includes('work')){
-        cAddBot('NoaMark helps you discover trusted local businesses in townships and villages across South Africa. Browse, compare, and connect — all in one place.');
+        cAddBot('NoaMark helps you discover trusted local businesses in townships and villages across South Africa. Browse, compare, and connect, all in one place.');
         cSetQuick(['Find businesses'],r=>{ showPage('marketplace'); });
       } else {
         cAddBot('As an Explorer, I can help you find great local businesses near you. What are you looking for?');
@@ -8678,10 +8679,10 @@ function askMaya(q){
         cAddBot('To get more customers: respond to enquiries quickly, keep your listing description clear and detailed, and ask happy customers to leave reviews. Consistent communication builds trust!');
         cSetQuick(['View my portal'],r=>{ showPage('dashboard'); });
       } else if(q2.includes('review')||q2.includes('rating')){
-        cAddBot('Reviews build trust with new customers. Ask your regulars to leave a review on your NoaMark listing. Respond to every review — even negative ones — professionally.');
+        cAddBot('Reviews build trust with new customers. Ask your regulars to leave a review on your NoaMark listing. Respond to every review, even negative ones, professionally.');
         cSetQuick(['View my portal'],r=>{ showPage('dashboard'); });
       } else if(q2.includes('market')||q2.includes('promote')||q2.includes('whatsapp')||q2.includes('advertise')){
-        cAddBot('Share your NoaMark listing link on your WhatsApp status and community groups. A short message like "Find us on NoaMark — [your business name]" works really well!');
+        cAddBot('Share your NoaMark listing link on your WhatsApp status and community groups. A short message like "Find us on NoaMark: [your business name]" works really well!');
         cSetQuick(['View my portal'],r=>{ showPage('dashboard'); });
       } else {
         cAddBot('I can help with business tips, customer growth, reviews and marketing. What do you need help with?');
@@ -8847,7 +8848,7 @@ async function nmSupaQuery(fn, retries = 3, timeoutMs = 8000) {
   const banner = document.createElement('div');
   banner.id = 'nm-offline-banner';
   banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#DC2626;color:#fff;text-align:center;padding:10px 20px;font-size:12px;font-weight:700;letter-spacing:1px;display:none;transition:all .3s;';
-  banner.textContent = '⚡ You appear to be offline — some features may not work until connection is restored.';
+  banner.textContent = '⚡ You appear to be offline, some features may not work until connection is restored.';
   document.body.appendChild(banner);
 
   function update() {
@@ -9529,7 +9530,7 @@ async function handleBizSignup() {
     if(nameCheck && nameCheck.data && nameCheck.data.length > 0) {
       showAuthError('biz-signup-error','This business name is already taken. Please choose a different name.'); return;
     }
-  } catch(e){ /* Network check failed — continue, upsert will handle conflicts */ }
+  } catch(e){ /* Network check failed, continue, upsert will handle conflicts */ }
 
   const biz = { name, owner, email, id:generateId(), joinedAt: new Date().toISOString() };
   NM_USERS.businesses.push(biz);
@@ -9556,7 +9557,7 @@ async function handleBizSignup() {
       NM_USERS.businesses = NM_USERS.businesses.filter(b => b.email.toLowerCase() !== email.toLowerCase());
       return;
     }
-  } catch(e) { /* Verification network error — proceed optimistically, upsert likely succeeded */ }
+  } catch(e) { /* Verification network error, proceed optimistically, upsert likely succeeded */ }
   trackUser('business', name, email);
   loginAs({ type:'business', name:biz.name, owner:owner, email:biz.email, plan:'Free Listing', id:biz.id, joinedAt:biz.joinedAt });
   showAuthSuccess('biz-signup-success', '✓ Account created! Welcome, '+name+'. Redirecting to add your listing…');
@@ -9611,7 +9612,7 @@ async function handleBizLogin() {
           _supa.from('users').select('role').ilike('email', email).limit(1)
         );
         const found = anyRole && anyRole.data && anyRole.data[0];
-        if (found) hint = ' We did find an account with this email registered as "' + (found.role || 'unknown') + '" — if you meant to sign up as a business, contact support@noamark.com to have it corrected.';
+        if (found) hint = ' We did find an account with this email registered as "' + (found.role || 'unknown') + '", if you meant to sign up as a business, contact support@noamark.com to have it corrected.';
       } catch(e) { /* best-effort hint only, ignore failures */ }
       showAuthError('biz-login-error', '\u274C No business account found with that email. Please check your email or sign up for a new account.' + hint);
       return;
@@ -9664,7 +9665,7 @@ async function handleSubSignup() {
     if(emailCheck && emailCheck.data && emailCheck.data.length > 0) {
       showAuthError('sub-signup-error','This email is already registered. Please log in instead.'); return;
     }
-  } catch(e){ /* Network check failed — continue, upsert handles conflicts */ }
+  } catch(e){ /* Network check failed, continue, upsert handles conflicts */ }
 
   const sub = { name, email, plan:'Free', id:generateId(), joinedAt: new Date().toISOString() };
   NM_USERS.subscribers.push(sub);
@@ -9737,7 +9738,7 @@ async function handleGuestSignup() {
     if(result && result.data && result.data.length > 0) {
       showAuthError('guest-error','This name is already registered. Please log in instead.'); return;
     }
-  } catch(e){ /* If check fails, continue — save will upsert safely */ }
+  } catch(e){ /* If check fails, continue, save will upsert safely */ }
 
   const guestId = generateId();
   const guest = { name, location, password:pass, id:guestId, visitedAt: new Date().toISOString() };
@@ -9897,10 +9898,10 @@ function loginAs(user) {
 //   guest       → Home, Marketplace  (explorer: just browse)
 const NAV_RULES = {
   'logged-out':  ['home','marketplace','opportunities','learning','videos','plans'],
-  'business':    [], // business owners see ONLY their portal — no home, no marketplace, no explore
+  'business':    [], // business owners see ONLY their portal, no home, no marketplace, no explore
   'subscriber':  ['home','marketplace','opportunities','learning','videos'],
   'guest':       ['home','marketplace'],
-  'admin':       [], // admin has their own dashboard — no public nav items
+  'admin':       [], // admin has their own dashboard, no public nav items
 };
 
 function applyRoleNav(user) {
@@ -10630,7 +10631,7 @@ async function bpEditListing() {
     myListing = await bpFetchMyOwnListing();
   }
 
-  if (!myListing) return; // Genuinely no listing — leave form blank for new submission
+  if (!myListing) return; // Genuinely no listing, leave form blank for new submission
 
   // Pre-fill fields after a short delay to let the DOM render
   setTimeout(() => {
@@ -10717,7 +10718,7 @@ async function bpEditListing() {
         const overLimit = myListing.photos.length > 10;
         slotsNote.style.color = overLimit ? '#f87171' : 'var(--white-dim)';
         slotsNote.textContent = overLimit
-          ? myListing.photos.length + ' photos are saved on this listing — more than the 10 allowed. This can happen from earlier edits before this limit was enforced. Remove ' + (myListing.photos.length - 10) + ' of them (✕) to get back under the limit before you can add new ones.'
+          ? myListing.photos.length + ' photos are saved on this listing, more than the 10 allowed. This can happen from earlier edits before this limit was enforced. Remove ' + (myListing.photos.length - 10) + ' of them (✕) to get back under the limit before you can add new ones.'
           : myListing.photos.length + ' of 10 photo slots used. Use ✎ to replace a photo, ✕ to remove one and free up a slot.';
         previewEl.parentNode?.insertBefore(slotsNote, previewEl);
         previewEl.innerHTML = myListing.photos.map((url, i) =>
@@ -10751,7 +10752,7 @@ async function bpEditListing() {
     window._editingListingId = myListing.id;
 
     // Show a notice
-    if(typeof bpToast === 'function') bpToast('✅ Listing loaded — only change what you want to update.');
+    if(typeof bpToast === 'function') bpToast('✅ Listing loaded, only change what you want to update.');
   }, 300);
 }
 // Fetches the logged-in business owner's OWN listing regardless of status
@@ -10840,7 +10841,7 @@ function populateBizDashboard() {
       document.getElementById('bp-sb-bizsub').textContent = 'Awaiting admin approval';
       document.getElementById('bpm-status').textContent = 'Pending';
       document.getElementById('bpm-status').style.color = 'var(--gold-dim)';
-      document.getElementById('bpm-status-sub').textContent = 'Submitted — awaiting admin approval';
+      document.getElementById('bpm-status-sub').textContent = 'Submitted, awaiting admin approval';
     } else if (listing && listing.approvalStatus === 'rejected') {
       liveEl.className = 'bp-live-pill bp-pill-offline';
       liveEl.textContent = '● Listing Rejected';
@@ -10914,7 +10915,7 @@ function populateBizDashboard() {
     const banBoostSub = document.getElementById('ban-boost-sub');
     if(banBoostSub) banBoostSub.textContent = myListing.boost !== 'none' ? 'Active' : 'No boost';
     document.getElementById('bp-boost-current-val').textContent = boostLabel;
-    document.getElementById('bp-boost-current-sub').textContent = myListing.boost !== 'none' ? 'Your boost is currently active' : 'No boost — your listing appears in standard order';
+    document.getElementById('bp-boost-current-sub').textContent = myListing.boost !== 'none' ? 'Your boost is currently active' : 'No boost, your listing appears in standard order';
   }
   bpRenderEnquiries();
   bpRenderReviews();
@@ -10940,7 +10941,7 @@ function bpSyncListingPreview(l) {
   chips.innerHTML = features.map(f => `<span class="bp-preview-chip">${f}</span>`).join('');
   const menuTags = document.getElementById('bpp-menu-tags');
   if(l.menu && l.menu.length) {
-    menuTags.innerHTML = l.menu.slice(0,4).map(m => `<span style="font-size:11px;padding:4px 12px;border:1px solid var(--border-soft);color:var(--white-dim);">${nmSafe(m.item||'')} — ${nmSafe(m.price||'')}</span>`).join('');
+    menuTags.innerHTML = l.menu.slice(0,4).map(m => `<span style="font-size:11px;padding:4px 12px;border:1px solid var(--border-soft);color:var(--white-dim);">${nmSafe(m.item||'')}, ${nmSafe(m.price||'')}</span>`).join('');
   }
 }
 
@@ -10951,7 +10952,7 @@ async function bpRenderMyListing() {
   if(!el) return;
   if(myListing) {
     el.innerHTML = `
-      <div class="bp-section-label">Live listing — ${nmSafe(myListing.name)}</div>
+      <div class="bp-section-label">Live listing, ${nmSafe(myListing.name)}</div>
       <div class="bp-listing-preview">
         <div class="bp-preview-hero">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
@@ -10970,7 +10971,7 @@ async function bpRenderMyListing() {
         </div>
         <div class="bp-preview-body">
           <div class="bp-preview-desc">${nmSafe(bpData.enhancedDesc || myListing.desc || 'No description.')}</div>
-          ${myListing.menu && myListing.menu.length ? '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+myListing.menu.slice(0,5).map(m=>`<span style="font-size:11px;padding:4px 12px;border:1px solid var(--border-soft);color:var(--white-dim);">${nmSafe(m.item||'')} — ${nmSafe(m.price||'')}</span>`).join('')+'</div>' : ''}
+          ${myListing.menu && myListing.menu.length ? '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+myListing.menu.slice(0,5).map(m=>`<span style="font-size:11px;padding:4px 12px;border:1px solid var(--border-soft);color:var(--white-dim);">${nmSafe(m.item||'')}, ${nmSafe(m.price||'')}</span>`).join('')+'</div>' : ''}
         </div>
       </div>`;
   } else {
@@ -11060,7 +11061,7 @@ async function bpSendReply(id) {
   let smsResult = { ok: false, reason: 'no phone on file' };
   if (enq.phone) {
     const bizName = currentUser?.name || 'the business';
-    smsResult = await nmSendSMS(enq.phone, 'NoaMark: ' + bizName + ' replied to your enquiry: "' + text.slice(0,200) + '" — Reply via WhatsApp or call them directly.');
+    smsResult = await nmSendSMS(enq.phone, 'NoaMark: ' + bizName + ' replied to your enquiry: "' + text.slice(0,200) + '", Reply via WhatsApp or call them directly.');
   }
 
   bpData.enquiries[idx].replied = true;
@@ -11072,7 +11073,7 @@ async function bpSendReply(id) {
   if (smsResult.ok) {
     bpToast('✅ Reply sent! Customer notified by SMS.');
   } else if (!enq.phone) {
-    bpToast('Reply saved. No customer phone number on file — they will only see it if they revisit your listing.');
+    bpToast('Reply saved. No customer phone number on file, they will only see it if they revisit your listing.');
   } else {
     bpToast('⚠ Reply saved, but SMS notification failed to send. Customer was not notified.');
   }
@@ -11325,10 +11326,10 @@ function getRoleSystemPrompt() {
   const type = currentUser?.type || 'guest';
   if(type === 'business') {
     const myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
-    return `You are a helpful business advisor for NoaMark, a South African township business platform. You are speaking with a business owner named "${currentUser?.name||'the owner'}" who runs a ${myListing?.cat||'business'} in ${myListing?.area||'South Africa'}. ${myListing?.desc ? 'Their business: '+myListing.desc+'.' : ''} Help them with business advice, customer engagement, marketing, and improving their listing. Do NOT suggest they sign up, list a business, or upgrade plans — they are already a business owner. Keep responses under 120 words.`;
+    return `You are a helpful business advisor for NoaMark, a South African township business platform. You are speaking with a business owner named "${currentUser?.name||'the owner'}" who runs a ${myListing?.cat||'business'} in ${myListing?.area||'South Africa'}. ${myListing?.desc ? 'Their business: '+myListing.desc+'.' : ''} Help them with business advice, customer engagement, marketing, and improving their listing. Do NOT suggest they sign up, list a business, or upgrade plans, they are already a business owner. Keep responses under 120 words.`;
   }
   if(type === 'subscriber') {
-    return `You are a helpful learning advisor for NoaMark, a South African township business platform. You are speaking with a learner named "${currentUser?.name||'the user'}". Help them with business ideas, entrepreneurship tips, and learning resources available on NoaMark. Do NOT suggest they list a business or open the marketplace — focus only on learning and business opportunities. Keep responses under 120 words.`;
+    return `You are a helpful learning advisor for NoaMark, a South African township business platform. You are speaking with a learner named "${currentUser?.name||'the user'}". Help them with business ideas, entrepreneurship tips, and learning resources available on NoaMark. Do NOT suggest they list a business or open the marketplace, focus only on learning and business opportunities. Keep responses under 120 words.`;
   }
   // guest
   return `You are a helpful guide for NoaMark, a South African township business platform. You are speaking with a guest visitor named "${currentUser?.name||'the visitor'}". Help them find businesses and navigate the marketplace. Do NOT suggest plans, listings, or sign-up options. Keep responses under 120 words.`;
@@ -11991,7 +11992,7 @@ bpLoad();
         <div class="adm-topbar">
           <div>
             <div class="adm-page-title">Revenue Overview</div>
-            <div class="adm-page-sub">Active boost tiers — revenue confirmed only after payment</div>
+            <div class="adm-page-sub">Active boost tiers, revenue confirmed only after payment</div>
           </div>
           <button class="adm-btn-refresh" onclick="admRefreshClick(this,'admLoadRevenue')">↻ Refresh</button>
         </div>
@@ -12156,9 +12157,9 @@ bpLoad();
             <div>
               <label style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:6px;">Category</label>
               <select id="adm-vid-tier" style="width:100%;background:#0a0c10;border:1px solid #1a1f2c;color:#e5e7eb;padding:10px 14px;font-size:13px;font-family:inherit;outline:none;">
-                <option value="free">Free — visible to everyone</option>
-                <option value="vip">VIP — R99.99/mo members only</option>
-                <option value="premium">Premium — R199.99/mo members only</option>
+                <option value="free">Free, visible to everyone</option>
+                <option value="vip">VIP · R99.99/mo members only</option>
+                <option value="premium">Premium · R199.99/mo members only</option>
               </select>
             </div>
             <div>
@@ -12182,7 +12183,7 @@ bpLoad();
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:28px;">
           <div>
             <div class="adm-page-title">Password Reset Requests</div>
-            <div class="adm-page-sub">Users who forgot their password — review and reset manually</div>
+            <div class="adm-page-sub">Users who forgot their password, review and reset manually</div>
           </div>
           <button class="adm-btn-refresh" onclick="admRefreshClick(this,'admLoadResets')">↻ Refresh</button>
         </div>
@@ -12195,7 +12196,7 @@ bpLoad();
              role after a partial signup failure. -->
         <div class="adm-card" style="margin-top:24px;border-color:rgba(99,179,237,.25);">
           <div class="adm-card-title" style="margin-bottom:16px;">🔍 Find a User's Account</div>
-          <p style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px;line-height:1.6;">Can't figure out why someone's login isn't working? Search by email here — it checks every account type, not just business, so you can see if it exists at all and what role it's saved under.</p>
+          <p style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px;line-height:1.6;">Can't figure out why someone's login isn't working? Search by email here, it checks every account type, not just business, so you can see if it exists at all and what role it's saved under.</p>
           <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
             <input id="adm-lookup-email" type="email" placeholder="user@email.com" style="flex:1;min-width:200px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;padding:10px 12px;border-radius:8px;font-size:13px;box-sizing:border-box;" onkeydown="if(event.key==='Enter')admLookupAccount()">
             <button onclick="admLookupAccount()" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);font-weight:700;font-size:13px;padding:10px 20px;border-radius:8px;cursor:pointer;">Search</button>
@@ -12221,7 +12222,7 @@ bpLoad();
              password, and gets "business doesn't exist". -->
         <div class="adm-card" style="margin-top:24px;border-color:rgba(74,222,128,.25);">
           <div class="adm-card-title" style="margin-bottom:16px;">🔓 Create a Login for an Unclaimed Listing</div>
-          <p style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px;line-height:1.6;">Use this when a business shows up fine on the marketplace, but its owner gets "business doesn't exist" trying to log in, and Forgot Password says "no account found". That means the listing exists but was never linked to a login account — search for it below to create one.</p>
+          <p style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px;line-height:1.6;">Use this when a business shows up fine on the marketplace, but its owner gets "business doesn't exist" trying to log in, and Forgot Password says "no account found". That means the listing exists but was never linked to a login account, search for it below to create one.</p>
           <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
             <input id="adm-unclaimed-search" type="text" placeholder="Business name or email" style="flex:1;min-width:200px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;padding:10px 12px;border-radius:8px;font-size:13px;box-sizing:border-box;" onkeydown="if(event.key==='Enter')admFindUnclaimedListing()">
             <button onclick="admFindUnclaimedListing()" style="background:rgba(74,222,128,.15);color:#4ade80;border:1px solid rgba(74,222,128,.3);font-weight:700;font-size:13px;padding:10px 20px;border-radius:8px;cursor:pointer;">Search</button>
@@ -12449,7 +12450,7 @@ async function admLookupAccount() {
     );
     const rows = (result && result.data) || [];
     if(rows.length === 0) {
-      resultEl.innerHTML = '<div class="adm-empty">❌ No account found with this email, under any role. They likely need to sign up (or their signup silently failed — ask them to try again and watch for an error message).</div>';
+      resultEl.innerHTML = '<div class="adm-empty">❌ No account found with this email, under any role. They likely need to sign up (or their signup silently failed, ask them to try again and watch for an error message).</div>';
       return;
     }
     resultEl.innerHTML = '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Name</th><th>Role</th><th>Email (as stored)</th><th>Plan</th><th>Joined</th><th>Password set?</th><th>Action</th></tr></thead><tbody>' +
@@ -12532,8 +12533,8 @@ async function admFindUnclaimedListing() {
           ? '<span style="font-size:11px;color:rgba(255,255,255,.3);">Use Password Resets above instead</span>'
           : (r.email
               ? '<button class="adm-btn" style="background:rgba(74,222,128,.1);color:#4ade80;border:1px solid rgba(74,222,128,.25);font-size:10px;" onclick="admCreateBusinessLogin(\'' + r.id + '\',this)">🔓 Create Login &amp; Email Password</button>'
-              : '<span style="font-size:11px;color:#f87171;">No email on this listing — add one via Edit Listing first</span>');
-        return '<tr><td style="font-weight:600;color:#fff;">' + nmSafe(r.name || '—') + '</td><td>' + nmSafe(r.owner || '—') + '</td><td style="color:#63b3ed;">' + nmSafe(r.email || '—') + '</td><td>' + statusCell + '</td><td>' + actionCell + '</td></tr>';
+              : '<span style="font-size:11px;color:#f87171;">No email on this listing, add one via Edit Listing first</span>');
+        return '<tr><td style="font-weight:600;color:#fff;">' + nmSafe(r.name || ', ') + '</td><td>' + nmSafe(r.owner || ', ') + '</td><td style="color:#63b3ed;">' + nmSafe(r.email || ', ') + '</td><td>' + statusCell + '</td><td>' + actionCell + '</td></tr>';
       }).join('') + '</tbody></table></div>';
   } catch(e) {
     console.error('Unclaimed listing search failed:', e);
@@ -12551,7 +12552,7 @@ async function admCreateBusinessLogin(listingId, btn) {
   try {
     const listingRes = await nmSupaQuery(() => _supa.from('listings').select('*').eq('id', listingId).limit(1));
     const listing = listingRes && listingRes.data && listingRes.data[0];
-    if (!listing) throw new Error('Listing not found — it may have been deleted.');
+    if (!listing) throw new Error('Listing not found, it may have been deleted.');
     const email = listing.email || listing.owner_email;
     if (!email) throw new Error('This listing has no email saved.');
 
@@ -12559,7 +12560,7 @@ async function admCreateBusinessLogin(listingId, btn) {
     // working at once, or the business signed up themselves just now).
     const clash = await nmSupaQuery(() => _supa.from('users').select('id').ilike('email', email).limit(1));
     if (clash && clash.data && clash.data.length > 0) {
-      throw new Error('An account with this email already exists now — use Password Resets above instead.');
+      throw new Error('An account with this email already exists now, use Password Resets above instead.');
     }
 
     const tempPassword = 'NoaMark' + Math.floor(1000 + Math.random() * 9000) + '!';
@@ -12574,10 +12575,10 @@ async function admCreateBusinessLogin(listingId, btn) {
       'Hi,\n\nAn admin has created a login for your NoaMark business listing, "' + listing.name + '".\n\n' +
       'Log in at noamark.com with:\nEmail: ' + email + '\nTemporary password: ' + tempPassword + '\n\n' +
       'Please log in and set your own permanent password in Settings as soon as possible.\n\n' +
-      '— The NoaMark Team'
+      'The NoaMark Team'
     );
 
-    btn.textContent = emailResult && emailResult.ok ? '✓ Login created & emailed!' : '✓ Login created (email failed — tell them manually: ' + tempPassword + ')';
+    btn.textContent = emailResult && emailResult.ok ? '✓ Login created & emailed!' : '✓ Login created (email failed, tell them manually: ' + tempPassword + ')';
     setTimeout(() => admFindUnclaimedListing(), 1500);
   } catch(e) {
     console.error('admCreateBusinessLogin failed:', e);
@@ -12632,7 +12633,7 @@ async function admResetUserPassword() {
         'Hi,\n\nYour NoaMark account password has been reset by an admin.\n\n' +
         'Your temporary password is: ' + newPw + '\n\n' +
         'Please log in with this password, then go to Settings and set your own permanent password as soon as possible.\n\n' +
-        '— The NoaMark Team'
+        'The NoaMark Team'
       );
 
       msgEl.style.background = 'rgba(34,197,94,.15)'; msgEl.style.color = '#22c55e';
@@ -12641,7 +12642,7 @@ async function admResetUserPassword() {
       } else {
         // Email sending failed (e.g. Resend not configured yet) — fall back
         // to telling the admin so the user isn't left without their password.
-        msgEl.textContent = '✅ Password updated for ' + email + '. ⚠️ The automatic email could not be sent — please tell the user their temporary password directly.';
+        msgEl.textContent = '✅ Password updated for ' + email + '. ⚠️ The automatic email could not be sent, please tell the user their temporary password directly.';
       }
       msgEl.style.display = 'block';
       document.getElementById('adm-reset-email').value = '';
@@ -12755,7 +12756,7 @@ async function admLoadOverview() {
     if(tbody) {
       tbody.innerHTML = pendingData.length === 0
         ? '<tr><td colspan="5" class="adm-empty">✅ No pending listings!</td></tr>'
-        : pendingData.map(l => `<tr><td style="font-weight:600;color:#fff;">${nmSafe(l.name)}</td><td>${nmSafe(l.owner||'—')}</td><td>${nmSafe(l.type||'—')}</td><td>${nmSafe(l.area||'—')}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${l.id}')">👁 Review</button><br><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${l.id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${l.id}',this)">✗ Reject</button></td></tr>`).join('');
+        : pendingData.map(l => `<tr><td style="font-weight:600;color:#fff;">${nmSafe(l.name)}</td><td>${nmSafe(l.owner||', ')}</td><td>${nmSafe(l.type||', ')}</td><td>${nmSafe(l.area||', ')}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${l.id}')">👁 Review</button><br><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${l.id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${l.id}',this)">✗ Reject</button></td></tr>`).join('');
     }
 
     const subsData = subsRes.data || [];
@@ -12794,7 +12795,7 @@ async function admLoadOverview() {
                 const planGranted = matchingAcct && matchingAcct.plan === s.plan;
                 actionCell = planGranted
                   ? '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Paid &amp; Active</span><br><button class="adm-btn" style="background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.25);margin-top:4px;font-size:10px;" onclick="admUndoPaid(\'' + s.id + '\',this)">↩ Undo (not paid)</button>' + deleteLink
-                  : '<span style="color:#fbbf24;font-weight:700;font-size:11px;">⚠️ Paid, but no account yet</span><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;line-height:1.4;">They haven\'t signed up with ' + nmSafe(s.email||'this email') + ' yet — ask them to, then it applies automatically.</div><button class="adm-btn" style="background:rgba(244,196,48,.15);color:#F4C430;border:1px solid rgba(244,196,48,.3);margin-top:4px;font-size:10px;" onclick="admMarkPaid(\'' + s.id + '\',this)">↻ Re-check now</button>' + deleteLink;
+                  : '<span style="color:#fbbf24;font-weight:700;font-size:11px;">⚠️ Paid, but no account yet</span><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;line-height:1.4;">They haven\'t signed up with ' + nmSafe(s.email||'this email') + ' yet, ask them to, then it applies automatically.</div><button class="adm-btn" style="background:rgba(244,196,48,.15);color:#F4C430;border:1px solid rgba(244,196,48,.3);margin-top:4px;font-size:10px;" onclick="admMarkPaid(\'' + s.id + '\',this)">↻ Re-check now</button>' + deleteLink;
               } else {
                 actionCell = '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Approved</span><br><button class="adm-btn" style="background:rgba(244,196,48,.15);color:#F4C430;border:1px solid rgba(244,196,48,.3);margin-top:4px;" onclick="admMarkPaid(\'' + s.id + '\',this)">💰 Mark as Paid</button><br><button class="adm-btn" style="background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.25);margin-top:4px;font-size:10px;" onclick="admUnapproveSub(\'' + s.id + '\',this)">↩ Un-approve</button>' + deleteLink;
               }
@@ -12803,7 +12804,7 @@ async function admLoadOverview() {
             } else {
               actionCell = `<button class="adm-btn adm-btn-approve" onclick="admApproveSub('${s.id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectSub('${s.id}',this)">✗ Reject</button>` + deleteLink;
             }
-            return `<tr><td style="font-weight:600;color:#fff;">${nmSafe(s.name||'—')}</td><td style="text-transform:uppercase;color:#F4C430;font-weight:600;">${nmSafe(s.plan||'—')}</td><td>${nmSafe(s.email||'—')}<br>${nmSafe(s.phone||'')}</td><td>${nmSafe(s.province||'—')}</td><td>${when}</td><td>${actionCell}</td></tr>`;
+            return `<tr><td style="font-weight:600;color:#fff;">${nmSafe(s.name||', ')}</td><td style="text-transform:uppercase;color:#F4C430;font-weight:600;">${nmSafe(s.plan||', ')}</td><td>${nmSafe(s.email||', ')}<br>${nmSafe(s.phone||'')}</td><td>${nmSafe(s.province||', ')}</td><td>${when}</td><td>${actionCell}</td></tr>`;
           }).join('');
     }
 
@@ -12817,7 +12818,7 @@ async function admLoadOverview() {
         pendingHtml: document.getElementById('adm-recent-pending') ? document.getElementById('adm-recent-pending').innerHTML : '',
         subsHtml: document.getElementById('adm-recent-subs') ? document.getElementById('adm-recent-subs').innerHTML : '',
       }));
-    } catch(e) { /* sessionStorage full/unavailable — cache is a nice-to-have, skip silently */ }
+    } catch(e) { /* sessionStorage full/unavailable, cache is a nice-to-have, skip silently */ }
   } catch(e) {
     console.warn('Overview load failed', e);
     // If we already had cached numbers on screen, leave them showing —
@@ -12827,7 +12828,7 @@ async function admLoadOverview() {
     if(!cached) {
       statIds.forEach(id => { const el = document.getElementById(id); if(el) el.textContent = '—'; });
       const tbody = document.getElementById('adm-recent-pending');
-      if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="adm-empty">⚠️ Couldn\'t load data — check your connection. <button class="adm-btn-refresh" onclick="admRefreshClick(this,\'admLoadOverview\')" style="margin-left:8px;">↻ Retry</button></td></tr>';
+      if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="adm-empty">⚠️ Couldn\'t load data, check your connection. <button class="adm-btn-refresh" onclick="admRefreshClick(this,\'admLoadOverview\')" style="margin-left:8px;">↻ Retry</button></td></tr>';
       const subsTbody = document.getElementById('adm-recent-subs');
       if(subsTbody) subsTbody.innerHTML = '<tr><td colspan="5" class="adm-empty">⚠️ Couldn\'t load data.</td></tr>';
     }
@@ -12961,7 +12962,7 @@ async function admApproveSub(id, btn) {
       if(sub.email) {
         try {
           const emailResult = await nmSendEmail(sub.email, 'Your NoaMark ' + planLabel + ' plan is approved', bodyMsg);
-          if (!emailResult || !emailResult.ok) nmToast('⚠️ Approval email could not be sent to ' + sub.email + ' — check Resend setup.', 5000);
+          if (!emailResult || !emailResult.ok) nmToast('⚠️ Approval email could not be sent to ' + sub.email + ', check Resend setup.', 5000);
         } catch(e) { console.warn('Approval email failed:', e); nmToast('⚠️ Approval email could not be sent to ' + sub.email + '.', 5000); }
       }
     }
@@ -12999,7 +13000,7 @@ async function admMarkPaid(id, btn) {
   btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
   try {
     const sub = window._pendingSubsMap && window._pendingSubsMap[id];
-    if(!sub) throw new Error('Could not find this request — please refresh and try again.');
+    if(!sub) throw new Error('Could not find this request, please refresh and try again.');
 
     const { error } = await nmSupaQuery(() => _supa.from('subscription_requests').update({payment_status:'paid'}).eq('id', id));
     if(error) throw error;
@@ -13026,13 +13027,13 @@ async function admMarkPaid(id, btn) {
     if(sub.email) {
       try {
         const emailResult = await nmSendEmail(sub.email, 'Your NoaMark ' + planLabel + ' plan is active', bodyMsg);
-        if (!emailResult || !emailResult.ok) nmToast('⚠️ Confirmation email could not be sent to ' + sub.email + ' — check Resend setup.', 5000);
+        if (!emailResult || !emailResult.ok) nmToast('⚠️ Confirmation email could not be sent to ' + sub.email + ', check Resend setup.', 5000);
       } catch(e) { console.warn('Paid-confirmation email failed:', e); nmToast('⚠️ Confirmation email could not be sent to ' + sub.email + '.', 5000); }
     }
 
     btn.textContent = '✓ Done!'; btn.style.background = '#dcfce7'; btn.style.opacity = '1';
     if(!accountFound) {
-      setTimeout(()=>{ alert(sub.name + ' doesn\'t have a matching account yet (' + sub.email + '). Ask them to sign up on noamark.com with this same email, then their plan will apply automatically next time you check — or come back here and it will pick it up once their account exists.'); }, 300);
+      setTimeout(()=>{ alert(sub.name + ' doesn\'t have a matching account yet (' + sub.email + '). Ask them to sign up on noamark.com with this same email, then their plan will apply automatically next time you check, or come back here and it will pick it up once their account exists.'); }, 300);
     }
     setTimeout(()=>{ admLoadOverview(); }, 800);
   } catch(e) {
@@ -13106,7 +13107,7 @@ async function admDeleteSub(id, btn) {
     const { data, error } = await nmSupaQuery(() => _supa.from('subscription_requests').delete().eq('id', id).select());
     if(error) throw error;
     if(!data || data.length === 0) {
-      throw new Error('No row was deleted — this is likely a Supabase Row Level Security (RLS) policy blocking DELETE on subscription_requests for this account.');
+      throw new Error('No row was deleted, this is likely a Supabase Row Level Security (RLS) policy blocking DELETE on subscription_requests for this account.');
     }
     const row = btn.closest('tr');
     if(row) { row.style.opacity = '0'; row.style.transition = 'opacity .3s'; setTimeout(()=>row.remove(), 300); }
@@ -13174,7 +13175,7 @@ async function admLoadRevenue() {
       const prices = {pro:'R329.99/mo',dominance:'R199.99/14d',growth:'R99.99/7d',starter:'R49.99/3d'};
       tbody.innerHTML = boosted.length === 0
         ? '<tr><td colspan="5" class="adm-empty">No paid boosts yet.</td></tr>'
-        : boosted.map(l => `<tr><td style="font-weight:600;color:#fff;">${nmSafe(l.name||'—')}</td><td>${nmSafe(l.owner||'—')}</td><td>${nmSafe(l.area||'—')}</td><td>${nmSafe(l.boost_tier||'—')}</td><td style="color:#d4af37;font-weight:600;">${prices[l.boost_tier]||'—'}</td></tr>`).join('');
+        : boosted.map(l => `<tr><td style="font-weight:600;color:#fff;">${nmSafe(l.name||', ')}</td><td>${nmSafe(l.owner||', ')}</td><td>${nmSafe(l.area||', ')}</td><td>${nmSafe(l.boost_tier||', ')}</td><td style="color:#d4af37;font-weight:600;">${prices[l.boost_tier]||', '}</td></tr>`).join('');
     }
   } catch(e) { console.warn('Revenue load failed', e); }
 }
@@ -13192,7 +13193,7 @@ async function admLoadUsers() {
     if(tbody) {
       tbody.innerHTML = users.length === 0
         ? '<tr><td colspan="4" class="adm-empty">No users yet.</td></tr>'
-        : users.map(u => `<tr><td style="font-weight:600;color:#fff;">${nmSafe(u.name||'—')}</td><td style="font-size:11px;">${nmSafe(u.email||'—')}</td><td>${nmSafe(u.role||'—')}</td><td style="font-size:11px;color:#6b7280;">${u.created_at?new Date(u.created_at).toLocaleDateString('en-ZA'):'—'}</td></tr>`).join('');
+        : users.map(u => `<tr><td style="font-weight:600;color:#fff;">${nmSafe(u.name||', ')}</td><td style="font-size:11px;">${nmSafe(u.email||', ')}</td><td>${nmSafe(u.role||', ')}</td><td style="font-size:11px;color:#6b7280;">${u.created_at?new Date(u.created_at).toLocaleDateString('en-ZA'):', '}</td></tr>`).join('');
     }
   } catch(e) { console.warn('Users load failed', e); }
 }
@@ -13781,8 +13782,8 @@ async function submitBooking() {
       customer_email: emailVal || currentUser.email || '',
       customer_phone: phoneVal || currentUser.phone || '',
       booking_type:   _bmType,
-      booking_date:   dateVal || null,   // DATE column — null allowed for enquiry type
-      booking_time:   timeVal || null,   // TIME column — null allowed for enquiry type
+      booking_date:   dateVal || null,   // DATE column, null allowed for enquiry type
+      booking_time:   timeVal || null,   // TIME column, null allowed for enquiry type
       service:        serviceField,
       notes:          notesVal || null,
       status:         'pending',
@@ -13803,13 +13804,13 @@ async function submitBooking() {
     const smsToUser  = 'NoaMark: Hi ' + custName.split(' ')[0] + ', your ' + typeLabel.toLowerCase() + ' at ' + _bmBizName + (dateLabel ? ' on ' + dateLabel + timeLabel : '') + ' was received. The business will confirm shortly.';
     const bizEmailAddr = (listing && (listing.owner_email || listing.email)) || '';
     const emailToBiz  = 'You have a new ' + typeLabel.toLowerCase() + ' request from ' + custName + (dateLabel ? ' on ' + dateLabel + timeLabel : '') + '.\n\nService: ' + serviceField + (notesVal ? '\nNotes: ' + notesVal : '') + '\nCustomer phone: ' + (phoneVal || 'not provided') + '\nCustomer email: ' + emailVal + '\n\nLog in to noamark.com to confirm, decline, or reschedule this request.';
-    const emailToUser = 'Hi ' + custName.split(' ')[0] + ',\n\nYour ' + typeLabel.toLowerCase() + ' at ' + _bmBizName + (dateLabel ? ' on ' + dateLabel + timeLabel : '') + ' was received.\n\n' + _bmBizName + ' will confirm your request shortly — you\'ll get another email (and SMS) as soon as they do.\n\nThanks for booking with NoaMark!';
+    const emailToUser = 'Hi ' + custName.split(' ')[0] + ',\n\nYour ' + typeLabel.toLowerCase() + ' at ' + _bmBizName + (dateLabel ? ' on ' + dateLabel + timeLabel : '') + ' was received.\n\n' + _bmBizName + ' will confirm your request shortly, you\'ll get another email (and SMS) as soon as they do.\n\nThanks for booking with NoaMark!';
 
     // Send SMS + email in parallel — await all so we know what actually succeeded
     const [bizSmsResult, userSmsResult, bizEmailResult, userEmailResult] = await Promise.all([
       listing?.phone ? bmSendSMS(listing.phone, smsToBiz) : Promise.resolve({ ok: false, reason: 'no business phone' }),
       phoneVal       ? bmSendSMS(phoneVal, smsToUser)     : Promise.resolve({ ok: false, reason: 'no customer phone' }),
-      bizEmailAddr   ? nmSendEmail(bizEmailAddr, 'New ' + typeLabel + ' request — ' + custName, emailToBiz) : Promise.resolve({ ok: false, reason: 'no business email' }),
+      bizEmailAddr   ? nmSendEmail(bizEmailAddr, 'New ' + typeLabel + ' request, ' + custName, emailToBiz) : Promise.resolve({ ok: false, reason: 'no business email' }),
       emailVal       ? nmSendEmail(emailVal, 'Your booking request at ' + _bmBizName, emailToUser) : Promise.resolve({ ok: false, reason: 'no customer email' })
     ]);
 
@@ -13832,10 +13833,10 @@ async function submitBooking() {
     statusEl.style.color      = '#86efac';
     let smsNote = '';
     if (userSmsResult.ok) smsNote = ' You will be notified by SMS';
-    else if (phoneVal)    smsNote = ' (SMS notification could not be sent — please check back on the site for updates.)';
+    else if (phoneVal)    smsNote = ' (SMS notification could not be sent, please check back on the site for updates.)';
     let emailNote = '';
     if (userEmailResult.ok) emailNote = smsNote.startsWith(' You') ? ' and email.' : ' You will be notified by email.';
-    else if (!smsNote) emailNote = ' (Email notification could not be sent — please check back on the site for updates.)';
+    else if (!smsNote) emailNote = ' (Email notification could not be sent, please check back on the site for updates.)';
     if (smsNote.startsWith(' You') && !emailNote) smsNote += '.';
     statusEl.textContent      = '✅ Booking request sent! ' + _bmBizName + ' will confirm shortly.' + smsNote + emailNote;
     btn.textContent = '✅ Request Sent!';
@@ -14104,7 +14105,7 @@ async function bpRescheduleBooking(bookingId, customerName, currentDate, current
     if (emailOk) notifiedParts.push('email');
     if (notifiedParts.length) bpToast('Booking rescheduled. Customer notified by ' + notifiedParts.join(' and ') + '.');
     else if (hadContact) bpToast('Booking rescheduled. ⚠ Customer notification could not be sent.');
-    else bpToast('Booking rescheduled. No customer contact details on file — not notified.');
+    else bpToast('Booking rescheduled. No customer contact details on file, not notified.');
     await bpLoadBookings();
   } catch(e) {
     alert('Could not reschedule booking. Please try again.');
@@ -14150,7 +14151,7 @@ async function bpRespondBooking(bookingId, status) {
           hadEmail = true;
           const custFirst = (b.customer_name || 'there').split(' ')[0];
           const emailBody = status === 'confirmed'
-            ? 'Hi ' + custFirst + ',\n\nGreat news — your ' + (b.booking_type || 'booking') + (dateStr ? ' on ' + dateStr : '') + ' has been CONFIRMED. See you then!\n\nThanks for booking with NoaMark.'
+            ? 'Hi ' + custFirst + ',\n\nGreat news, your ' + (b.booking_type || 'booking') + (dateStr ? ' on ' + dateStr : '') + ' has been CONFIRMED. See you then!\n\nThanks for booking with NoaMark.'
             : 'Hi ' + custFirst + ',\n\nUnfortunately your ' + (b.booking_type || 'booking') + (dateStr ? ' on ' + dateStr : '') + ' was declined. Please contact the business directly if you\'d like to reschedule.\n\nThanks for using NoaMark.';
           const er = await nmSendEmail(b.customer_email, status === 'confirmed' ? 'Your booking is confirmed!' : 'Update on your booking request', emailBody);
           emailOk = !!er.ok;
@@ -14163,7 +14164,7 @@ async function bpRespondBooking(bookingId, status) {
     if (emailOk) notifiedParts.push('email');
     if (notifiedParts.length) bpToast('Booking ' + statusLabel + '. Customer notified by ' + notifiedParts.join(' and ') + '.');
     else if (hadPhone || hadEmail) bpToast('Booking ' + statusLabel + '. ⚠ Customer notification could not be sent.');
-    else bpToast('Booking ' + statusLabel + '. No customer contact details on file — not notified.');
+    else bpToast('Booking ' + statusLabel + '. No customer contact details on file, not notified.');
     await bpLoadBookings();
     bpRefreshNotifBadge();
   } catch(e) { alert('Could not update booking. Please try again.'); }
@@ -14260,7 +14261,7 @@ async function bpSaveAvailability() {
   if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
   // Build payload using day_0..day_6 boolean columns (matches Supabase schema)
   const payload = {
-    listing_id:  window._bpListingId || '', // listing.id — must be set by bpLoadBookings
+    listing_id:  window._bpListingId || '', // listing.id, must be set by bpLoadBookings
     day_0: !!(document.getElementById('bp-day-0') || {}).checked,
     day_1: !!(document.getElementById('bp-day-1') || {}).checked,
     day_2: !!(document.getElementById('bp-day-2') || {}).checked,
@@ -14428,7 +14429,7 @@ document.addEventListener('keydown', function(e) {
       if(!raw) return null;
       var c = JSON.parse(raw);
       var ageMs = Date.now() - (c.ts || 0);
-      if(ageMs > CONSENT_MONTHS * 30 * 24 * 60 * 60 * 1000) return null; // expired — ask again
+      if(ageMs > CONSENT_MONTHS * 30 * 24 * 60 * 60 * 1000) return null; // expired, ask again
       return c;
     } catch(e){ return null; }
   }
@@ -14454,7 +14455,7 @@ document.addEventListener('keydown', function(e) {
           '<div style="width:34px;height:34px;background:rgba(244,196,48,.1);border:1px solid rgba(244,196,48,.25);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#F4C430;flex-shrink:0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.2C10.6 2.2 9.6 3.2 9.6 4.4C9.6 5 9.3 5.5 8.7 5.7C7.9 6 7.3 6.7 7.3 7.6C7.3 8.2 7 8.7 6.4 8.9C5.5 9.2 4.9 10.1 5.1 11.1C5.2 11.6 5 12.1 4.5 12.4C3.6 12.9 3.1 13.9 3.4 14.9C4.2 17.7 6.5 20.2 12 20.2C17 20.2 21 16.2 21 11.2C21 10.6 20.9 10.1 20.8 9.6C19.5 10 18 9.1 18 7.7C18 6.3 16.9 5.2 15.5 5.2C15.3 5.2 15.1 5.2 15 5.3C14.6 3.5 13.4 2.2 12 2.2Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="10" cy="10.5" r="0.9" fill="currentColor"/><circle cx="14.2" cy="9.3" r="0.9" fill="currentColor"/><circle cx="12" cy="14.2" r="0.9" fill="currentColor"/><circle cx="9" cy="15.3" r="0.9" fill="currentColor"/></svg></div>' +
           '<div style="color:rgba(255,255,255,.75);font-size:12px;line-height:1.7;">' +
             '<strong style="color:#F4C430;display:block;margin-bottom:4px;font-size:13px;">We use cookies</strong>' +
-            'NoaMark uses strictly necessary local storage to keep you logged in — this is always on. With your permission, we\'d also like to log anonymous site-visit stats to help us improve NoaMark. See our ' +
+            'NoaMark uses strictly necessary local storage to keep you logged in, this is always on. With your permission, we\'d also like to log anonymous site-visit stats to help us improve NoaMark. See our ' +
             '<a onclick="nmOpenCookiePolicy()" style="color:#F4C430;text-decoration:underline;cursor:pointer;">Privacy Policy</a> for details.' +
           '</div>' +
         '</div>' +
