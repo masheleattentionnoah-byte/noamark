@@ -1424,6 +1424,23 @@
   .what-card:hover .what-card-icon{transform:scale(1.12);}
 }
 </style>
+
+<style>
+/* ── NM ICON SYSTEM — replaces emoji used as UI icons with a consistent, colored line-icon set ── */
+.nm-ico{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;line-height:0;}
+.nm-ico svg{width:1em;height:1em;}
+.nm-ico-food{color:#f97316;}
+.nm-ico-shops{color:#3b82f6;}
+.nm-ico-beauty{color:#ec4899;}
+.nm-ico-laundry{color:#06b6d4;}
+.nm-ico-services{color:#64748b;}
+.nm-ico-transport{color:#d4af37;}
+.nm-ico-store{color:#166534;}
+.nm-ico-location{color:#ef4444;}
+.nm-ico-star{color:#d4af37;}
+.nm-ico-money{color:#16a34a;}
+</style>
+
 </head>
 <body>
 
@@ -1870,27 +1887,27 @@
     </div>
     <div class="cat-grid">
       <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('food',document.querySelector('.mkt-cat-btn[data-cat=food]'));},200))">
-        <span class="cat-icon">🍔</span>
+        <span class="cat-icon nm-ico nm-ico-food"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h1a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M17 2a4 4 0 0 0-4 4v4a2 2 0 0 0 2 2h2v8"/></svg></span>
         <span class="cat-label">Food &amp; Restaurants</span>
       </div>
       <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('shops',document.querySelector('.mkt-cat-btn[data-cat=shops]'));},200))">
-        <span class="cat-icon">🛒</span>
+        <span class="cat-icon nm-ico nm-ico-shops"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
         <span class="cat-label">Shops &amp; Spaza</span>
       </div>
       <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('beauty',document.querySelector('.mkt-cat-btn[data-cat=beauty]'));},200))">
-        <span class="cat-icon">✂️</span>
+        <span class="cat-icon nm-ico nm-ico-beauty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></span>
         <span class="cat-label">Beauty &amp; Barber</span>
       </div>
       <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('laundry',document.querySelector('.mkt-cat-btn[data-cat=laundry]'));},200))">
-        <span class="cat-icon">👔</span>
+        <span class="cat-icon nm-ico nm-ico-laundry"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23Z"/></svg></span>
         <span class="cat-label">Laundry</span>
       </div>
       <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('services',document.querySelector('.mkt-cat-btn[data-cat=services]'));},200))">
-        <span class="cat-icon">🔧</span>
+        <span class="cat-icon nm-ico nm-ico-services"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>
         <span class="cat-label">Services</span>
       </div>
       <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('transport',document.querySelector('.mkt-cat-btn[data-cat=transport]'));},200))">
-        <span class="cat-icon">🚗</span>
+        <span class="cat-icon nm-ico nm-ico-transport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2v-4l-3-5H6L3 13v4h2"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/></svg></span>
         <span class="cat-label">Transport</span>
       </div>
       <div class="cat-item" onclick="showPage('marketplace')">
@@ -1914,7 +1931,7 @@
         <p class="what-card-body">We break down real business ideas with full startup costs, risk analysis, profit projections, and step-by-step setup guides, tailored for township and village markets.</p>
       </div>
       <div class="what-card" style="border-color:rgba(22,101,52,.3);cursor:pointer;" onclick="if(currentUser&&currentUser.type==='business'){showPage('marketplace',()=>setTimeout(()=>showMktView('admin'),100));}else{showPage('marketplace');}">
-        <span class="what-card-icon">📍</span>
+        <span class="what-card-icon nm-ico nm-ico-location"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>
         <h3 class="what-card-title" style="color:var(--green-dark);">Local Marketplace</h3>
         <p class="what-card-body">Discover and promote real local businesses in your area. Food, shops, services, beauty, transport, all in one place. List your business free. Boost to reach more customers.</p>
         <div style="margin-top:20px;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green-dark);">Open Marketplace →</div>
@@ -2135,7 +2152,7 @@
       <!-- 3 value cards -->
       <div style="display:grid;gap:24px;margin-bottom:56px;" class="nm-3col-grid">
         <div style="background:#fff;border-radius:16px;padding:32px 24px;border:1px solid #e2e8f0;text-align:center;">
-          <div style="font-size:36px;margin-bottom:16px;">📍</div>
+          <div class="nm-ico nm-ico-location" style="font-size:36px;margin-bottom:16px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>
           <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:8px;">Discover Local</div>
           <div style="font-size:13px;color:#6b7280;line-height:1.6;">Find the best businesses in your neighbourhood, instantly.</div>
         </div>
@@ -2191,7 +2208,7 @@
               </div>
             </a>
             <div style="display:flex;align-items:center;gap:16px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;">
-              <div style="width:48px;height:48px;background:#f0fdf4;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">📍</div>
+              <div class="nm-ico nm-ico-location" style="width:48px;height:48px;background:#f0fdf4;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>
               <div>
                 <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#6b7280;margin-bottom:4px;">Location</div>
                 <div style="font-size:14px;font-weight:600;color:#111827;">South Africa</div>
@@ -3142,7 +3159,7 @@
       <p style="font-size:14px;color:var(--white-dim);text-align:center;max-width:560px;margin:0 auto;">Discover food, services, shops, and more in your township or village. Support local. Build community.</p>
       <div class="mkt-search-wrap">
         <input type="text" class="mkt-search-input" id="mkt-search" placeholder="Search food, shops, services, barbers…" oninput="filterListings()">
-        <input type="text" class="mkt-location-input" id="mkt-location" placeholder="📍 Area (Soweto, Alex…)" oninput="filterListings()">
+        <input type="text" class="mkt-location-input" id="mkt-location" placeholder="Area (Soweto, Alex…)" oninput="filterListings()">
         <button class="mkt-search-btn" onclick="filterListings()">Search</button>
       </div>
     </div>
@@ -3150,13 +3167,13 @@
 
   <!-- CATEGORY NAV -->
   <div class="mkt-cats" id="mkt-cat-nav">
-    <button class="mkt-cat-btn active" data-cat="all" onclick="setCat('all',this)"><span class="mkt-cat-icon">🏪</span><span class="mkt-cat-label">All</span></button>
-    <button class="mkt-cat-btn" data-cat="food" onclick="setCat('food',this)"><span class="mkt-cat-icon">🍔</span><span class="mkt-cat-label">Food</span></button>
-    <button class="mkt-cat-btn" data-cat="shops" onclick="setCat('shops',this)"><span class="mkt-cat-icon">🛒</span><span class="mkt-cat-label">Shops</span></button>
-    <button class="mkt-cat-btn" data-cat="beauty" onclick="setCat('beauty',this)"><span class="mkt-cat-icon">💇</span><span class="mkt-cat-label">Beauty</span></button>
-    <button class="mkt-cat-btn" data-cat="laundry" onclick="setCat('laundry',this)"><span class="mkt-cat-icon">🧺</span><span class="mkt-cat-label">Laundry</span></button>
-    <button class="mkt-cat-btn" data-cat="services" onclick="setCat('services',this)"><span class="mkt-cat-icon">🧰</span><span class="mkt-cat-label">Services</span></button>
-    <button class="mkt-cat-btn" data-cat="transport" onclick="setCat('transport',this)"><span class="mkt-cat-icon">🚕</span><span class="mkt-cat-label">Transport</span></button>
+    <button class="mkt-cat-btn active" data-cat="all" onclick="setCat('all',this)"><span class="mkt-cat-icon nm-ico nm-ico-store"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1-5h16l1 5"/><path d="M3 9a2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 21v-6h6v6"/></svg></span><span class="mkt-cat-label">All</span></button>
+    <button class="mkt-cat-btn" data-cat="food" onclick="setCat('food',this)"><span class="mkt-cat-icon nm-ico nm-ico-food"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h1a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M17 2a4 4 0 0 0-4 4v4a2 2 0 0 0 2 2h2v8"/></svg></span><span class="mkt-cat-label">Food</span></button>
+    <button class="mkt-cat-btn" data-cat="shops" onclick="setCat('shops',this)"><span class="mkt-cat-icon nm-ico nm-ico-shops"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span><span class="mkt-cat-label">Shops</span></button>
+    <button class="mkt-cat-btn" data-cat="beauty" onclick="setCat('beauty',this)"><span class="mkt-cat-icon nm-ico nm-ico-beauty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></span><span class="mkt-cat-label">Beauty</span></button>
+    <button class="mkt-cat-btn" data-cat="laundry" onclick="setCat('laundry',this)"><span class="mkt-cat-icon nm-ico nm-ico-laundry"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23Z"/></svg></span><span class="mkt-cat-label">Laundry</span></button>
+    <button class="mkt-cat-btn" data-cat="services" onclick="setCat('services',this)"><span class="mkt-cat-icon nm-ico nm-ico-services"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span><span class="mkt-cat-label">Services</span></button>
+    <button class="mkt-cat-btn" data-cat="transport" onclick="setCat('transport',this)"><span class="mkt-cat-icon nm-ico nm-ico-transport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2v-4l-3-5H6L3 13v4h2"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/></svg></span><span class="mkt-cat-label">Transport</span></button>
   </div>
 
   <!-- TRANSPORT SUB-OPTIONS -->
@@ -3172,11 +3189,11 @@
   <!-- SORT BAR -->
   <div id="mkt-sort-bar" style="display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--black-2);border-bottom:1px solid var(--border-soft);flex-wrap:wrap;overflow-x:auto;width:100%;box-sizing:border-box;">
     <span style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);white-space:nowrap;">Sort by:</span>
-    <button class="sort-btn active" data-sort="ranking" onclick="setSort('ranking',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--gold);background:var(--gold);color:#111827;cursor:pointer;transition:all .3s;">🏆 Ranking</button>
-    <button class="sort-btn" data-sort="distance" onclick="setSort('distance',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;">📍 Distance</button>
-    <button class="sort-btn" data-sort="rating" onclick="setSort('rating',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;">⭐ Rating</button>
-    <button class="sort-btn" data-sort="newest" onclick="setSort('newest',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;">🆕 Newest</button>
-    <button class="near-me-btn" onclick="nmUseNearMe(this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);cursor:pointer;transition:all .3s;margin-left:auto;white-space:nowrap;">📍 Near Me Now</button>
+    <button class="sort-btn active" data-sort="ranking" onclick="setSort('ranking',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--gold);background:var(--gold);color:#111827;cursor:pointer;transition:all .3s;"><span class="nm-ico" style="margin-right:4px;color:#111827;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg></span>Ranking</button>
+    <button class="sort-btn" data-sort="distance" onclick="setSort('distance',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;"><span class="nm-ico nm-ico-location" style="margin-right:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>Distance</button>
+    <button class="sort-btn" data-sort="rating" onclick="setSort('rating',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;"><span class="nm-ico nm-ico-star" style="margin-right:4px;"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>Rating</button>
+    <button class="sort-btn" data-sort="newest" onclick="setSort('newest',this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--border-soft);background:transparent;color:var(--white-dim);cursor:pointer;transition:all .3s;"><span class="nm-ico" style="margin-right:4px;color:#3b82f6;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>Newest</button>
+    <button class="near-me-btn" onclick="nmUseNearMe(this)" style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);cursor:pointer;transition:all .3s;margin-left:auto;white-space:nowrap;">Near Me Now</button>
   </div>
 
   <!-- MAIN LISTINGS -->
@@ -4810,6 +4827,27 @@
 // NOAMARK PLATFORM — FULL JAVASCRIPT ENGINE
 // ════════════════════════════════════════════════════
 
+// ── NM ICON SYSTEM ── shared SVG icon set, replaces emoji used as UI icons
+// (category badges, location pins, ratings, pricing) with a consistent line-icon style.
+const NM_ICON_SVG = {
+  food:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h1a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M17 2a4 4 0 0 0-4 4v4a2 2 0 0 0 2 2h2v8"/></svg>',
+  shops:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
+  beauty:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>',
+  laundry:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23Z"/></svg>',
+  services: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+  transport:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2v-4l-3-5H6L3 13v4h2"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/></svg>',
+  store:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1-5h16l1 5"/><path d="M3 9a2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 21v-6h6v6"/></svg>',
+  location: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
+  star:     '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+  money:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/></svg>'
+};
+function nmIcon(key, size){
+  const svg = NM_ICON_SVG[key] || NM_ICON_SVG.store;
+  const s = size ? `style="font-size:${size}px;"` : '';
+  return `<span class="nm-ico nm-ico-${key}" ${s}>${svg}</span>`;
+}
+const NM_CAT_LABELS = {food:'Food',shops:'Shops',beauty:'Beauty',laundry:'Laundry',services:'Services',transport:'Transport'};
+
 // ── CURSOR ──
 window.addEventListener('scroll',()=>document.getElementById('main-nav').classList.toggle('scrolled',window.scrollY>60));
 
@@ -5522,18 +5560,18 @@ async function nmActivateNearMe(btn, isAutoRestore){
       }
     } catch(e){ /* Permissions API not supported here, just proceed */ }
     if(!alreadyGranted){
-      nmToast('📍 Please tap "Allow" when your browser asks for your location.', 4500);
+      nmToast('Please tap "Allow" when your browser asks for your location.', 4500);
     }
   }
 
   const originalText = btn.textContent;
-  btn.textContent = '📍 Locating…';
+  btn.textContent = 'Locating…';
   btn.disabled = true;
 
   // Reassure the person during a slow fix instead of leaving the button
   // looking frozen for several seconds with no feedback.
   const slowNoticeTimer = setTimeout(() => {
-    if(btn.disabled) btn.textContent = '📍 Still locating…';
+    if(btn.disabled) btn.textContent = 'Still locating…';
   }, 3000);
 
   navigator.geolocation.getCurrentPosition(
@@ -5541,7 +5579,7 @@ async function nmActivateNearMe(btn, isAutoRestore){
       clearTimeout(slowNoticeTimer);
       window._userLat = pos.coords.latitude;
       window._userLng = pos.coords.longitude;
-      btn.textContent = '📍 Near Me ✓';
+      btn.textContent = 'Near Me ✓';
       btn.title = 'Tap again to turn off Near Me Now';
       btn.disabled = false;
       btn.classList.add('near-me-active');
@@ -5585,7 +5623,7 @@ function nmDeactivateNearMe(btn){
   window._userLat = null;
   window._userLng = null;
   btn.classList.remove('near-me-active');
-  btn.textContent = '📍 Near Me Now';
+  btn.textContent = 'Near Me Now';
   btn.title = '';
   btn.disabled = false;
   nmSaveNearMeState(false);
@@ -5642,7 +5680,7 @@ function renderCard(biz, idx){
     ?'<div class="listing-status status-open">● Open</div>'
     :'<div class="listing-status status-closed">● Closed</div>';
   const ratingHTML = (biz.reviewCount > 0)
-    ? `<div class="listing-rating"><span class="star">⭐</span> ${biz.rating.toFixed(1)} <span style="color:var(--white-dim);font-weight:400;">(${biz.reviewCount} review${biz.reviewCount===1?'':'s'})</span></div>`
+    ? `<div class="listing-rating"><span class="star nm-ico nm-ico-star"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span> ${biz.rating.toFixed(1)} <span style="color:var(--white-dim);font-weight:400;">(${biz.reviewCount} review${biz.reviewCount===1?'':'s'})</span></div>`
     : `<div class="listing-rating no-reviews">🆕 New listing</div>`;
   const verifiedHTML = biz.verified ? `<span class="listing-verified-tag" title="Verified by NoaMark">✅ Verified</span>` : '';
   const waNumber = nmGetWaNumber(biz);
@@ -5658,8 +5696,8 @@ function renderCard(biz, idx){
       <div class="listing-cat">${getCatLabel(biz.cat)}</div>
       <h3 class="listing-name">${nmSafe(biz.name)} ${verifiedHTML}</h3>
       ${ratingHTML}
-      <div class="listing-location">📍 ${nmSafe(biz.area)}${(() => { const d = nmDistanceToBiz(biz); return d !== null ? ` · <span style="color:var(--gold);">${nmFormatDistance(d)}</span>` : ''; })()}</div>
-      <div class="listing-price">💰 ${biz.price}</div>
+      <div class="listing-location"><span class="nm-ico nm-ico-location"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span> ${nmSafe(biz.area)}${(() => { const d = nmDistanceToBiz(biz); return d !== null ? ` · <span style="color:var(--gold);">${nmFormatDistance(d)}</span>` : ''; })()}</div>
+      <div class="listing-price" style="display:flex;align-items:center;gap:5px;"><span class="nm-ico nm-ico-money"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/></svg></span> ${biz.price}</div>
       ${(phoneDigits || waNumber) ? quickActionsHTML : ''}
       <button class="listing-cta">View Details →</button>
     </div>
@@ -6517,9 +6555,9 @@ function showBizProfile(id){
           <h1 class="biz-name">${nmSafe(biz.name)}</h1>
           <div class="biz-meta-row">
             <span class="biz-meta-item">${getCatLabel(biz.cat)}</span>
-            <span class="biz-meta-item">📍 ${nmSafe(biz.area)}</span>
+            <span class="biz-meta-item"><span class="nm-ico nm-ico-location"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span> ${nmSafe(biz.area)}</span>
             <span class="biz-meta-item" style="color:${sc};font-weight:600;">${st}</span>
-            <span class="biz-meta-item" style="color:var(--success);">💰 ${biz.price}</span>
+            <span class="biz-meta-item" style="color:var(--success);display:inline-flex;align-items:center;gap:5px;"><span class="nm-ico nm-ico-money"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/></svg></span> ${biz.price}</span>
             <button onclick="nmShareBusiness('${biz.id}','${nmSafe(biz.name)}')" title="Share this business" aria-label="Share this business" style="display:inline-flex;align-items:center;gap:6px;background:var(--gold);color:#111827;border:none;padding:6px 16px;border-radius:20px;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:.5px;transition:all .25s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">🔗 Share</button>
           </div>
         </div>
@@ -6527,7 +6565,7 @@ function showBizProfile(id){
           ${biz.phone ? `<a href="tel:${biz.phone}" class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;">📞 Call Now</a>` : `<span class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;opacity:.4;cursor:not-allowed;">📞 No Number</span>`}
           <button onclick="openBookingModal('${biz.id}','${nmSafe(biz.name)}','${biz.cat}')" class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;background:var(--green-dark);border-color:var(--green-dark);">📅 Book Now</button>
           ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#25D366;color:#25D366;">💬 WhatsApp</a>` : `<span class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;opacity:.4;cursor:not-allowed;">💬 No WhatsApp</span>`}
-          <a href="${googleMapsUrl}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#4285F4;color:#4285F4;">📍 Google Maps</a>
+          <a href="${googleMapsUrl}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#4285F4;color:#4285F4;"><span class="nm-ico" style="margin-right:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>Google Maps</a>
           <a href="${boltUrl}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#34E0A1;color:#34E0A1;">🚗 Order Bolt</a>
         </div>
       </div>
@@ -6549,11 +6587,11 @@ function showBizProfile(id){
           ${nmBuildHoursHTML(biz)}
           <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:28px;margin-bottom:16px;">
             <div class="biz-section-title">Location</div>
-            <div style="font-size:14px;color:var(--white-soft);margin-bottom:16px;">📍 ${nmSafe(biz.area)}</div>
+            <div style="font-size:14px;color:var(--white-soft);margin-bottom:16px;display:flex;align-items:center;gap:6px;" class="nm-ico nm-ico-location"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg><span style="color:var(--white-soft);">${nmSafe(biz.area)}</span></div>
             <div style="position:relative;width:100%;padding-top:56%;margin-bottom:14px;overflow:hidden;border-radius:8px;border:1px solid var(--border-soft);background:var(--black-3);">
               <iframe src="${mapEmbedUrl}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" title="Map showing location of ${nmSafe(biz.name)}"></iframe>
             </div>
-            <a href="${googleMapsUrl}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#4285F4;text-decoration:none;padding:12px 16px;background:rgba(66,133,244,.05);border:1px solid rgba(66,133,244,.2);margin-bottom:10px;transition:border-color .3s;" onmouseover="this.style.borderColor='#4285F4'" onmouseout="this.style.borderColor='rgba(66,133,244,.2)'">📍 Open in Google Maps</a>
+            <a href="${googleMapsUrl}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#4285F4;text-decoration:none;padding:12px 16px;background:rgba(66,133,244,.05);border:1px solid rgba(66,133,244,.2);margin-bottom:10px;transition:border-color .3s;" onmouseover="this.style.borderColor='#4285F4'" onmouseout="this.style.borderColor='rgba(66,133,244,.2)'"><span class="nm-ico" style="margin-right:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>Open in Google Maps</a>
             <a href="${boltUrl}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#34E0A1;text-decoration:none;padding:12px 16px;background:rgba(52,224,161,.05);border:1px solid rgba(52,224,161,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#34E0A1'" onmouseout="this.style.borderColor='rgba(52,224,161,.2)'">🚗 Get a Bolt Here</a>
           </div>
           ${nmBuildSocialHTML(biz)}
@@ -7513,7 +7551,7 @@ function adminReviewListing(id) {
   document.getElementById('arm-location').innerHTML =
     [l.area, l.city, l.province].filter(Boolean).join(', ') || '—';
   document.getElementById('arm-address').innerHTML =
-    [l.address, l.landmark ? '📍 Near: ' + l.landmark : ''].filter(Boolean).join('<br>') || '—';
+    [l.address, l.landmark ? 'Near: ' + l.landmark : ''].filter(Boolean).join('<br>') || '—';
 
   // Contact
   const contactParts = [];
@@ -7766,7 +7804,7 @@ function renderDashboardStats(){
         <div class="opp-row" onclick="showBizProfile('${l.id}')" style="cursor:pointer;">
           <div class="opp-row-info">
             <div class="opp-row-name">${nmSafe(l.name)}</div>
-            <div class="opp-row-cat">${nmSafe(l.cat||'')} · 📍 ${nmSafe(l.area||l.city||'—')}</div>
+            <div class="opp-row-cat">${nmSafe(l.cat||'')} · ${nmSafe(l.area||l.city||'—')}</div>
           </div>
           <div class="opp-row-badge" style="${l.boost&&l.boost!=='none'?'background:var(--gold);color:#111;':''}">
             ${l.boost&&l.boost!=='none'?'Boosted':'New'}
@@ -8125,9 +8163,9 @@ function renderHomeBoosted(){
       <div class="biz-info">
         <div class="biz-name">${nmSafe(biz.name)}</div>
         <div class="biz-category">${getCatLabel(biz.cat)}</div>
-        <div class="biz-location">📍 ${nmSafe(biz.area || biz.city || 'South Africa')}</div>
+        <div class="biz-location"><span class="nm-ico nm-ico-location"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span> ${nmSafe(biz.area || biz.city || 'South Africa')}</div>
         <div class="biz-footer">
-          <div class="biz-rating"><span class="star">⭐</span> ${biz.reviewCount > 0 ? `${Number(biz.rating).toFixed(1)} (${biz.reviewCount})` : 'New'}</div>
+          <div class="biz-rating"><span class="star nm-ico nm-ico-star"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span> ${biz.reviewCount > 0 ? `${Number(biz.rating).toFixed(1)} (${biz.reviewCount})` : 'New'}</div>
           <div class="biz-view-btn" style="cursor:pointer;">View Details →</div>
         </div>
       </div>`;
@@ -10930,11 +10968,11 @@ function bpSyncListingPreview(l) {
   if(!l) return;
   document.getElementById('bpp-name').textContent = l.name || '—';
   document.getElementById('bpp-type').textContent = l.type || l.cat || '';
-  document.getElementById('bpp-loc').textContent = l.area ? '📍 ' + l.area : '';
+  document.getElementById('bpp-loc').innerHTML = l.area ? '<span class="nm-ico nm-ico-location" style="margin-right:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>' + l.area : '';
   const hrs = [l.hoursWeekday ? 'Mon–Fri: '+l.hoursWeekday : '', l.hoursSat ? 'Sat: '+l.hoursSat : ''].filter(Boolean).join(' · ');
   document.getElementById('bpp-hours').textContent = hrs ? '🕐 ' + hrs : '';
   document.getElementById('bpp-status').textContent = l.status === 'open' ? '🟢 Open' : l.status === 'closed' ? '🔴 Closed' : '';
-  document.getElementById('bpp-price').textContent = l.price ? '💰 ' + l.price : '';
+  document.getElementById('bpp-price').innerHTML = l.price ? '<span class="nm-ico nm-ico-money"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/></svg></span> ' + l.price : '';
   document.getElementById('bpp-desc').textContent = bpData.enhancedDesc || l.desc || 'No description provided.';
   const chips = document.getElementById('bpp-chips');
   const features = [l.boost !== 'none' ? (l.boost === 'dominance' ? '🔥 Dominance Boost' : '⭐ Featured') : '', l.years ? l.years + ' in business' : ''].filter(Boolean);
@@ -10963,7 +11001,7 @@ async function bpRenderMyListing() {
             </div>
           </div>
           <div class="bp-preview-meta">
-            ${myListing.area ? '<span>📍 '+myListing.area+'</span>' : ''}
+            ${myListing.area ? '<span><span class="nm-ico nm-ico-location" style="margin-right:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>'+myListing.area+'</span>' : ''}
             ${myListing.hoursWeekday ? '<span>🕐 '+myListing.hoursWeekday+'</span>' : ''}
             ${myListing.status ? '<span style="color:'+(myListing.status==='open'?'#4ade80':'#f87171')+'">'+(myListing.status==='open'?'● Open':'● Closed')+'</span>' : ''}
             ${myListing.phone ? '<span>📞 '+myListing.phone+'</span>' : ''}
