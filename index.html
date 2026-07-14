@@ -10706,10 +10706,19 @@ async function bpEditListing() {
     if(myListing.photos && myListing.photos.length > 0) {
       const previewEl = document.getElementById('place-photo-preview');
       if(previewEl) {
+        // Remove any previous slots-note first — if this pre-fill ever runs
+        // more than once for the same edit session, this stops the note
+        // being inserted a second time instead of replacing the first.
+        const oldNote = document.getElementById('saved-photo-slots-note');
+        if (oldNote) oldNote.remove();
         const slotsNote = document.createElement('div');
         slotsNote.id = 'saved-photo-slots-note';
-        slotsNote.style.cssText = 'width:100%;font-size:11px;color:var(--white-dim);margin-bottom:8px;';
-        slotsNote.textContent = myListing.photos.length + ' of 10 photo slots used. Use ✎ to replace a photo, ✕ to remove one and free up a slot.';
+        slotsNote.style.cssText = 'width:100%;font-size:11px;margin-bottom:8px;';
+        const overLimit = myListing.photos.length > 10;
+        slotsNote.style.color = overLimit ? '#f87171' : 'var(--white-dim)';
+        slotsNote.textContent = overLimit
+          ? myListing.photos.length + ' photos are saved on this listing — more than the 10 allowed. This can happen from earlier edits before this limit was enforced. Remove ' + (myListing.photos.length - 10) + ' of them (✕) to get back under the limit before you can add new ones.'
+          : myListing.photos.length + ' of 10 photo slots used. Use ✎ to replace a photo, ✕ to remove one and free up a slot.';
         previewEl.parentNode?.insertBefore(slotsNote, previewEl);
         previewEl.innerHTML = myListing.photos.map((url, i) =>
           `<div style="position:relative;display:inline-block;margin:4px;" id="saved-photo-wrap-${i}">
