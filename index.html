@@ -10818,7 +10818,7 @@ async function bpEditListing() {
     window._editingListingId = myListing.id;
 
     // Show a notice
-    if(typeof bpToast === 'function') bpToast('✅ Listing loaded, only change what you want to update.');
+    if(typeof bpToast === 'function') bpToast('Listing loaded, only change what you want to update.');
   }, 300);
 }
 // Fetches the logged-in business owner's OWN listing regardless of status
@@ -10936,9 +10936,9 @@ function populateBizDashboard() {
       renderStatusUI(myListing);
       if (myListing.approvalStatus === 'approved') {
         bpSyncListingPreview(myListing);
-        const boostLabel = myListing.boost === 'dominance' ? '🔥 Dominance'
-                         : myListing.boost === 'growth'    ? '⭐ Growth'
-                         : myListing.boost === 'starter'   ? '🟡 Starter' : 'None';
+        const boostLabel = myListing.boost === 'dominance' ? 'Dominance'
+                         : myListing.boost === 'growth'    ? 'Growth'
+                         : myListing.boost === 'starter'   ? 'Starter' : 'None';
         document.getElementById('bpm-boost').textContent = boostLabel;
         document.getElementById('bpm-boost').style.color = myListing.boost !== 'none' ? 'var(--gold-dim)' : 'var(--white)';
         document.getElementById('bpm-boost-sub').textContent = myListing.boost !== 'none' ? 'Boost currently active' : 'No boost active';
@@ -10967,9 +10967,9 @@ function populateBizDashboard() {
   else enqBadge.style.display = 'none';
 
   if(myListing && myListing.approvalStatus === 'approved') {
-    const boostLabel = myListing.boost === 'dominance' ? '🔥 Dominance'
-                     : myListing.boost === 'growth'    ? '⭐ Growth'
-                     : myListing.boost === 'starter'   ? '🟡 Starter' : 'None';
+    const boostLabel = myListing.boost === 'dominance' ? 'Dominance'
+                     : myListing.boost === 'growth'    ? 'Growth'
+                     : myListing.boost === 'starter'   ? 'Starter' : 'None';
     document.getElementById('bpm-boost').textContent = boostLabel;
     document.getElementById('bpm-boost').style.color = myListing.boost !== 'none' ? 'var(--gold-dim)' : 'var(--white)';
     document.getElementById('bpm-boost-sub').textContent = myListing.boost !== 'none' ? 'Boost currently active' : 'No boost active';
@@ -10998,12 +10998,12 @@ function bpSyncListingPreview(l) {
   document.getElementById('bpp-type').textContent = l.type || l.cat || '';
   document.getElementById('bpp-loc').innerHTML = l.area ? '<span class="nm-ico nm-ico-location" style="margin-right:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>' + l.area : '';
   const hrs = [l.hoursWeekday ? 'Mon–Fri: '+l.hoursWeekday : '', l.hoursSat ? 'Sat: '+l.hoursSat : ''].filter(Boolean).join(' · ');
-  document.getElementById('bpp-hours').textContent = hrs ? '🕐 ' + hrs : '';
-  document.getElementById('bpp-status').textContent = l.status === 'open' ? '🟢 Open' : l.status === 'closed' ? '🔴 Closed' : '';
+  document.getElementById('bpp-hours').textContent = hrs ? '' + hrs : '';
+  document.getElementById('bpp-status').textContent = l.status === 'open' ? 'Open' : l.status === 'closed' ? 'Closed' : '';
   document.getElementById('bpp-price').innerHTML = l.price ? '<span class="nm-ico nm-ico-money"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/></svg></span> ' + l.price : '';
   document.getElementById('bpp-desc').textContent = bpData.enhancedDesc || l.desc || 'No description provided.';
   const chips = document.getElementById('bpp-chips');
-  const features = [l.boost !== 'none' ? (l.boost === 'dominance' ? '🔥 Dominance Boost' : '⭐ Featured') : '', l.years ? l.years + ' in business' : ''].filter(Boolean);
+  const features = [l.boost !== 'none' ? (l.boost === 'dominance' ? 'Dominance Boost' : 'Featured') : '', l.years ? l.years + ' in business' : ''].filter(Boolean);
   chips.innerHTML = features.map(f => `<span class="bp-preview-chip">${f}</span>`).join('');
   const menuTags = document.getElementById('bpp-menu-tags');
   if(l.menu && l.menu.length) {
@@ -11022,7 +11022,7 @@ async function bpRenderMyListing() {
       <div class="bp-listing-preview">
         <div class="bp-preview-hero">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-            <div style="font-size:40px;">${myListing.emoji||'🏪'}</div>
+            <div style="font-size:40px;">${myListing.emoji||''}</div>
             <div>
               <div class="bp-preview-biz-name">${nmSafe(myListing.name)}</div>
               <div class="bp-preview-tagline">${myListing.type||''} ${myListing.area ? '· '+myListing.area : ''}</div>
@@ -11030,9 +11030,9 @@ async function bpRenderMyListing() {
           </div>
           <div class="bp-preview-meta">
             ${myListing.area ? '<span><span class="nm-ico nm-ico-location" style="margin-right:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>'+myListing.area+'</span>' : ''}
-            ${myListing.hoursWeekday ? '<span>🕐 '+myListing.hoursWeekday+'</span>' : ''}
+            ${myListing.hoursWeekday ? '<span>'+myListing.hoursWeekday+'</span>' : ''}
             ${myListing.status ? '<span style="color:'+(myListing.status==='open'?'#4ade80':'#f87171')+'">'+(myListing.status==='open'?'● Open':'● Closed')+'</span>' : ''}
-            ${myListing.phone ? '<span>📞 '+myListing.phone+'</span>' : ''}
+            ${myListing.phone ? '<span>'+myListing.phone+'</span>' : ''}
           </div>
         </div>
         <div class="bp-preview-body">
@@ -11041,7 +11041,7 @@ async function bpRenderMyListing() {
         </div>
       </div>`;
   } else {
-    el.innerHTML = `<div class="bp-empty"><div class="bp-empty-icon">🏪</div><div class="bp-empty-text">No listing yet</div><div class="bp-empty-sub" style="margin-bottom:16px;">Add your business to the marketplace first</div><button class="bp-btn bp-btn-g" onclick="showMktView('add')">+ Add My Listing</button></div>`;
+    el.innerHTML = `<div class="bp-empty"><div class="bp-empty-icon"></div><div class="bp-empty-text">No listing yet</div><div class="bp-empty-sub" style="margin-bottom:16px;">Add your business to the marketplace first</div><button class="bp-btn bp-btn-g" onclick="showMktView('add')">+ Add My Listing</button></div>`;
   }
 }
 
@@ -11076,7 +11076,7 @@ function bpRenderEnquiries(filter = 'all') {
   if(filter === 'replied') enqs = enqs.filter(e => e.replied);
   document.getElementById('bp-enq-status-line').textContent = bpData.enquiries.length + ' total · ' + bpData.enquiries.filter(e=>!e.replied).length + ' unread';
   if(!enqs.length) {
-    el.innerHTML = `<div class="bp-empty"><div class="bp-empty-icon">📭</div><div class="bp-empty-text">${filter==='all'?'No enquiries yet':'No '+filter+' enquiries'}</div></div>`;
+    el.innerHTML = `<div class="bp-empty"><div class="bp-empty-icon"></div><div class="bp-empty-text">${filter==='all'?'No enquiries yet':'No '+filter+' enquiries'}</div></div>`;
     return;
   }
   const avCls = ['bp-enq-av','bp-enq-av','bp-enq-av','bp-enq-av'];
@@ -11137,7 +11137,7 @@ async function bpSendReply(id) {
   bpRenderEnquiries();
 
   if (smsResult.ok) {
-    bpToast('✅ Reply sent! Customer notified by SMS.');
+    bpToast('Reply sent! Customer notified by SMS.');
   } else if (!enq.phone) {
     bpToast('Reply saved. No customer phone number on file, they will only see it if they revisit your listing.');
   } else {
@@ -11212,7 +11212,7 @@ function bpRenderReviews() {
   bpRenderRatingOverview();
   const el = document.getElementById('bp-reviews-list');
   if(!el) return;
-  if(!bpData.reviews.length) { el.innerHTML=`<div class="bp-empty" style="padding:24px;"><div class="bp-empty-icon">✍️</div><div class="bp-empty-text">No reviews yet</div></div>`; return; }
+  if(!bpData.reviews.length) { el.innerHTML=`<div class="bp-empty" style="padding:24px;"><div class="bp-empty-icon"></div><div class="bp-empty-text">No reviews yet</div></div>`; return; }
   el.innerHTML = bpData.reviews.slice().reverse().map(r => `
     <div class="bp-review-item">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
@@ -11241,7 +11241,7 @@ function bpRenderRatingOverview() {
   const el = document.getElementById('bp-rating-overview');
   if(!el) return;
   const revs = bpData.reviews;
-  if(!revs.length) { el.innerHTML=`<div class="bp-empty" style="padding:24px;"><div class="bp-empty-icon">⭐</div><div class="bp-empty-text">No reviews yet</div></div>`; return; }
+  if(!revs.length) { el.innerHTML=`<div class="bp-empty" style="padding:24px;"><div class="bp-empty-icon"></div><div class="bp-empty-text">No reviews yet</div></div>`; return; }
   const avg = (revs.reduce((a,r)=>a+r.stars,0)/revs.length).toFixed(1);
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:20px;">
@@ -11438,7 +11438,7 @@ function bpRenderAnalytics() {
   // response rate
   const rrEl = document.getElementById('ban-response-rate');
   if(rrEl) {
-    if(!enqs.length) { rrEl.innerHTML=`<div class="bp-empty" style="padding:24px;"><div class="bp-empty-icon">📊</div><div class="bp-empty-text">No enquiries yet</div></div>`; }
+    if(!enqs.length) { rrEl.innerHTML=`<div class="bp-empty" style="padding:24px;"><div class="bp-empty-icon"></div><div class="bp-empty-text">No enquiries yet</div></div>`; }
     else {
       const replied = enqs.filter(e=>e.replied).length;
       const pct = Math.round(replied/enqs.length*100);
@@ -11452,7 +11452,7 @@ function bpRenderAnalytics() {
   // review breakdown
   const rbEl = document.getElementById('ban-review-breakdown');
   if(rbEl) {
-    if(!revs.length) { rbEl.innerHTML=`<div class="bp-empty" style="padding:24px;"><div class="bp-empty-icon">⭐</div><div class="bp-empty-text">No reviews yet</div></div>`; }
+    if(!revs.length) { rbEl.innerHTML=`<div class="bp-empty" style="padding:24px;"><div class="bp-empty-icon"></div><div class="bp-empty-text">No reviews yet</div></div>`; }
     else {
       rbEl.innerHTML = [5,4,3,2,1].map(s => { const c=revs.filter(r=>r.stars===s).length; return `<div class="bp-bar-row"><div class="bp-bar-label">${s} star${s>1?'s':''}</div><div class="bp-bar-track"><div class="bp-bar-fill bp-bar-fill-gold" style="width:${revs.length?Math.round(c/revs.length*100):0}%"></div></div><div class="bp-bar-count">${c}</div></div>`; }).join('');
     }
@@ -11547,7 +11547,7 @@ async function bpSaveAccountDetails() {
       if (clashRow && clashRow.email && clashRow.email.toLowerCase() !== (oldEmail || '').toLowerCase()) {
         errEl.textContent = 'That email is already used by another account.';
         errEl.style.display = 'block';
-        btn.disabled = false; btn.textContent = '💾 Save Account Details';
+        btn.disabled = false; btn.textContent = 'Save Account Details';
         return;
       }
     }
@@ -11612,15 +11612,15 @@ async function bpSaveAccountDetails() {
 
     window._bpsNewLogoFile = null;
     sucEl.textContent = emailChanged
-      ? '✅ Saved! Since your email changed, use ' + newEmail + ' next time you log in.'
-      : '✅ Account details saved.';
+      ? 'Saved! Since your email changed, use ' + newEmail + ' next time you log in.'
+      : 'Account details saved.';
     sucEl.style.display = 'block';
   } catch(e) {
     console.error('bpSaveAccountDetails failed:', e);
     errEl.textContent = 'Something went wrong saving your details. Please try again.';
     errEl.style.display = 'block';
   } finally {
-    btn.disabled = false; btn.textContent = '💾 Save Account Details';
+    btn.disabled = false; btn.textContent = 'Save Account Details';
   }
 }
 
@@ -11633,7 +11633,7 @@ function bpSelectBoost(plan, price) {
   // NOTE: Online checkout is temporarily disabled while a new payment gateway
   // is being integrated. Re-enable by restoring the nmProcessBoost(...) call
   // below once the new gateway is live.
-  alert('🚀 ' + plan + ' Boost selected (' + price + ').\n\nTo activate: contact us at support@noamark.com or +27 63 418 9749 with your business name and we will set this up for you.\n\nPayment: EFT or SnapScan.');
+  alert('' + plan + ' Boost selected (' + price + ').\n\nTo activate: contact us at support@noamark.com or +27 63 418 9749 with your business name and we will set this up for you.\n\nPayment: EFT or SnapScan.');
 }
 
 // ── TOAST ──
@@ -11906,17 +11906,17 @@ bpLoad();
       </div>
       <nav style="flex:1;display:contents;">
         <div class="adm-nav-sec">Main</div>
-        <div class="adm-nav-item active" onclick="admGoPage('overview')"><span class="adm-nav-icon">📊</span><span class="adm-nav-label">Overview</span></div>
-        <div class="adm-nav-item" onclick="admGoPage('approvals')"><span class="adm-nav-icon">🏪</span><span class="adm-nav-label">Businesses</span><span class="adm-nav-badge" id="adm-pending-badge" style="display:none;">0</span></div>
-        <div class="adm-nav-item" onclick="admGoPage('revenue')"><span class="adm-nav-icon">💰</span><span class="adm-nav-label">Revenue</span></div>
+        <div class="adm-nav-item active" onclick="admGoPage('overview')"><span class="adm-nav-icon"></span><span class="adm-nav-label">Overview</span></div>
+        <div class="adm-nav-item" onclick="admGoPage('approvals')"><span class="adm-nav-icon"></span><span class="adm-nav-label">Businesses</span><span class="adm-nav-badge" id="adm-pending-badge" style="display:none;">0</span></div>
+        <div class="adm-nav-item" onclick="admGoPage('revenue')"><span class="adm-nav-icon"></span><span class="adm-nav-label">Revenue</span></div>
         <div class="adm-nav-sec">Platform</div>
-        <div class="adm-nav-item" onclick="admGoPage('users')"><span class="adm-nav-icon">👥</span><span class="adm-nav-label">Users</span></div>
-        <div class="adm-nav-item" onclick="admGoPage('analytics')"><span class="adm-nav-icon">📈</span><span class="adm-nav-label">Analytics</span></div>
-        <div class="adm-nav-item" onclick="admGoPage('enquiries')"><span class="adm-nav-icon">📩</span><span class="adm-nav-label">Enquiries</span><span class="adm-nav-badge" id="adm-enq-badge" style="display:none;">0</span></div>
-        <div class="adm-nav-item" onclick="admGoPage('resets')"><span class="adm-nav-icon">🔑</span><span class="adm-nav-label">Password Resets</span><span class="adm-nav-badge" id="adm-resets-badge" style="display:none;">0</span></div>
-        <div class="adm-nav-item" onclick="admGoPage('videos')"><span class="adm-nav-icon">🎬</span><span class="adm-nav-label">Videos</span></div>
+        <div class="adm-nav-item" onclick="admGoPage('users')"><span class="adm-nav-icon"></span><span class="adm-nav-label">Users</span></div>
+        <div class="adm-nav-item" onclick="admGoPage('analytics')"><span class="adm-nav-icon"></span><span class="adm-nav-label">Analytics</span></div>
+        <div class="adm-nav-item" onclick="admGoPage('enquiries')"><span class="adm-nav-icon"></span><span class="adm-nav-label">Enquiries</span><span class="adm-nav-badge" id="adm-enq-badge" style="display:none;">0</span></div>
+        <div class="adm-nav-item" onclick="admGoPage('resets')"><span class="adm-nav-icon"></span><span class="adm-nav-label">Password Resets</span><span class="adm-nav-badge" id="adm-resets-badge" style="display:none;">0</span></div>
+        <div class="adm-nav-item" onclick="admGoPage('videos')"><span class="adm-nav-icon"></span><span class="adm-nav-label">Videos</span></div>
         <div class="adm-signout">
-          <div class="adm-signout-btn" onclick="handleLogout()">🚪 Sign Out of Admin</div>
+          <div class="adm-signout-btn" onclick="handleLogout()">Sign Out of Admin</div>
         </div>
       </nav>
     </div>
@@ -11928,7 +11928,7 @@ bpLoad();
       <div class="adm-page active" id="adm-page-overview">
         <div class="adm-topbar">
           <div>
-            <div class="adm-page-title">Good day, Admin 👋</div>
+            <div class="adm-page-title">Good day, Admin</div>
             <div class="adm-page-sub">Here's what's happening on NoaMark today</div>
           </div>
           <button class="adm-btn-refresh" onclick="admRefreshClick(this,'admLoadOverview')">↻ Refresh</button>
@@ -12210,7 +12210,7 @@ bpLoad();
 
         <!-- Add Video Form -->
         <div class="adm-card" style="margin-bottom:24px;">
-          <div class="adm-card-title" style="margin-bottom:20px;">➕ Add New Video</div>
+          <div class="adm-card-title" style="margin-bottom:20px;">Add New Video</div>
           <div style="display:grid;gap:16px;margin-bottom:16px;" class="nm-2col-grid">
             <div>
               <label style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:6px;">Title *</label>
@@ -12261,7 +12261,7 @@ bpLoad();
              what's actually saved, e.g. an account that landed under the wrong
              role after a partial signup failure. -->
         <div class="adm-card" style="margin-top:24px;border-color:rgba(99,179,237,.25);">
-          <div class="adm-card-title" style="margin-bottom:16px;">🔍 Find a User's Account</div>
+          <div class="adm-card-title" style="margin-bottom:16px;">Find a User's Account</div>
           <p style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px;line-height:1.6;">Can't figure out why someone's login isn't working? Search by email here, it checks every account type, not just business, so you can see if it exists at all and what role it's saved under.</p>
           <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
             <input id="adm-lookup-email" type="email" placeholder="user@email.com" style="flex:1;min-width:200px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;padding:10px 12px;border-radius:8px;font-size:13px;box-sizing:border-box;" onkeydown="if(event.key==='Enter')admLookupAccount()">
@@ -12272,7 +12272,7 @@ bpLoad();
 
         <!-- Manual reset form -->
         <div class="adm-card" style="margin-top:24px;border-color:rgba(244,196,48,.2);">
-          <div class="adm-card-title" style="margin-bottom:16px;">🔧 Manually Reset a User's Password</div>
+          <div class="adm-card-title" style="margin-bottom:16px;">Manually Reset a User's Password</div>
           <p style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px;line-height:1.6;">Enter the user's registered email and set a new temporary password. It will be emailed to them automatically, along with a reminder to change it after logging in.</p>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
             <div><label style="font-size:11px;color:rgba(255,255,255,.4);display:block;margin-bottom:6px;">User Email</label><input id="adm-reset-email" type="email" placeholder="user@email.com" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;padding:10px 12px;border-radius:8px;font-size:13px;box-sizing:border-box;"></div>
@@ -12287,7 +12287,7 @@ bpLoad();
              matching `users` row, so the owner can't log in, can't reset a
              password, and gets "business doesn't exist". -->
         <div class="adm-card" style="margin-top:24px;border-color:rgba(74,222,128,.25);">
-          <div class="adm-card-title" style="margin-bottom:16px;">🔓 Create a Login for an Unclaimed Listing</div>
+          <div class="adm-card-title" style="margin-bottom:16px;">Create a Login for an Unclaimed Listing</div>
           <p style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px;line-height:1.6;">Use this when a business shows up fine on the marketplace, but its owner gets "business doesn't exist" trying to log in, and Forgot Password says "no account found". That means the listing exists but was never linked to a login account, search for it below to create one.</p>
           <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
             <input id="adm-unclaimed-search" type="text" placeholder="Business name or email" style="flex:1;min-width:200px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;padding:10px 12px;border-radius:8px;font-size:13px;box-sizing:border-box;" onkeydown="if(event.key==='Enter')admFindUnclaimedListing()">
@@ -12424,7 +12424,7 @@ async function handleForgotPassword() {
       status: 'pending'
     }));
     // Update badge count for admin
-    sucEl.textContent = '✅ Request sent successfully! The NoaMark team will contact you at ' + email + ' within 24 hours with your new temporary password.';
+    sucEl.textContent = 'Request sent successfully! The NoaMark team will contact you at ' + email + ' within 24 hours with your new temporary password.';
     sucEl.style.display = 'block';
     btn.textContent = 'Request Sent ✓';
   } catch(e) {
@@ -12516,7 +12516,7 @@ async function admLookupAccount() {
     );
     const rows = (result && result.data) || [];
     if(rows.length === 0) {
-      resultEl.innerHTML = '<div class="adm-empty">❌ No account found with this email, under any role. They likely need to sign up (or their signup silently failed, ask them to try again and watch for an error message).</div>';
+      resultEl.innerHTML = '<div class="adm-empty">No account found with this email, under any role. They likely need to sign up (or their signup silently failed, ask them to try again and watch for an error message).</div>';
       return;
     }
     resultEl.innerHTML = '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Name</th><th>Role</th><th>Email (as stored)</th><th>Plan</th><th>Joined</th><th>Password set?</th><th>Action</th></tr></thead><tbody>' +
@@ -12598,7 +12598,7 @@ async function admFindUnclaimedListing() {
         const actionCell = r.hasAccount
           ? '<span style="font-size:11px;color:rgba(255,255,255,.3);">Use Password Resets above instead</span>'
           : (r.email
-              ? '<button class="adm-btn" style="background:rgba(74,222,128,.1);color:#4ade80;border:1px solid rgba(74,222,128,.25);font-size:10px;" onclick="admCreateBusinessLogin(\'' + r.id + '\',this)">🔓 Create Login &amp; Email Password</button>'
+              ? '<button class="adm-btn" style="background:rgba(74,222,128,.1);color:#4ade80;border:1px solid rgba(74,222,128,.25);font-size:10px;" onclick="admCreateBusinessLogin(\'' + r.id + '\',this)">Create Login &amp; Email Password</button>'
               : '<span style="font-size:11px;color:#f87171;">No email on this listing, add one via Edit Listing first</span>');
         return '<tr><td style="font-weight:600;color:#fff;">' + nmSafe(r.name || ', ') + '</td><td>' + nmSafe(r.owner || ', ') + '</td><td style="color:#63b3ed;">' + nmSafe(r.email || ', ') + '</td><td>' + statusCell + '</td><td>' + actionCell + '</td></tr>';
       }).join('') + '</tbody></table></div>';
@@ -12704,11 +12704,11 @@ async function admResetUserPassword() {
 
       msgEl.style.background = 'rgba(34,197,94,.15)'; msgEl.style.color = '#22c55e';
       if (emailResult && emailResult.ok) {
-        msgEl.textContent = '✅ Password updated for ' + email + ' and the temporary password has been emailed to them automatically.';
+        msgEl.textContent = 'Password updated for ' + email + ' and the temporary password has been emailed to them automatically.';
       } else {
         // Email sending failed (e.g. Resend not configured yet) — fall back
         // to telling the admin so the user isn't left without their password.
-        msgEl.textContent = '✅ Password updated for ' + email + '. ⚠️ The automatic email could not be sent, please tell the user their temporary password directly.';
+        msgEl.textContent = 'Password updated for ' + email + '. ⚠️ The automatic email could not be sent, please tell the user their temporary password directly.';
       }
       msgEl.style.display = 'block';
       document.getElementById('adm-reset-email').value = '';
@@ -12821,7 +12821,7 @@ async function admLoadOverview() {
     const tbody = document.getElementById('adm-recent-pending');
     if(tbody) {
       tbody.innerHTML = pendingData.length === 0
-        ? '<tr><td colspan="5" class="adm-empty">✅ No pending listings!</td></tr>'
+        ? '<tr><td colspan="5" class="adm-empty">No pending listings!</td></tr>'
         : pendingData.map(l => `<tr><td style="font-weight:600;color:#fff;">${nmSafe(l.name)}</td><td>${nmSafe(l.owner||', ')}</td><td>${nmSafe(l.type||', ')}</td><td>${nmSafe(l.area||', ')}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${l.id}')">👁 Review</button><br><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${l.id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${l.id}',this)">✗ Reject</button></td></tr>`).join('');
     }
 
@@ -12843,7 +12843,7 @@ async function admLoadOverview() {
             // Every row gets a small delete link regardless of status — lets
             // you permanently clear out rejected/spam/test signups instead of
             // them sitting in this list forever.
-            const deleteLink = '<br><button class="adm-btn" style="background:none;color:rgba(248,113,113,.6);border:none;margin-top:4px;font-size:10px;text-decoration:underline;padding:2px 0;" onclick="admDeleteSub(\'' + s.id + '\',this)">🗑 Delete</button>';
+            const deleteLink = '<br><button class="adm-btn" style="background:none;color:rgba(248,113,113,.6);border:none;margin-top:4px;font-size:10px;text-decoration:underline;padding:2px 0;" onclick="admDeleteSub(\'' + s.id + '\',this)">Delete</button>';
             if(st === 'approved') {
               if (s.payment_status === 'paid') {
                 // BUG THIS FIXES: "Paid & Active" used to display unconditionally
@@ -12863,7 +12863,7 @@ async function admLoadOverview() {
                   ? '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Paid &amp; Active</span><br><button class="adm-btn" style="background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.25);margin-top:4px;font-size:10px;" onclick="admUndoPaid(\'' + s.id + '\',this)">↩ Undo (not paid)</button>' + deleteLink
                   : '<span style="color:#fbbf24;font-weight:700;font-size:11px;">⚠️ Paid, but no account yet</span><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;line-height:1.4;">They haven\'t signed up with ' + nmSafe(s.email||'this email') + ' yet, ask them to, then it applies automatically.</div><button class="adm-btn" style="background:rgba(244,196,48,.15);color:#F4C430;border:1px solid rgba(244,196,48,.3);margin-top:4px;font-size:10px;" onclick="admMarkPaid(\'' + s.id + '\',this)">↻ Re-check now</button>' + deleteLink;
               } else {
-                actionCell = '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Approved</span><br><button class="adm-btn" style="background:rgba(244,196,48,.15);color:#F4C430;border:1px solid rgba(244,196,48,.3);margin-top:4px;" onclick="admMarkPaid(\'' + s.id + '\',this)">💰 Mark as Paid</button><br><button class="adm-btn" style="background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.25);margin-top:4px;font-size:10px;" onclick="admUnapproveSub(\'' + s.id + '\',this)">↩ Un-approve</button>' + deleteLink;
+                actionCell = '<span style="color:#4ade80;font-weight:700;font-size:11px;">✓ Approved</span><br><button class="adm-btn" style="background:rgba(244,196,48,.15);color:#F4C430;border:1px solid rgba(244,196,48,.3);margin-top:4px;" onclick="admMarkPaid(\'' + s.id + '\',this)">Mark as Paid</button><br><button class="adm-btn" style="background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.25);margin-top:4px;font-size:10px;" onclick="admUnapproveSub(\'' + s.id + '\',this)">↩ Un-approve</button>' + deleteLink;
               }
             } else if(st === 'rejected') {
               actionCell = '<span style="color:#f87171;font-weight:700;font-size:11px;">✗ Rejected</span><br><button class="adm-btn" style="background:rgba(99,179,237,.1);color:#63b3ed;border:1px solid rgba(99,179,237,.25);margin-top:4px;font-size:10px;" onclick="admUnapproveSub(\'' + s.id + '\',this)">↩ Reconsider</button>' + deleteLink;
@@ -12931,13 +12931,13 @@ async function admLoadApprovals() {
       const bt   = nmSafe(l.boost_tier||'free');
       if(type === 'pending') return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${own}</td><td>${tp}</td><td>${ar}, ${ci}</td><td>${ph}</td><td style="font-size:11px;">${em}</td><td>${bt}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')">👁 Review</button><br><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)">✓ Approve</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">✗ Reject</button></td></tr>`;
       if(type === 'approved') {
-        const vBadge = l.verified ? '<span style="color:#22C55E;font-weight:700;">✅ Verified</span>' : '<span style="color:rgba(255,255,255,.4);">Not verified</span>';
+        const vBadge = l.verified ? '<span style="color:#22C55E;font-weight:700;">Verified</span>' : '<span style="color:rgba(255,255,255,.4);">Not verified</span>';
         const vBtn = l.verified
           ? `<button class="adm-btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.15);" onclick="admToggleVerified('${id}',true,this)">Remove Verified</button>`
-          : `<button class="adm-btn" style="background:rgba(34,197,94,.15);color:#22C55E;border:1px solid rgba(34,197,94,.3);" onclick="admToggleVerified('${id}',false,this)">✅ Mark Verified</button>`;
+          : `<button class="adm-btn" style="background:rgba(34,197,94,.15);color:#22C55E;border:1px solid rgba(34,197,94,.3);" onclick="admToggleVerified('${id}',false,this)">Mark Verified</button>`;
         return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${bt}</td><td>${own}</td><td>${vBadge}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')">👁 View</button> <button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">Remove</button><br>${vBtn}</td></tr>`;
       }
-      return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${own}</td><td><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)" style="margin-bottom:4px;">Re-approve</button><br><button class="adm-btn adm-btn-reject" onclick="admDeleteListing('${id}',this)" style="background:rgba(220,38,38,.2);color:#f87171;border-color:rgba(220,38,38,.4);">🗑 Delete Permanently</button></td></tr>`;
+      return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${own}</td><td><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)" style="margin-bottom:4px;">Re-approve</button><br><button class="adm-btn adm-btn-reject" onclick="admDeleteListing('${id}',this)" style="background:rgba(220,38,38,.2);color:#f87171;border-color:rgba(220,38,38,.4);">Delete Permanently</button></td></tr>`;
     };
 
     const tables = {
@@ -13209,7 +13209,7 @@ async function admDeleteListing(id, btn) {
       if(typeof loadPendingListings === 'function') loadPendingListings();
       if(typeof loadApprovedListings === 'function') loadApprovedListings();
     }, 350);
-    bpToast('✅ Listing and all related data deleted permanently.');
+    bpToast('Listing and all related data deleted permanently.');
   } catch(e) {
     console.error('Delete error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
@@ -13292,7 +13292,7 @@ async function admLoadEnquiries() {
           <span style="font-size:10px;color:#6b7280;margin-left:auto;">${time}</span>
         </div>
         <div style="font-size:11px;color:#9ca3af;margin-bottom:4px;">To: <strong style="color:#d1d5db;">${nmSafe(bizName)}</strong> · ${nmSafe(e.subject||'Customer Enquiry')}</div>
-        ${e.phone ? `<div style="font-size:11px;color:#9ca3af;margin-bottom:4px;">📞 ${nmSafe(e.phone)}</div>` : ''}
+        ${e.phone ? `<div style="font-size:11px;color:#9ca3af;margin-bottom:4px;">${nmSafe(e.phone)}</div>` : ''}
         <div style="font-size:13px;color:#d1d5db;line-height:1.6;background:rgba(255,255,255,.03);padding:10px 12px;border-radius:4px;margin-top:6px;">"${nmSafe(e.msg||'')}"</div>
         ${e.reply ? `<div style="font-size:12px;color:#4ade80;background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.15);padding:10px 12px;border-radius:4px;margin-top:8px;"><span style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.6;display:block;margin-bottom:3px;">Business replied</span>${nmSafe(e.reply)}</div>` : ''}
       </div>`;
@@ -13316,7 +13316,7 @@ async function admLoadVideos() {
       if (videos.length === 0) {
         listEl.innerHTML = '<div class="adm-empty">No videos yet. Add your first one above.</div>';
       } else {
-        const tierLabels = { free: '🟢 Free', vip: '⭐ VIP', premium: '👑 Premium' };
+        const tierLabels = { free: 'Free', vip: 'VIP', premium: 'Premium' };
         listEl.innerHTML = videos.map(v => `
           <div style="display:flex;align-items:center;gap:16px;padding:16px;background:#0a0c10;border:1px solid #1a1f2c;margin-bottom:10px;">
             <img src="https://img.youtube.com/vi/${nmSafe(v.youtube_id)}/mqdefault.jpg" alt="${nmSafe(v.title || 'Video thumbnail')}" style="width:100px;height:60px;object-fit:cover;border:1px solid #1a1f2c;flex-shrink:0;" onerror="this.style.display='none'" />
@@ -13327,7 +13327,7 @@ async function admLoadVideos() {
             </div>
             <div style="display:flex;gap:8px;flex-shrink:0;">
               <a href="https://youtu.be/${nmSafe(v.youtube_id)}" target="_blank" style="font-size:11px;color:#63b3ed;text-decoration:none;padding:6px 12px;border:1px solid rgba(99,179,237,.3);background:rgba(99,179,237,.1);">▶ Preview</a>
-              <button onclick="admDeleteVideo('${v.id}')" style="font-size:11px;color:#ef4444;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);padding:6px 12px;cursor:pointer;font-family:inherit;">🗑 Delete</button>
+              <button onclick="admDeleteVideo('${v.id}')" style="font-size:11px;color:#ef4444;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);padding:6px 12px;cursor:pointer;font-family:inherit;">Delete</button>
             </div>
           </div>`).join('');
       }
@@ -13378,10 +13378,10 @@ async function admAddVideo() {
     document.getElementById('adm-vid-title').value = '';
     document.getElementById('adm-vid-url').value = '';
     document.getElementById('adm-vid-desc').value = '';
-    if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = '#22c55e'; statusEl.textContent = '✅ Video added successfully.'; setTimeout(() => statusEl.style.display = 'none', 4000); }
+    if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = '#22c55e'; statusEl.textContent = 'Video added successfully.'; setTimeout(() => statusEl.style.display = 'none', 4000); }
     admLoadVideos();
   } catch(e) {
-    if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = '#ef4444'; statusEl.textContent = '❌ Error adding video: ' + (e.message || 'Unknown error'); }
+    if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = '#ef4444'; statusEl.textContent = 'Error adding video: ' + (e.message || 'Unknown error'); }
   } finally {
     if (btn) { btn.textContent = 'Add Video'; btn.disabled = false; }
   }
@@ -13422,7 +13422,7 @@ function loadVideosPage(videos) {
           <img src="https://img.youtube.com/vi/${nmSafe(v.youtube_id)}/mqdefault.jpg" alt="${nmSafe(v.title || 'Video thumbnail')}" style="width:100%;display:block;" />
           <div style="padding:16px;">
             <div style="font-size:13px;font-weight:700;color:var(--white);margin-bottom:6px;">${nmSafe(v.title)}</div>
-            <div style="font-size:11px;color:var(--gold);margin-bottom:12px;">🔒 ${tier === 'vip' ? 'VIP members only' : 'Premium members only'}</div>
+            <div style="font-size:11px;color:var(--gold);margin-bottom:12px;">${tier === 'vip' ? 'VIP members only' : 'Premium members only'}</div>
             <button onclick="showPage('plans')" style="background:var(--gold);color:#111;border:none;padding:10px 20px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:inherit;width:100%;">Upgrade to Watch →</button>
           </div>
         </div>`;
@@ -14096,7 +14096,7 @@ function bpRenderBookings(bookings) {
   if (!listEl) return;
   const filtered = _bpBookingFilter === 'all' ? bookings : bookings.filter(b => b.status === _bpBookingFilter);
   if (!filtered.length) {
-    listEl.innerHTML = '<div class="bp-empty"><div class="bp-empty-icon">📅</div><div class="bp-empty-text">No bookings' + (_bpBookingFilter !== 'all' ? ' with status "' + _bpBookingFilter + '"' : ' yet') + '</div><div class="bp-empty-sub">Customers who book through your profile will appear here</div></div>';
+    listEl.innerHTML = '<div class="bp-empty"><div class="bp-empty-icon"></div><div class="bp-empty-text">No bookings' + (_bpBookingFilter !== 'all' ? ' with status "' + _bpBookingFilter + '"' : ' yet') + '</div><div class="bp-empty-sub">Customers who book through your profile will appear here</div></div>';
     return;
   }
   listEl.innerHTML = filtered.map(b => {
@@ -14108,11 +14108,11 @@ function bpRenderBookings(bookings) {
         <div>
           <div style="font-weight:600;color:var(--white);font-size:14px;">${nmSafe(b.customer_name || 'Customer')}</div>
           <div style="font-size:12px;color:var(--white-dim);margin-top:2px;">${nmSafe(b.booking_type || 'Appointment')} · ${date}</div>
-          ${b.booking_time ? '<div style="font-size:12px;color:var(--white-dim);">🕐 ' + nmSafe(fmtTime12h(b.booking_time)) + '</div>' : ''}
-          ${b.notes ? '<div style="font-size:12px;color:var(--white-dim);margin-top:4px;">💬 ' + nmSafe(b.notes) + '</div>' : ''}
-          ${b.customer_phone ? '<div style="font-size:12px;color:var(--white-dim);">📞 ' + nmSafe(b.customer_phone) + '</div>' : ''}
-          ${b.customer_email ? '<div style="font-size:12px;color:var(--white-dim);">✉ ' + nmSafe(b.customer_email) + '</div>' : ''}
-          ${b.service ? '<div style="font-size:12px;color:var(--white-dim);margin-top:2px;">🔧 ' + nmSafe(b.service) + '</div>' : ''}
+          ${b.booking_time ? '<div style="font-size:12px;color:var(--white-dim);">' + nmSafe(fmtTime12h(b.booking_time)) + '</div>' : ''}
+          ${b.notes ? '<div style="font-size:12px;color:var(--white-dim);margin-top:4px;">' + nmSafe(b.notes) + '</div>' : ''}
+          ${b.customer_phone ? '<div style="font-size:12px;color:var(--white-dim);">' + nmSafe(b.customer_phone) + '</div>' : ''}
+          ${b.customer_email ? '<div style="font-size:12px;color:var(--white-dim);">' + nmSafe(b.customer_email) + '</div>' : ''}
+          ${b.service ? '<div style="font-size:12px;color:var(--white-dim);margin-top:2px;">' + nmSafe(b.service) + '</div>' : ''}
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
           <span style="font-size:11px;font-weight:600;color:${statusColor};background:${statusColor}22;padding:3px 10px;border-radius:20px;">${statusLabel}</span>
