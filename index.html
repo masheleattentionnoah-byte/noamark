@@ -1886,27 +1886,27 @@
       <a class="home-view-all" onclick="showPage('marketplace')">View all categories →</a>
     </div>
     <div class="cat-grid">
-      <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('food',document.querySelector('.mkt-cat-btn[data-cat=food]'));},200))">
+      <div class="cat-item" onclick="showPage('marketplace',()=>setCat('food',document.querySelector('.mkt-cat-btn[data-cat=food]')))">
         <span class="cat-icon nm-ico nm-ico-food"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h1a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M17 2a4 4 0 0 0-4 4v4a2 2 0 0 0 2 2h2v8"/></svg></span>
         <span class="cat-label">Food &amp; Restaurants</span>
       </div>
-      <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('shops',document.querySelector('.mkt-cat-btn[data-cat=shops]'));},200))">
+      <div class="cat-item" onclick="showPage('marketplace',()=>setCat('shops',document.querySelector('.mkt-cat-btn[data-cat=shops]')))">
         <span class="cat-icon nm-ico nm-ico-shops"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
         <span class="cat-label">Shops &amp; Spaza</span>
       </div>
-      <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('beauty',document.querySelector('.mkt-cat-btn[data-cat=beauty]'));},200))">
+      <div class="cat-item" onclick="showPage('marketplace',()=>setCat('beauty',document.querySelector('.mkt-cat-btn[data-cat=beauty]')))">
         <span class="cat-icon nm-ico nm-ico-beauty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></span>
         <span class="cat-label">Beauty &amp; Barber</span>
       </div>
-      <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('laundry',document.querySelector('.mkt-cat-btn[data-cat=laundry]'));},200))">
+      <div class="cat-item" onclick="showPage('marketplace',()=>setCat('laundry',document.querySelector('.mkt-cat-btn[data-cat=laundry]')))">
         <span class="cat-icon nm-ico nm-ico-laundry"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23Z"/></svg></span>
         <span class="cat-label">Laundry</span>
       </div>
-      <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('services',document.querySelector('.mkt-cat-btn[data-cat=services]'));},200))">
+      <div class="cat-item" onclick="showPage('marketplace',()=>setCat('services',document.querySelector('.mkt-cat-btn[data-cat=services]')))">
         <span class="cat-icon nm-ico nm-ico-services"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>
         <span class="cat-label">Services</span>
       </div>
-      <div class="cat-item" onclick="showPage('marketplace',()=>setTimeout(()=>{setCat('transport',document.querySelector('.mkt-cat-btn[data-cat=transport]'));},200))">
+      <div class="cat-item" onclick="showPage('marketplace',()=>setCat('transport',document.querySelector('.mkt-cat-btn[data-cat=transport]')))">
         <span class="cat-icon nm-ico nm-ico-transport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2v-4l-3-5H6L3 13v4h2"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/></svg></span>
         <span class="cat-label">Transport</span>
       </div>
@@ -4968,14 +4968,19 @@ function showPage(id, cb){
   setTimeout(initReveal, 100);
 
   if(id === 'marketplace') {
-    // Just activate the marketplace page.
-    // The caller MUST call showMktView() separately to choose the sub-view.
-    // If no callback is given, default to the main listing view.
-    if(cb) {
-      setTimeout(cb, 150);
-    } else {
-      showMktView('main');
-    }
+    // Always bring the marketplace into a known-good state first: shows the
+    // main listing grid, restores the search hero / category nav / sort bar,
+    // and runs populateMarketplace() once listings are available.
+    //
+    // BUG THIS FIXES: when a callback was passed (e.g. every "Browse by
+    // Category" tile on the home page, which passes a callback to
+    // pre-select Food/Shops/etc), showMktView('main') was skipped entirely
+    // and the page relied on the callback alone to eventually populate the
+    // grid. That left the category tabs and search bar visible with no
+    // listings underneath — looking exactly like "the page shows up but
+    // it's empty" — especially if listings hadn't finished loading yet.
+    showMktView('main');
+    if(cb) setTimeout(cb, 150);
     return;
   }
 
