@@ -1463,6 +1463,9 @@
 .nm-ico-instagram{color:#fff;}
 .nm-ico-tiktok{color:#fff;}
 .nm-ico-youtube{color:#fff;}
+.nm-ico-phone{color:currentColor;}
+.nm-ico-booking{color:currentColor;}
+.nm-ico-whatsapp{color:#25D366;}
 .nm-ico-brain{color:#ec4899;}
 </style>
 
@@ -1929,7 +1932,7 @@
         <span class="cat-label">Laundry</span>
       </div>
       <div class="cat-item" onclick="showPage('marketplace',()=>setCat('services',document.querySelector('.mkt-cat-btn[data-cat=services]')))">
-        <span class="cat-icon nm-ico nm-ico-services"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>
+        <span class="cat-icon nm-ico nm-ico-services"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>
         <span class="cat-label">Services</span>
       </div>
       <div class="cat-item" onclick="showPage('marketplace',()=>setCat('transport',document.querySelector('.mkt-cat-btn[data-cat=transport]')))">
@@ -3198,7 +3201,7 @@
     <button class="mkt-cat-btn" data-cat="shops" onclick="setCat('shops',this)"><span class="mkt-cat-icon nm-ico nm-ico-shops"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span><span class="mkt-cat-label">Shops</span></button>
     <button class="mkt-cat-btn" data-cat="beauty" onclick="setCat('beauty',this)"><span class="mkt-cat-icon nm-ico nm-ico-beauty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></span><span class="mkt-cat-label">Beauty</span></button>
     <button class="mkt-cat-btn" data-cat="laundry" onclick="setCat('laundry',this)"><span class="mkt-cat-icon nm-ico nm-ico-laundry"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23Z"/></svg></span><span class="mkt-cat-label">Laundry</span></button>
-    <button class="mkt-cat-btn" data-cat="services" onclick="setCat('services',this)"><span class="mkt-cat-icon nm-ico nm-ico-services"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span><span class="mkt-cat-label">Services</span></button>
+    <button class="mkt-cat-btn" data-cat="services" onclick="setCat('services',this)"><span class="mkt-cat-icon nm-ico nm-ico-services"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span><span class="mkt-cat-label">Services</span></button>
     <button class="mkt-cat-btn" data-cat="transport" onclick="setCat('transport',this)"><span class="mkt-cat-icon nm-ico nm-ico-transport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2v-4l-3-5H6L3 13v4h2"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/></svg></span><span class="mkt-cat-label">Transport</span></button>
   </div>
 
@@ -4885,7 +4888,10 @@ const NM_ICON_SVG = {
   facebook: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>',
   instagram:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>',
   tiktok:   '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M16 8.2a5.6 5.6 0 0 1-3.5-1.27V15a5.73 5.73 0 1 1-5.73-5.73c.2 0 .39.01.58.04V12a2.9 2.9 0 1 0 2.9 2.9V2h2.85a5.6 5.6 0 0 0 2.9 3.93z"/></svg>',
-  youtube:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"/><path d="m10 15 5-3-5-3z"/></svg>'
+  youtube:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"/><path d="m10 15 5-3-5-3z"/></svg>',
+  phone:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+  booking:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>',
+  whatsapp: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.39 1.26 4.81L2 22l5.42-1.36c1.36.72 2.91 1.13 4.62 1.13h.01c5.45 0 9.9-4.45 9.9-9.91C21.95 6.45 17.5 2 12.04 2zm5.63 14.11c-.24.68-1.19 1.25-1.94 1.41-.51.11-1.19.19-3.44-.74-2.89-1.2-4.75-4.12-4.9-4.31-.14-.19-1.17-1.56-1.17-2.98s.73-2.11 1-2.4c.24-.27.54-.34.72-.34h.51c.17.01.39-.01.61.46.24.58.79 2 .86 2.14.07.15.12.32.02.51-.09.19-.14.31-.28.48-.14.16-.29.36-.42.48-.14.13-.29.28-.13.55.17.28.75 1.24 1.62 2.01 1.12 1 2.06 1.31 2.34 1.46.28.14.44.12.6-.07.17-.19.71-.83.9-1.11.19-.28.38-.24.63-.14.26.09 1.65.78 1.93.92.28.14.47.21.53.33.07.12.07.68-.17 1.36z"/></svg>'
 };
 function nmIcon(key, size){
   const svg = NM_ICON_SVG[key] || NM_ICON_SVG.store;
@@ -5267,7 +5273,18 @@ window.addEventListener('popstate', function(e) {
       document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
       const mktPage = document.getElementById('page-marketplace');
       if(mktPage) mktPage.classList.add('active');
-      window.scrollTo({top: 0, behavior: 'instant'});
+      // Coming back to the listing grid from a business profile (or anywhere else
+      // that saved a position) → restore that exact scroll spot instead of always
+      // snapping to the top. Only applies once per save, then it's cleared, so a
+      // fresh visit to the marketplace (not a "back" from a profile) still starts
+      // at the top as expected.
+      if(view === 'main' && typeof window._nmMktListScrollY === 'number') {
+        const _savedY = window._nmMktListScrollY;
+        window._nmMktListScrollY = null;
+        requestAnimationFrame(() => window.scrollTo({top: _savedY, behavior: 'instant'}));
+      } else {
+        window.scrollTo({top: 0, behavior: 'instant'});
+      }
       // showPage() always re-runs the scroll-reveal trigger after showing a
       // page; this restore path didn't, so content that never got a chance
       // to reveal (e.g. navigated away again within ~100ms of arriving)
@@ -6502,6 +6519,17 @@ function showBizProfile(id){
   // Store the current profile bizId on window so the lightbox back-button handler
   // can always reconstruct the correct profile state without relying on history state
   window._currentProfileBizId = String(id);
+  // Remember exactly where the user was scrolled in the marketplace listing grid
+  // before opening this profile, so pressing back can return them to that same
+  // spot instead of dumping them at the top of the list every time. Only capture
+  // this when actually leaving the main listing view (not when re-entering a
+  // profile during history restoration, which already has its own scroll handling).
+  if(!window._nmSupressHistoryPush) {
+    const mktMainEl = document.getElementById('mkt-main-view');
+    if(mktMainEl && mktMainEl.style.display !== 'none') {
+      window._nmMktListScrollY = window.scrollY;
+    }
+  }
   // Push profile state so phone back button returns to marketplace listing.
   // nmBizPreview marks "business owner previewing their own live listing"
   // (set by bpViewMyListing) so the popstate handler's business-redirect
@@ -6620,9 +6648,9 @@ function showBizProfile(id){
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:10px;flex-shrink:0;">
- ${biz.phone ? `<a href="tel:${biz.phone}" class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;"> Call Now</a>` : `<span class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;opacity:.4;cursor:not-allowed;"> No Number</span>`}
- <button onclick="openBookingModal('${biz.id}','${nmSafe(biz.name)}','${biz.cat}')" class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;background:var(--green-dark);border-color:var(--green-dark);"> Book Now</button>
- ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#25D366;color:#25D366;"> WhatsApp</a>` : `<span class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;opacity:.4;cursor:not-allowed;"> No WhatsApp</span>`}
+ ${biz.phone ? `<a href="tel:${biz.phone}" class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;display:inline-flex;align-items:center;justify-content:center;gap:6px;"><span class="nm-ico nm-ico-phone" style="font-size:14px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span> Call Now</a>` : `<span class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;opacity:.4;cursor:not-allowed;"> No Number</span>`}
+ <button onclick="openBookingModal('${biz.id}','${nmSafe(biz.name)}','${biz.cat}')" class="btn-primary" style="padding:14px 28px;font-size:10px;text-align:center;background:var(--green-dark);border-color:var(--green-dark);display:inline-flex;align-items:center;justify-content:center;gap:6px;"><span class="nm-ico nm-ico-booking" style="font-size:14px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg></span> Book Now</button>
+ ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#25D366;color:#25D366;display:inline-flex;align-items:center;justify-content:center;gap:6px;"><span class="nm-ico nm-ico-whatsapp" style="font-size:14px;"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.39 1.26 4.81L2 22l5.42-1.36c1.36.72 2.91 1.13 4.62 1.13h.01c5.45 0 9.9-4.45 9.9-9.91C21.95 6.45 17.5 2 12.04 2zm5.63 14.11c-.24.68-1.19 1.25-1.94 1.41-.51.11-1.19.19-3.44-.74-2.89-1.2-4.75-4.12-4.9-4.31-.14-.19-1.17-1.56-1.17-2.98s.73-2.11 1-2.4c.24-.27.54-.34.72-.34h.51c.17.01.39-.01.61.46.24.58.79 2 .86 2.14.07.15.12.32.02.51-.09.19-.14.31-.28.48-.14.16-.29.36-.42.48-.14.13-.29.28-.13.55.17.28.75 1.24 1.62 2.01 1.12 1 2.06 1.31 2.34 1.46.28.14.44.12.6-.07.17-.19.71-.83.9-1.11.19-.28.38-.24.63-.14.26.09 1.65.78 1.93.92.28.14.47.21.53.33.07.12.07.68-.17 1.36z"/></svg></span> WhatsApp</a>` : `<span class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;opacity:.4;cursor:not-allowed;"> No WhatsApp</span>`}
           <a href="${googleMapsUrl}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#4285F4;color:#4285F4;"><span class="nm-ico" style="margin-right:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>Google Maps</a>
           <a href="${boltUrl}" target="_blank" class="btn-ghost" style="padding:14px 28px;font-size:10px;text-align:center;border-color:#34E0A1;color:#34E0A1;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;flex-shrink:0;"><path d="M5 17h14M5 17a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm14 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM3 17V9a1 1 0 0 1 1-1h1l2-4h8l3 4h1a1 1 0 0 1 1 1v8"/></svg> Order Bolt</a>
         </div>
@@ -6638,8 +6666,8 @@ function showBizProfile(id){
           <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:28px;margin-bottom:16px;">
             <div class="biz-section-title">Contact</div>
             <div style="display:flex;flex-direction:column;gap:10px;">
- ${biz.phone ? `<a href="tel:${biz.phone}" style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--white-soft);text-decoration:none;padding:12px 16px;background:var(--black-3);border:1px solid var(--border-soft);transition:border-color .3s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)'"> ${nmSafe(biz.phone)}</a>` : ''}
- ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#25D366;text-decoration:none;padding:12px 16px;background:rgba(37,211,102,.05);border:1px solid rgba(37,211,102,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#25D366'" onmouseout="this.style.borderColor='rgba(37,211,102,.2)'"> WhatsApp</a>` : ''}
+ ${biz.phone ? `<a href="tel:${biz.phone}" style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--white-soft);text-decoration:none;padding:12px 16px;background:var(--black-3);border:1px solid var(--border-soft);transition:border-color .3s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)'"><span class="nm-ico nm-ico-phone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span> ${nmSafe(biz.phone)}</a>` : ''}
+ ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#25D366;text-decoration:none;padding:12px 16px;background:rgba(37,211,102,.05);border:1px solid rgba(37,211,102,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#25D366'" onmouseout="this.style.borderColor='rgba(37,211,102,.2)'"><span class="nm-ico nm-ico-whatsapp"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.39 1.26 4.81L2 22l5.42-1.36c1.36.72 2.91 1.13 4.62 1.13h.01c5.45 0 9.9-4.45 9.9-9.91C21.95 6.45 17.5 2 12.04 2zm5.63 14.11c-.24.68-1.19 1.25-1.94 1.41-.51.11-1.19.19-3.44-.74-2.89-1.2-4.75-4.12-4.9-4.31-.14-.19-1.17-1.56-1.17-2.98s.73-2.11 1-2.4c.24-.27.54-.34.72-.34h.51c.17.01.39-.01.61.46.24.58.79 2 .86 2.14.07.15.12.32.02.51-.09.19-.14.31-.28.48-.14.16-.29.36-.42.48-.14.13-.29.28-.13.55.17.28.75 1.24 1.62 2.01 1.12 1 2.06 1.31 2.34 1.46.28.14.44.12.6-.07.17-.19.71-.83.9-1.11.19-.28.38-.24.63-.14.26.09 1.65.78 1.93.92.28.14.47.21.53.33.07.12.07.68-.17 1.36z"/></svg></span> WhatsApp</a>` : ''}
             </div>
           </div>
           ${nmBuildHoursHTML(biz)}
