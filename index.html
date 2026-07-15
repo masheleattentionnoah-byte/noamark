@@ -6,6 +6,16 @@
 <!-- Safety net: if JS fails for any reason, reveal body after 5s so site is never blank.
      The 5s gives DOMContentLoaded + Supabase time to finish and remove nm-anti-flash normally. -->
 <script>setTimeout(function(){var s=document.getElementById('nm-anti-flash');if(s)s.remove();},5000);</script>
+<!-- Take manual control of scroll position on navigation, as early as possible.
+     WHY: by default the browser tries to restore the exact scroll position a page
+     was at when you left it, every time you use back/forward. This app already
+     scrolls to the top itself on every page change (see showPage()). Without this
+     line, those two things race: for a brief instant after pressing back, the
+     browser shows the page at its old scrolled-down position before the app's
+     own scrollTo(0) wins — a visible flash where content appears in the wrong
+     place for a frame. Turning off automatic restoration removes that race
+     entirely, so the app's own scroll handling is the only thing that runs. -->
+<script>if('scrollRestoration' in history){history.scrollRestoration='manual';}</script>
 <meta charset="UTF-8">
 <meta name="description" content="NoaMark: South Africa's local business discovery platform. Find trusted businesses, trading services, and opportunities in Limpopo, Mpumalanga, Gauteng and beyond.">
 <meta name="keywords" content="NoaMark, South Africa local businesses, Limpopo businesses, Giyani businesses, Polokwane businesses, South Africa marketplace, local services South Africa, business directory SA">
