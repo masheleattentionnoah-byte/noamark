@@ -411,8 +411,8 @@
   .testimonial-location{font-size:11px;color:var(--white-dim);}
 
   /* ── CHATBOT ── */
-  .chatbot-fab{position:fixed;bottom:90px;right:16px;width:60px;height:60px;background:var(--gold);border:none;cursor:pointer;z-index:1000;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 8px 32px rgba(212,175,55,.3);transition:all .3s;}
-  .chatbot-fab:hover{background:var(--gold-light);transform:scale(1.05);}
+  .chatbot-fab{position:fixed;bottom:90px;right:16px;width:60px;height:60px;background:var(--gold);border:none;cursor:pointer;z-index:1000;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 8px 32px rgba(212,175,55,.3);transition:background .3s,transform .3s;will-change:transform;transform:translateZ(0);backface-visibility:hidden;}
+  .chatbot-fab:hover{background:var(--gold-light);transform:translateZ(0) scale(1.05);}
   .chatbot-window{position:fixed;bottom:108px;right:32px;width:380px;height:560px;background:var(--black-2);border:1px solid var(--border-soft);z-index:1001;display:none;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.5);}
   .chatbot-window.open{display:flex;}
   .chatbot-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--black-3);}
@@ -14545,7 +14545,7 @@ document.addEventListener('keydown', function(e) {
     if(document.getElementById('nm-cookie-banner')) return;
     var wrap = document.createElement('div');
     wrap.id = 'nm-cookie-banner';
-    wrap.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:10000;background:#0A0D0F;border-top:1px solid rgba(244,196,48,.25);padding:20px;font-family:Poppins,sans-serif;box-shadow:0 -8px 30px rgba(0,0,0,.4);';
+    wrap.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:10000;background:#0A0D0F;border-top:1px solid rgba(244,196,48,.25);padding:20px;font-family:Poppins,sans-serif;box-shadow:0 -8px 30px rgba(0,0,0,.4);will-change:transform;transform:translateZ(0);backface-visibility:hidden;';
     wrap.innerHTML =
       '<div style="max-width:920px;margin:0 auto;display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;">' +
         '<div style="flex:1;min-width:240px;display:flex;gap:12px;align-items:flex-start;">' +
