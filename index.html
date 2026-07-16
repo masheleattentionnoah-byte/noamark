@@ -10906,6 +10906,122 @@ function submitContactForm(){
 const BP_API = '/api/claude';
 let bpData = { enquiries: [], reviews: [], enhancedDesc: '' };
 
+// ════════════════════════════════════════════════════
+// AI SAFETY LAYER — client-side rate limiting, timeouts,
+// specific errors, and token-streaming support.
+// NOTE: this is a first line of defence only. The real caps
+// (per-user daily token budget, per-IP rate limit, audit log)
+// live server-side in /api/claude.js — a client can always be
+// bypassed by calling the endpoint directly, so this alone is
+// not sufficient protection against abuse or runaway cost.
+// ════════════════════════════════════════════════════
+const BP_AI_COOLDOWN_MS = 4000;   // minimum gap between AI calls
+const BP_AI_MAX_PER_MIN = 8;      // soft cap on calls per rolling minute
+let _bpAiCallTimes = [];
+let _bpAiLastCall = 0;
+
+function _bpAiRateCheck() {
+  const now = Date.now();
+  if (now - _bpAiLastCall < BP_AI_COOLDOWN_MS) {
+    const wait = Math.ceil((BP_AI_COOLDOWN_MS - (now - _bpAiLastCall)) / 1000);
+    return `Please wait ${wait}s before asking the AI again.`;
+  }
+  _bpAiCallTimes = _bpAiCallTimes.filter(t => now - t < 60000);
+  if (_bpAiCallTimes.length >= BP_AI_MAX_PER_MIN) {
+    return 'You\'ve hit the AI request limit for this minute. Please wait and try again.';
+  }
+  return null;
+}
+
+/**
+ * Single choke point for every AI call in the business portal.
+ * - Enforces the client-side cooldown/rate limit above.
+ * - Sends a userId so the server can enforce per-user token caps + audit logging.
+ * - Times out slow requests instead of hanging forever.
+ * - Streams tokens into onChunk as they arrive (if the backend streams SSE),
+ *   falling back cleanly to a single update if it doesn't.
+ * - Throws an Error with a specific, user-safe message on any failure
+ *   (never a generic "something went wrong").
+ */
+async function bpCallAI(messages, { maxTokens = 200, onChunk = null, timeoutMs = 30000 } = {}) {
+  const limitMsg = _bpAiRateCheck();
+  if (limitMsg) throw new Error(limitMsg);
+  _bpAiLastCall = Date.now();
+  _bpAiCallTimes.push(_bpAiLastCall);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const r = await fetch(BP_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: maxTokens,
+        stream: true,
+        userId: currentUser?.id || currentUser?.email || 'anon',
+        messages
+      })
+    });
+
+    if (r.status === 429) {
+      const d = await r.json().catch(() => ({}));
+      throw new Error(d.error || 'AI request limit reached — please try again in a few minutes.');
+    }
+    if (r.status === 401 || r.status === 403) {
+      throw new Error('AI access is not configured correctly. Please contact support@noamark.com.');
+    }
+    if (!r.ok) {
+      throw new Error(`AI service returned an error (${r.status}). Please try again shortly.`);
+    }
+
+    let full = '';
+    const isStream = r.body && (r.headers.get('content-type') || '').includes('text/event-stream');
+    if (isStream) {
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
+          const payload = line.slice(5).trim();
+          if (!payload || payload === '[DONE]') continue;
+          try {
+            const evt = JSON.parse(payload);
+            if (evt && evt.error) { throw new Error(evt.error); }
+            if (evt && typeof evt.text === 'string') {
+              full += evt.text;
+              if (onChunk) onChunk(full);
+            }
+          } catch (parseErr) {
+            if (parseErr instanceof SyntaxError) { /* malformed/partial SSE fragment, ignore */ }
+            else throw parseErr;
+          }
+        }
+      }
+    } else {
+      // Fallback: plain JSON (in case the backend isn't streaming yet)
+      const d = await r.json();
+      if (d.error) throw new Error(typeof d.error === 'string' ? d.error : 'AI service error.');
+      full = d.content?.map(c => c.text || '').join('') || '';
+      if (onChunk) onChunk(full);
+    }
+    return full;
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('The AI took too long to respond. Please try again.');
+    if (e instanceof TypeError) throw new Error('Could not reach the AI service — check your internet connection.');
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function _bpKey() { return 'nm_bp_data_' + (window._bpListingId || (currentUser && currentUser.id) || 'default'); }
 function bpSave() { try { localStorage.setItem(_bpKey(), JSON.stringify(bpData)); } catch(e){} }
 function bpLoad() {
@@ -11573,10 +11689,8 @@ Message: ${enq.msg}
 
 Write a professional, friendly reply in under 80 words. Include a call to action.${myListing?.phone?' Phone: '+myListing.phone:''} Sign off as "${currentUser.name}".`;
   try {
-    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:200, messages:[{role:'user',content:prompt}] }) });
-    const d = await r.json();
-    ta.value = d.content?.map(c=>c.text||'').join('') || 'Could not generate. Please write manually.';
-  } catch(e) { ta.value = 'Connection error. Please write manually.'; }
+    await bpCallAI([{role:'user',content:prompt}], { maxTokens:200, onChunk: txt => { ta.value = txt; } });
+  } catch(e) { ta.value = e.message || 'Could not generate. Please write manually.'; }
   ta.disabled = false;
 }
 async function bpDeleteEnquiry(id) {
@@ -11667,10 +11781,8 @@ async function bpAIReviewReply(id) {
  ta.value = ' Drafting reply...'; ta.disabled = true;
   const prompt = `You are the owner of "${currentUser?.name||'a business'}". Reply to this ${rev.stars}-star review from ${rev.name}: "${rev.text}". Keep it under 50 words. ${rev.stars>=4?'Thank them warmly.':'Acknowledge the issue and show you care.'} Sign off as the owner.`;
   try {
-    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:120, messages:[{role:'user',content:prompt}] }) });
-    const d = await r.json();
-    ta.value = d.content?.map(c=>c.text||'').join('') || 'Could not generate.';
-  } catch(e) { ta.value = 'Error. Write manually.'; }
+    await bpCallAI([{role:'user',content:prompt}], { maxTokens:120, onChunk: txt => { ta.value = txt; } });
+  } catch(e) { ta.value = e.message || 'Could not generate. Please write manually.'; }
   ta.disabled = false;
 }
 async function bpPostReviewReply(id) {
@@ -11714,11 +11826,10 @@ Reviews: ${revs.length}${avg?' (avg '+avg+'/5)':''}
 
 Give numbered tips (1–3). Be direct. Each tip max 2 sentences. Focus on what's missing or weak.`;
   try {
-    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:300, messages:[{role:'user',content:prompt}] }) });
-    const d = await r.json();
- if(d.error) { el.innerHTML=`<div class="bp-empty"> ${d.error}</div>`; return; }
-    el.innerHTML = `<div class="bp-ai-box">${(d.content?.map(c=>c.text||'').join('')||'Could not load.').replace(/\n/g,'<br>')}</div>`;
- } catch(e) { el.innerHTML='<div class="bp-empty"> Could not reach AI. Check your internet connection.</div>'; }
+    await bpCallAI([{role:'user',content:prompt}], { maxTokens:300, onChunk: txt => {
+      el.innerHTML = `<div class="bp-ai-box">${txt.replace(/\n/g,'<br>')}</div>`;
+    }});
+  } catch(e) { el.innerHTML = `<div class="bp-empty"> ${e.message || 'Could not reach AI. Check your internet connection.'}</div>`; }
 }
 
 async function bpEnhanceDesc() {
@@ -11736,11 +11847,11 @@ Business: ${currentUser.name}, ${myListing?.cat||''}, ${myListing?.area||'South 
 Current description: ${myListing?.desc||'Not provided'}
 Improvement request: ${prompt_extra||'Make it more professional and customer-focused'}`;
   try {
-    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:200, messages:[{role:'user',content:prompt}] }) });
-    const d = await r.json();
-    bpData.enhancedDesc = d.content?.map(c=>c.text||'').join('') || '';
-    textEl.textContent = bpData.enhancedDesc;
-  } catch(e) { textEl.textContent='Error. Please try again.'; }
+    await bpCallAI([{role:'user',content:prompt}], { maxTokens:200, onChunk: txt => {
+      bpData.enhancedDesc = txt;
+      textEl.textContent = txt;
+    }});
+  } catch(e) { textEl.textContent = e.message || 'Error. Please try again.'; }
 }
 function bpApplyEnhance() {
   if(!bpData.enhancedDesc) return;
@@ -11756,10 +11867,10 @@ async function bpGetPerfAnalysis() {
   const prompt = `Brief performance assessment for this NoaMark business (max 100 words, 2 improvement tips):
 ${currentUser.name} | ${myListing?.cat||'unlisted'} | ${myListing?.area||'SA'} | Boost: ${myListing?.boost||'none'} | Enquiries: ${bpData.enquiries.length} | Reviews: ${revs.length} | Avg: ${avg||'none'}`;
   try {
-    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:200, messages:[{role:'user',content:prompt}] }) });
-    const d = await r.json();
-    el.innerHTML = `<div class="bp-ai-box">${(d.content?.map(c=>c.text||'').join('')||'Error.').replace(/\n/g,'<br>')}</div>`;
-  } catch(e) { el.innerHTML='<div>Error. Try again.</div>'; }
+    await bpCallAI([{role:'user',content:prompt}], { maxTokens:200, onChunk: txt => {
+      el.innerHTML = `<div class="bp-ai-box">${txt.replace(/\n/g,'<br>')}</div>`;
+    }});
+  } catch(e) { el.innerHTML = `<div>${e.message || 'Error. Try again.'}</div>`; }
 }
 
 async function bpGetBoostAdvice() {
@@ -11773,10 +11884,8 @@ async function bpGetBoostAdvice() {
 Business: ${currentUser.name} | ${myListing?.cat||'general'} | ${myListing?.area||'South Africa'} | Enquiries: ${bpData.enquiries.length} | Reviews: ${bpData.reviews.length} | Current boost: ${myListing?.boost||'none'}
 Plans: Starter (R49.99), Growth (R149.99), Dominance (R299.99). Be direct.`;
   try {
-    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:120, messages:[{role:'user',content:prompt}] }) });
-    const d = await r.json();
-    textEl.textContent = d.content?.map(c=>c.text||'').join('') || 'Could not load.';
-  } catch(e) { textEl.textContent='Error. Try again.'; }
+    await bpCallAI([{role:'user',content:prompt}], { maxTokens:120, onChunk: txt => { textEl.textContent = txt; } });
+  } catch(e) { textEl.textContent = e.message || 'Error. Try again.'; }
 }
 
 // ── AI chat history (resets on close) ──
@@ -11822,13 +11931,13 @@ async function bpAskAI() {
   const messages = [systemMsg, assistantAck, ...bpChatHistory];
 
   try {
-    const r = await fetch(BP_API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:400, messages }) });
-    const d = await r.json();
-    const reply = d.content?.map(c=>c.text||'').join('') || 'Could not load.';
-    bpChatHistory.push({ role: 'assistant', content: reply });
+    const reply = await bpCallAI(messages, { maxTokens:400, onChunk: txt => { textEl.innerHTML = txt.replace(/\n/g,'<br>'); } });
+    bpChatHistory.push({ role: 'assistant', content: reply || 'Could not load.' });
     document.getElementById('bp-ask-prompt').value = '';
-    textEl.innerHTML = reply.replace(/\n/g,'<br>');
-  } catch(e) { textEl.textContent='Connection error. Try again.'; }
+  } catch(e) {
+    bpChatHistory.pop(); // don't poison history with a failed turn
+    textEl.textContent = e.message || 'Connection error. Try again.';
+  }
 }
 
 // ── ANALYTICS ──
