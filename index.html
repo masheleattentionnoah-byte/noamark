@@ -4991,10 +4991,18 @@ function showBusinessGate(action) {
   history.pushState({ nmPage: 'biz-gate', nmView: 'modal' }, '', window.location.href);
 }
 function showPage(id, cb){
-  // Business owners must never see the public home/explore page — redirect
-  // straight to their portal instead. This closes every leak path (logo click,
-  // stray links, browser navigation) centrally rather than patching each one.
-  if (currentUser && currentUser.type === 'business' && id === 'home') {
+  // Business owners must never see the public home/explore page, OR the
+  // generic subscriber-style "dashboard" page (Opportunities Viewed / Videos
+  // Watched / Latest Listings on NoaMark) — that page is built for
+  // subscribers/guests, not business owners, and shows OTHER businesses'
+  // listings in its "Latest Listings" panel. A business owner landing there
+  // (e.g. via Maya's "View my portal" quick-reply, which used to call
+  // showPage('dashboard') for every account type) looks exactly like their
+  // portal showing someone else's data, when it's actually just the wrong
+  // page entirely. Redirect both cases straight to their real portal instead.
+  // This closes every leak path (logo click, stray links, chat quick-replies,
+  // browser navigation) centrally rather than patching each one.
+  if (currentUser && currentUser.type === 'business' && (id === 'home' || id === 'dashboard')) {
     showPage('marketplace', () => setTimeout(() => showMktView('admin'), 100));
     return;
   }
