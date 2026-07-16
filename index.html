@@ -11088,11 +11088,9 @@ function loadNotifPrefs() {
 
 async function bpSyncEnquiriesFromSupabase() {
   if (!currentUser) return;
-  // Find listing by id first, then by owner name, then by email
-  const myListing = LISTINGS.find(l => l.id === currentUser.listingId) ||
-    LISTINGS.find(l => l.owner && currentUser.owner && l.owner.toLowerCase() === currentUser.owner.toLowerCase()) ||
-    LISTINGS.find(l => l.email && currentUser.email && l.email.toLowerCase() === currentUser.email.toLowerCase()) ||
-    LISTINGS.find(l => l.name && currentUser.name && l.name.toLowerCase() === currentUser.name.toLowerCase());
+  // Use the single hardened matching helper (owner_email first) instead of a
+  // separate, looser copy of this logic — see getMyListing() for why.
+  const myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
   if (!myListing) return;
   try {
     const { data, error } = await nmSupaQuery(() =>
@@ -11120,10 +11118,7 @@ async function bpSyncEnquiriesFromSupabase() {
 
 async function bpSyncReviewsFromSupabase() {
   if (!currentUser) return;
-  const myListing = LISTINGS.find(l => l.id === currentUser.listingId) ||
-    LISTINGS.find(l => l.owner && currentUser.owner && l.owner.toLowerCase() === currentUser.owner.toLowerCase()) ||
-    LISTINGS.find(l => l.email && currentUser.email && l.email.toLowerCase() === currentUser.email.toLowerCase()) ||
-    LISTINGS.find(l => l.name && currentUser.name && l.name.toLowerCase() === currentUser.name.toLowerCase());
+  const myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
   if (!myListing) return;
   try {
     const { data, error } = await nmSupaQuery(() =>
@@ -11145,13 +11140,26 @@ async function bpSyncReviewsFromSupabase() {
 }
 
 // ── Helper: find current user's listing reliably ──
+// Priority: exact listingId match > owner_email (the authoritative link between
+// a business account and its listing) > plain email > owner name > business name.
+// Owner name and business name are last resort on purpose — they're the only
+// fields likely to collide when one person owns/tests multiple listings.
 function getMyListing() {
   if (!currentUser || typeof LISTINGS === 'undefined') return null;
-  return LISTINGS.find(l => l.id === currentUser.listingId) ||
+  const found =
+    LISTINGS.find(l => l.id === currentUser.listingId) ||
+    LISTINGS.find(l => l.owner_email && currentUser.email && l.owner_email.toLowerCase() === currentUser.email.toLowerCase()) ||
     LISTINGS.find(l => l.email && currentUser.email && l.email.toLowerCase() === currentUser.email.toLowerCase()) ||
     LISTINGS.find(l => l.owner && currentUser.owner && l.owner.toLowerCase() === currentUser.owner.toLowerCase()) ||
     LISTINGS.find(l => l.name && currentUser.name && l.name.toLowerCase() === currentUser.name.toLowerCase()) ||
     null;
+  // Lock this account to the resolved listing so every future lookup this
+  // session uses the fast, unambiguous id match instead of re-guessing.
+  if (found && currentUser.listingId !== found.id) {
+    currentUser.listingId = found.id;
+    try { saveSession(currentUser); } catch(e) { /* non-fatal */ }
+  }
+  return found;
 }
 
 function bpGoPage(p) {
