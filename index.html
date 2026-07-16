@@ -6636,7 +6636,13 @@ function showBizProfile(id){
     history.pushState({ nmPage: 'marketplace', nmView: 'profile', nmBizId: String(id), nmBizPreview: _previewFlag }, '', '#marketplace/profile/' + id);
   }
   const fullAddress=encodeURIComponent([biz.address,biz.area,biz.city,biz.province].filter(Boolean).join(', ')||biz.area||biz.name);
-  const googleMapsUrl=`https://www.google.com/maps/search/?api=1&query=${fullAddress}`;
+  // Use precise geocoded coordinates when we have them (same source of truth
+  // as the embedded map below) so the outbound "Open in Google Maps" link
+  // takes the visitor to the exact pin instead of re-searching by text, which
+  // can resolve to a different place with a similar address.
+  const googleMapsUrl = (typeof biz.lat === 'number' && typeof biz.lng === 'number')
+    ? `https://www.google.com/maps/search/?api=1&query=${biz.lat},${biz.lng}`
+    : `https://www.google.com/maps/search/?api=1&query=${fullAddress}`;
   // Embeddable map — shows the location right on the page instead of sending
   // the visitor away. Uses precise coordinates when we have them (geocoded on
   // signup), falls back to a text-address search when we don't. This "output=embed"
