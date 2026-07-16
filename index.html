@@ -5976,6 +5976,19 @@ function setCat(cat,btn){
     b.style.borderColor = i===0 ? 'var(--gold)' : 'var(--border-soft)';
   });
   populateMarketplace();
+  nmPersistCatInHash(cat);
+}
+
+// Persists the selected marketplace category into the URL hash / history
+// state so a reload can rebuild it (see CATEGORY RESTORATION in the
+// DOMContentLoaded handler). Uses replaceState, not pushState — switching
+// categories is a filter change, not a new "page", so it deliberately does
+// NOT create a new back-button stop; it just relabels the current one.
+function nmPersistCatInHash(cat){
+  if (!(history.state && history.state.nmPage === 'marketplace' && history.state.nmView === 'main')) return;
+  const st = Object.assign({}, history.state, { nmCat: cat });
+  const hash = (cat && cat !== 'all') ? ('#marketplace/main/' + encodeURIComponent(cat)) : '#marketplace';
+  history.replaceState(st, '', hash);
 }
 
 // ── BACK TO MARKETPLACE (profile / boost / add-listing views) ──
@@ -6512,18 +6525,40 @@ function nmValidateSocialField(inputId, platform){
  feedback.textContent = ` We can't confirm this is a valid ${platform === 'facebook' ? 'page' : 'profile'} link or handle, paste the link from the app to be sure.`;
   }
 }
+// Icon markup shared with the header/contact social links (nm-ico-facebook /
+// nm-ico-instagram / nm-ico-whatsapp), inlined here so the Follow card can
+// size/color each one independently of those classes.
+const NM_SOCIAL_SVG = {
+  facebook: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none" width="16" height="16"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>',
+  instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>',
+  whatsapp: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none" width="16" height="16"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.39 1.26 4.81L2 22l5.42-1.36c1.36.72 2.91 1.13 4.62 1.13h.01c5.45 0 9.9-4.45 9.9-9.91C21.95 6.45 17.5 2 12.04 2zm5.63 14.11c-.24.68-1.19 1.25-1.94 1.41-.51.11-1.19.19-3.44-.74-2.89-1.2-4.75-4.12-4.9-4.31-.14-.19-1.17-1.56-1.17-2.98s.73-2.11 1-2.4c.24-.27.54-.34.72-.34h.51c.17.01.39-.01.61.46.24.58.79 2 .86 2.14.07.15.12.32.02.51-.09.19-.14.31-.28.48-.14.16-.29.36-.42.48-.14.13-.29.28-.13.55.17.28.75 1.24 1.62 2.01 1.12 1 2.06 1.31 2.34 1.46.28.14.44.12.6-.07.17-.19.71-.83.9-1.11.19-.28.38-.24.63-.14.26.09 1.65.78 1.93.92.28.14.47.21.53.33.07.12.07.68-.17 1.36z"/></svg>',
+  website: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>'
+};
 function nmBuildSocialHTML(biz){
   try {
     const fbUrl = nmNormalizeFacebookUrl(biz.facebook);
     const igUrl = nmNormalizeInstagramUrl(biz.instagram);
     const webUrl = nmNormalizeWebsiteUrl(biz.website);
-    if(!fbUrl && !igUrl && !webUrl) return '';
+    const waNum = nmGetWaNumber(biz);
+    if(!fbUrl && !igUrl && !webUrl && !waNum) return '';
+
+    // Show the business's actual handle/number as the link text instead of
+    // a generic "Facebook"/"Instagram" label — when a business pastes their
+    // page/profile link, visitors should see who it links to, not just the
+    // platform name. Falls back to the platform name only in the rare case
+    // a handle couldn't be confidently extracted (see nmExtractSocialHandle).
+    const fbHandle = fbUrl ? nmExtractSocialHandle(biz.facebook, 'facebook\\.com') : '';
+    const igHandle = igUrl ? nmExtractSocialHandle(biz.instagram, 'instagram\\.com') : '';
+    const fbLabel = fbHandle ? nmSafe(fbHandle) : 'Facebook';
+    const igLabel = igHandle ? '@' + nmSafe(igHandle) : 'Instagram';
+
     return `<div style="background:var(--black-2);border:1px solid var(--border-soft);padding:28px;margin-bottom:16px;">
       <div class="biz-section-title">Follow</div>
       <div style="display:flex;flex-direction:column;gap:10px;">
- ${webUrl ? `<a href="${webUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--green-dark);text-decoration:none;padding:12px 16px;background:rgba(22,101,52,.05);border:1px solid rgba(22,101,52,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='var(--green-dark)'" onmouseout="this.style.borderColor='rgba(22,101,52,.2)'"> Website</a>` : ''}
- ${fbUrl ? `<a href="${fbUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#1877F2;text-decoration:none;padding:12px 16px;background:rgba(24,119,242,.05);border:1px solid rgba(24,119,242,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#1877F2'" onmouseout="this.style.borderColor='rgba(24,119,242,.2)'"> Facebook</a>` : ''}
- ${igUrl ? `<a href="${igUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#E1306C;text-decoration:none;padding:12px 16px;background:rgba(225,48,108,.05);border:1px solid rgba(225,48,108,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#E1306C'" onmouseout="this.style.borderColor='rgba(225,48,108,.2)'"> Instagram</a>` : ''}
+ ${webUrl ? `<a href="${webUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--green-dark);text-decoration:none;padding:12px 16px;background:rgba(22,101,52,.05);border:1px solid rgba(22,101,52,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='var(--green-dark)'" onmouseout="this.style.borderColor='rgba(22,101,52,.2)'">${NM_SOCIAL_SVG.website} Website</a>` : ''}
+ ${fbUrl ? `<a href="${fbUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#1877F2;text-decoration:none;padding:12px 16px;background:rgba(24,119,242,.05);border:1px solid rgba(24,119,242,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#1877F2'" onmouseout="this.style.borderColor='rgba(24,119,242,.2)'">${NM_SOCIAL_SVG.facebook} ${fbLabel}</a>` : ''}
+ ${igUrl ? `<a href="${igUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#E1306C;text-decoration:none;padding:12px 16px;background:rgba(225,48,108,.05);border:1px solid rgba(225,48,108,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#E1306C'" onmouseout="this.style.borderColor='rgba(225,48,108,.2)'">${NM_SOCIAL_SVG.instagram} ${igLabel}</a>` : ''}
+ ${waNum ? `<a href="https://wa.me/${waNum}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#25D366;text-decoration:none;padding:12px 16px;background:rgba(37,211,102,.05);border:1px solid rgba(37,211,102,.2);transition:border-color .3s;" onmouseover="this.style.borderColor='#25D366'" onmouseout="this.style.borderColor='rgba(37,211,102,.2)'">${NM_SOCIAL_SVG.whatsapp} ${nmSafe(biz.whatsapp || biz.phone || '')}</a>` : ''}
       </div>
     </div>`;
   } catch(e) {
@@ -7861,12 +7896,12 @@ async function loadPendingListings() {
     window._pendingListingsMap = {};
     data.forEach(l => { window._pendingListingsMap[l.id] = l; });
     tbody.innerHTML = data.map(l => `
-      <tr id="adm-pending-row-${l.id}">
-        <td style="font-weight:600;">${l.name}</td>
-        <td>${l.owner || '—'}</td>
-        <td>${l.type || '—'}</td>
-        <td>${l.area || '—'}, ${l.city || '—'}</td>
-        <td>${l.phone || '—'}<br><span style="font-size:11px;color:var(--white-dim);">${l.email || ''}</span></td>
+      <tr id="adm-pending-row-${nmSafe(l.id)}">
+        <td style="font-weight:600;">${nmSafe(l.name)}</td>
+        <td>${nmSafe(l.owner) || '—'}</td>
+        <td>${nmSafe(l.type) || '—'}</td>
+        <td>${nmSafe(l.area) || '—'}, ${nmSafe(l.city) || '—'}</td>
+        <td>${nmSafe(l.phone) || '—'}<br><span style="font-size:11px;color:var(--white-dim);">${nmSafe(l.email)}</span></td>
         <td>
  <button class="admin-action-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${l.id}')"> Review</button><br>
  <button class="admin-action-btn approve" style="margin-bottom:4px;" onclick="adminAction(this,'approve','${l.id}')"> Approve</button>
@@ -7893,11 +7928,11 @@ async function loadApprovedListings() {
       return;
     }
     tbody.innerHTML = data.map(l => `
-      <tr id="adm-row-${l.id}">
-        <td style="font-weight:600;">${l.name}</td>
-        <td>${l.type || '—'}</td>
-        <td>${l.area || '—'}</td>
-        <td><span style="color:${l.boost_tier==='pro'?'var(--gold)':l.boost_tier==='dominance'?'var(--gold)':'var(--white-dim)'};">${l.boost_tier || 'free'}</span></td>
+      <tr id="adm-row-${nmSafe(l.id)}">
+        <td style="font-weight:600;">${nmSafe(l.name)}</td>
+        <td>${nmSafe(l.type) || '—'}</td>
+        <td>${nmSafe(l.area) || '—'}</td>
+        <td><span style="color:${l.boost_tier==='pro'?'var(--gold)':l.boost_tier==='dominance'?'var(--gold)':'var(--white-dim)'};">${nmSafe(l.boost_tier) || 'free'}</span></td>
         <td>
  <button class="admin-action-btn reject" style="margin-bottom:4px;" onclick="adminAction(this,'reject','${l.id}')"> Reject</button><br>
  <button class="admin-action-btn" style="background:rgba(220,38,38,.15);color:#f87171;border:1px solid rgba(220,38,38,.3);font-size:11px;" onclick="admDeleteListing('${l.id}', this)"> Delete Permanently</button>
@@ -7977,6 +8012,19 @@ document.addEventListener('DOMContentLoaded',()=>{
   const hashView = hashParts[1] || 'main';           // e.g. 'boost'
   const hashBizId = hashParts[2] || null;            // e.g. '123' for profile
   const hashBpPage = hashParts[2] || 'overview';      // e.g. 'settings' for portal (same slot, different meaning)
+
+  // ── CATEGORY RESTORATION ──
+  // hashParts[2] is reused for different things depending on hashView — a
+  // business id for 'profile', a portal sub-page for 'portal' — and, here,
+  // the selected marketplace category for 'main' (hash looks like
+  // '#marketplace/main/beauty'). BUG THIS FIXES: currentCat lived only in a
+  // plain JS variable with nothing in the URL/history to rebuild it from, so
+  // reloading while filtered to a category (Beauty, Laundry, etc.) always
+  // reset the grid back to "All" instead of staying on that category.
+  const _validCats = ['all','food','shops','beauty','laundry','services','transport'];
+  if (hashPage === 'marketplace' && hashView === 'main' && hashParts[2] && _validCats.includes(hashParts[2])) {
+    currentCat = hashParts[2];
+  }
 
   // Valid page IDs that exist in the DOM
   const validPages = ['home','about','contact','terms','privacy','faqs',
@@ -8089,6 +8137,12 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(_sortBar)      _sortBar.style.display      = '';
     // Transport sub-nav: only show if transport category is currently active
     if(_transportSub) _transportSub.style.display = (typeof currentCat !== 'undefined' && currentCat === 'transport') ? 'block' : 'none';
+    // Reflect the restored category (see CATEGORY RESTORATION above) in the
+    // category nav's active button — otherwise the grid would silently be
+    // filtered correctly while "All" still looked highlighted.
+    document.querySelectorAll('.mkt-cat-btn').forEach(b=>b.classList.remove('active'));
+    const _activeCatBtn = document.querySelector('.mkt-cat-btn[data-cat="'+currentCat+'"]');
+    if(_activeCatBtn) _activeCatBtn.classList.add('active');
   }
 
   // If marketplace — restore the correct sub-view
@@ -10545,8 +10599,8 @@ window.updateAdminUserCount = function() {
       <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-soft);">
         <span style="font-size:16px;">${a.type==='business'?'<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;flex-shrink:0;"><path d="M3 9l9-6 9 6v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M9 21V12h6v9"/></svg>':a.type==='subscriber'?'<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;flex-shrink:0;"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>':'<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;flex-shrink:0;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'}</span>
         <div style="flex:1;">
-          <div style="font-size:13px;color:var(--white);font-weight:500;">${a.name}</div>
-          <div style="font-size:11px;color:var(--white-dim);">${a.type.charAt(0).toUpperCase()+a.type.slice(1)} · ${a.identifier}</div>
+          <div style="font-size:13px;color:var(--white);font-weight:500;">${nmSafe(a.name)}</div>
+          <div style="font-size:11px;color:var(--white-dim);">${a.type.charAt(0).toUpperCase()+a.type.slice(1)} · ${nmSafe(a.identifier)}</div>
         </div>
         <div style="font-size:10px;color:var(--white-dim);letter-spacing:.5px;">${new Date(a.timestamp).toLocaleTimeString()}</div>
       </div>
@@ -11412,7 +11466,7 @@ function bpRenderReviews() {
     <div class="bp-review-item">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
         <div style="display:flex;align-items:center;gap:10px;">
-          <div class="bp-enq-av" style="background:rgba(59,130,246,.12);color:#60A5FA;">${r.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
+          <div class="bp-enq-av" style="background:rgba(59,130,246,.12);color:#60A5FA;">${nmSafe(r.name).split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
           <div><div style="font-size:13px;font-weight:700;color:var(--white);">${nmSafe(r.name)}</div><div style="font-size:10px;color:var(--white-dim);">${nmSafe(r.date || r.time || '')}</div></div>
         </div>
  <div class="bp-stars">${Array.from({length:5},(_,i)=>`<span class="${i<r.stars?'bp-star-on':'bp-star-off'}">${i<r.stars?'':''}</span>`).join('')}</div>
@@ -12757,8 +12811,14 @@ async function admFixAccountRole(id, newRole, btn) {
 // migrated, entered directly), since signup is the only place that creates
 // BOTH the login account and the listing together. ──
 async function admFindUnclaimedListing() {
-  const q = (document.getElementById('adm-unclaimed-search').value || '').trim();
+  const qRaw = (document.getElementById('adm-unclaimed-search').value || '').trim();
   const resultEl = document.getElementById('adm-unclaimed-result');
+  if(!qRaw) { resultEl.innerHTML = '<div class="adm-empty">Enter a business name or email to search.</div>'; return; }
+  // Strip characters that are structurally significant in a PostgREST
+  // .or() filter string (comma separates conditions, parentheses group
+  // them) — otherwise a search term containing one could change what the
+  // filter actually matches instead of just failing to find a result.
+  const q = qRaw.replace(/[,()]/g, '');
   if(!q) { resultEl.innerHTML = '<div class="adm-empty">Enter a business name or email to search.</div>'; return; }
   resultEl.innerHTML = '<div class="adm-empty">Searching…</div>';
   try {
