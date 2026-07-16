@@ -9089,6 +9089,131 @@ function nmRateLimit(key, maxAttempts, windowMs) {
 }
 
 // ════════════════════════════════════════════════════════════
+// ②b SECURITY — Persistent login lockout
+// nmRateLimit above lives only in a plain JS object, so it resets the
+// instant the page is reloaded — someone brute-forcing a password just
+// has to hit refresh to get 5 more free guesses. This version stores
+// state in localStorage instead, so it survives reloads, closing the
+// tab, and reopening the browser on the same device. Still per-device
+// rather than server-enforced (this app has no auth backend of its own
+// to rate-limit from), but it closes the "just refresh" bypass.
+// ════════════════════════════════════════════════════════════
+function nmLockoutKey(action, identifier){
+  return 'nm_lock_' + action + '_' + String(identifier || '').toLowerCase().trim();
+}
+function nmCheckLockout(action, identifier){
+  try {
+    const raw = localStorage.getItem(nmLockoutKey(action, identifier));
+    if(!raw) return { blocked:false };
+    const st = JSON.parse(raw);
+    const now = Date.now();
+    if(st.lockedUntil && st.lockedUntil > now){
+      return { blocked:true, waitSec: Math.ceil((st.lockedUntil - now)/1000) };
+    }
+    if(st.lockedUntil && st.lockedUntil <= now){
+      localStorage.removeItem(nmLockoutKey(action, identifier)); // expired — clean up
+    }
+    return { blocked:false };
+  } catch(e){ return { blocked:false }; } // localStorage unavailable (private mode) — fail open, don't break login
+}
+function nmRecordFailedAttempt(action, identifier, maxAttempts, lockMs){
+  try {
+    const key = nmLockoutKey(action, identifier);
+    const raw = localStorage.getItem(key);
+    const st = raw ? JSON.parse(raw) : { count:0, lockedUntil:0 };
+    st.count = (st.count||0) + 1;
+    if(st.count >= maxAttempts){
+      st.lockedUntil = Date.now() + lockMs;
+      st.count = 0; // start counting fresh once this lock expires
+    }
+    localStorage.setItem(key, JSON.stringify(st));
+  } catch(e){ /* localStorage unavailable — degrade gracefully, no lock recorded */ }
+}
+function nmClearLockout(action, identifier){
+  try { localStorage.removeItem(nmLockoutKey(action, identifier)); } catch(e){}
+}
+function nmLockoutMessage(waitSec){
+  let human;
+  if(waitSec >= 3600) { const h = Math.ceil(waitSec/3600); human = h + ' hour' + (h>1?'s':''); }
+  else if(waitSec >= 60) { const m = Math.ceil(waitSec/60); human = m + ' minute' + (m>1?'s':''); }
+  else human = waitSec + ' second' + (waitSec>1?'s':'');
+  return '\uD83D\uDD12 Too many failed attempts. For security, access has been locked for ' + human + '. If this wasn\u2019t you, or you need help sooner, contact support@noamark.com.';
+}
+
+// ════════════════════════════════════════════════════════════
+// ②c SECURITY — Device-level signup cap
+// Caps how many new accounts (any role) can be created from one device
+// in a rolling window, so spinning up a batch of accounts to spam or
+// abuse the marketplace isn't a one-click affair. Like the lockout
+// above, this is device-based (localStorage), not identity-verified —
+// a determined attacker with multiple devices/browsers can still get
+// around it. Real bot-level protection would need a CAPTCHA (e.g.
+// hCaptcha/reCAPTCHA) wired in with a site key, which needs Josh to
+// register for one — happy to wire it up if/when that's in place.
+// ════════════════════════════════════════════════════════════
+const NM_SIGNUP_CAP_MAX = 3;
+const NM_SIGNUP_CAP_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
+function nmCheckSignupCap(){
+  try {
+    const raw = localStorage.getItem('nm_signup_cap');
+    const now = Date.now();
+    let times = raw ? JSON.parse(raw) : [];
+    times = times.filter(t => now - t < NM_SIGNUP_CAP_WINDOW_MS);
+    if(times.length >= NM_SIGNUP_CAP_MAX){
+      const waitSec = Math.ceil((NM_SIGNUP_CAP_WINDOW_MS - (now - times[0])) / 1000);
+      return { blocked:true, waitSec };
+    }
+    return { blocked:false };
+  } catch(e){ return { blocked:false }; }
+}
+function nmRecordSignup(){
+  try {
+    const now = Date.now();
+    const raw = localStorage.getItem('nm_signup_cap');
+    let times = raw ? JSON.parse(raw) : [];
+    times = times.filter(t => now - t < NM_SIGNUP_CAP_WINDOW_MS);
+    times.push(now);
+    localStorage.setItem('nm_signup_cap', JSON.stringify(times));
+  } catch(e){ /* localStorage unavailable — nothing to persist */ }
+}
+function nmSignupCapMessage(waitSec){
+  const hrs = Math.ceil(waitSec/3600);
+  return '\u26A0\uFE0F Several accounts have already been created from this device today. Please try again in about ' + hrs + ' hour' + (hrs>1?'s':'') + ', or contact support@noamark.com if you need more accounts for a legitimate reason.';
+}
+
+// ════════════════════════════════════════════════════════════
+// ②d SECURITY — Real-name sanity check
+// Applied only to *personal* name fields (an owner's own name, a
+// guest/subscriber's display name) — deliberately NOT to business
+// names, which legitimately contain numbers, ampersands, and symbols
+// ("7Eleven", "M&M Spaza", "24/7 Tuckshop"). Lenient by design: it only
+// screens out the obvious cases (symbols/digits, keyboard-mash with no
+// vowels, "asdf"-style junk, a single character repeated) rather than
+// trying to validate real names, which are too varied to pattern-match
+// reliably. Some legitimate edge cases may still get flagged; on
+// rejection the field should let the person try again rather than lock
+// anything.
+// ════════════════════════════════════════════════════════════
+function nmLooksLikeName(raw){
+  const s = (raw || '').trim();
+  if(s.length < 2 || s.length > 60) return false;
+  // Letters (any language via \p{L}), spaces, apostrophes, hyphens, and
+  // periods (for initials) only — blocks digits, symbols, emoji outright.
+  if(!/^[\p{L}][\p{L}\s'.\-]*$/u.test(s)) return false;
+  const lower = s.toLowerCase();
+  // Catches pure keyboard-mash like "sdfgh" or "qwrtzx" that pass the
+  // letters-only check above — real names always have a vowel sound.
+  if(!/[aeiouàáâãäåèéêëìíîïòóôõöùúûüy]/i.test(lower)) return false;
+  // A handful of extremely common mash/placeholder patterns
+  const junkPatterns = ['asdf','qwerty','zxcv','qazwsx','testtest','asdasd','qweqwe'];
+  const stripped = lower.replace(/[^a-z]/g,'');
+  if(junkPatterns.some(p => stripped.includes(p))) return false;
+  // A single character repeated the whole way through ("aaaaaa")
+  if(/^(.)\1+$/.test(s.replace(/\s/g,''))) return false;
+  return true;
+}
+
+// ════════════════════════════════════════════════════════════
 // ③  RELIABILITY — Supabase retry wrapper (exponential back-off)
 // ════════════════════════════════════════════════════════════
 async function nmSupaQuery(fn, retries = 3, timeoutMs = 8000) {
@@ -9801,8 +9926,14 @@ async function handleBizSignup() {
 
   if(!name||!owner||!email||!pass||!confirm) { showAuthError('biz-signup-error','Please fill in all fields.'); return; }
   if(!validateEmail(email))                   { showAuthError('biz-signup-error','Please enter a valid email address.'); return; }
+  if(!nmLooksLikeName(owner))                  { showAuthError('biz-signup-error','Please enter your real name (letters only) in the owner field.'); return; }
   if(!validateStrongPassword(pass,'biz-signup-error')) return;
   if(pass !== confirm)                        { showAuthError('biz-signup-error','Passwords do not match. Please try again.'); return; }
+
+  // Device-level cap: stops one device from spinning up a batch of
+  // business accounts back to back (see nmCheckSignupCap above).
+  const capCheck = nmCheckSignupCap();
+  if (capCheck.blocked) { showAuthError('biz-signup-error', nmSignupCapMessage(capCheck.waitSec)); return; }
 
   // Check local cache first (fast), then Supabase (authoritative for cross-device)
   if(NM_USERS.businesses.find(b=>b.email.toLowerCase()===email.toLowerCase())) {
@@ -9849,6 +9980,7 @@ async function handleBizSignup() {
       return;
     }
   } catch(e) { /* Verification network error, proceed optimistically, upsert likely succeeded */ }
+  nmRecordSignup();
   trackUser('business', name, email);
   loginAs({ type:'business', name:biz.name, owner:owner, email:biz.email, plan:'Free Listing', id:biz.id, joinedAt:biz.joinedAt });
  showAuthSuccess('biz-signup-success', ' Account created! Welcome, '+name+'. Redirecting to add your listing…');
@@ -9880,9 +10012,10 @@ async function handleBizLogin() {
   if(!loginName||!email||!pass) { showAuthError('biz-login-error','Please fill in all fields before continuing.'); return; }
   if(!validateEmail(email))     { showAuthError('biz-login-error','Please enter a valid email address.'); return; }
 
-  // Rate limiting: max 5 attempts per 2 minutes
-  const rl = nmRateLimit('biz-login:' + email.toLowerCase(), 5, 120000);
-  if (rl.blocked) { showAuthError('biz-login-error','Too many attempts. Please wait ' + rl.waitSec + ' seconds before trying again.'); return; }
+  // Persistent lockout: 5 failed attempts locks this email out for 3 hours,
+  // and survives page reloads (see nmCheckLockout above).
+  const lockCheck = nmCheckLockout('biz-login', email);
+  if (lockCheck.blocked) { showAuthError('biz-login-error', nmLockoutMessage(lockCheck.waitSec)); return; }
 
   showAuthError('biz-login-error', 'Checking account...');
   try {
@@ -9905,16 +10038,23 @@ async function handleBizLogin() {
         const found = anyRole && anyRole.data && anyRole.data[0];
         if (found) hint = ' We did find an account with this email registered as "' + (found.role || 'unknown') + '", if you meant to sign up as a business, contact support@noamark.com to have it corrected.';
       } catch(e) { /* best-effort hint only, ignore failures */ }
+      nmRecordFailedAttempt('biz-login', email, 5, 3*60*60*1000);
       showAuthError('biz-login-error', '\u274C No business account found with that email. Please check your email or sign up for a new account.' + hint);
       return;
     }
     // Verify business name matches (case-insensitive) so the right business is confirmed
     if (biz.name.trim().toLowerCase() !== loginName.trim().toLowerCase()) {
+      nmRecordFailedAttempt('biz-login', email, 5, 3*60*60*1000);
       showAuthError('biz-login-error', '\u274C Business name does not match our records. Please use the exact name you registered with.');
       return;
     }
     const pwOk = await nmVerifyPassword(pass, biz.password);
-    if (!pwOk) { showAuthError('biz-login-error', '\u274C Incorrect password. Please try again.'); return; }
+    if (!pwOk) {
+      nmRecordFailedAttempt('biz-login', email, 5, 3*60*60*1000);
+      showAuthError('biz-login-error', '\u274C Incorrect password. Please try again.');
+      return;
+    }
+    nmClearLockout('biz-login', email);
     loginAs({ type:'business', name:biz.name, owner:biz.owner || biz.name, email:biz.email, plan:'Business', id:biz.id, joinedAt:biz.joinedAt || biz.created_at });
     showAuthSuccess('biz-login-success', '\u2713 Welcome back, ' + biz.name + '!');
     setTimeout(() => {
@@ -9940,12 +10080,14 @@ async function handleSubSignup() {
 
   if(!name||!email||!pass||!confirm) { showAuthError('sub-signup-error','Please fill in all fields.'); return; }
   if(!validateEmail(email))           { showAuthError('sub-signup-error','Please enter a valid email address.'); return; }
+  if(!nmLooksLikeName(name))           { showAuthError('sub-signup-error','Please enter your real name (letters only).'); return; }
   if(!validateStrongPassword(pass,'sub-signup-error')) return;
   if(pass !== confirm)                { showAuthError('sub-signup-error','Passwords do not match. Please try again.'); return; }
 
-  // Rate limiting: max 3 signups per 10 minutes per email
-  const rl = nmRateLimit('sub-signup:' + email.toLowerCase(), 3, 600000);
-  if (rl.blocked) { showAuthError('sub-signup-error','Too many attempts. Please wait ' + rl.waitSec + ' seconds.'); return; }
+  // Device-level cap: stops one device from spinning up a batch of
+  // accounts back to back (see nmCheckSignupCap above).
+  const capCheck = nmCheckSignupCap();
+  if (capCheck.blocked) { showAuthError('sub-signup-error', nmSignupCapMessage(capCheck.waitSec)); return; }
 
   // Check local cache first (fast), then Supabase (catches accounts from other devices)
   if(NM_USERS.subscribers.find(s=>s.email.toLowerCase()===email.toLowerCase())) {
@@ -9971,6 +10113,7 @@ async function handleSubSignup() {
     NM_USERS.subscribers = NM_USERS.subscribers.filter(s => s.email.toLowerCase() !== email.toLowerCase());
     return;
   }
+  nmRecordSignup();
   trackUser('subscriber', name, email);
   loginAs({ type:'subscriber', name:sub.name, email:sub.email, plan:'Free', id:sub.id });
  showAuthSuccess('sub-signup-success', ' Account created! Welcome, '+name+'.');
@@ -9988,18 +10131,20 @@ async function handleSubLogin() {
   if(!loginName||!email||!pass) { showAuthError('sub-login-error','Please fill in all fields before continuing.'); return; }
   if(!validateEmail(email))     { showAuthError('sub-login-error','Please enter a valid email address.'); return; }
 
-  // Rate limiting: max 5 attempts per 2 minutes
-  const rl = nmRateLimit('sub-login:' + email.toLowerCase(), 5, 120000);
-  if (rl.blocked) { showAuthError('sub-login-error','Too many attempts. Please wait ' + rl.waitSec + ' seconds.'); return; }
+  // Persistent lockout: 5 failed attempts locks this email out for 3 hours,
+  // and survives page reloads (see nmCheckLockout above).
+  const lockCheck = nmCheckLockout('sub-login', email);
+  if (lockCheck.blocked) { showAuthError('sub-login-error', nmLockoutMessage(lockCheck.waitSec)); return; }
 
   showAuthError('sub-login-error', 'Checking account...');
   try {
     const result = await nmSupaQuery(() => _supa.from('users').select('*').eq('role','subscriber').ilike('name', loginName).limit(1));
     const subByName = result && result.data && result.data[0];
-    if(!subByName) { showAuthError('sub-login-error','\u274C No learner account found with that name. Please check your name or sign up.'); return; }
-    if(subByName.email.toLowerCase() !== email.toLowerCase()) { showAuthError('sub-login-error','\u274C That email does not match. Please check your email.'); return; }
+    if(!subByName) { nmRecordFailedAttempt('sub-login', email, 5, 3*60*60*1000); showAuthError('sub-login-error','\u274C No learner account found with that name. Please check your name or sign up.'); return; }
+    if(subByName.email.toLowerCase() !== email.toLowerCase()) { nmRecordFailedAttempt('sub-login', email, 5, 3*60*60*1000); showAuthError('sub-login-error','\u274C That email does not match. Please check your email.'); return; }
     const pwOk = await nmVerifyPassword(pass, subByName.password);
-    if(!pwOk) { showAuthError('sub-login-error','\u274C Incorrect password. Please try again.'); return; }
+    if(!pwOk) { nmRecordFailedAttempt('sub-login', email, 5, 3*60*60*1000); showAuthError('sub-login-error','\u274C Incorrect password. Please try again.'); return; }
+    nmClearLockout('sub-login', email);
     loginAs({ type:'subscriber', name:subByName.name, email:subByName.email, plan:subByName.plan||'Free', id:subByName.id });
     showAuthSuccess('sub-login-success', '\u2713 Welcome back, '+subByName.name+'!');
     setTimeout(closeAuth, 900);
@@ -10016,8 +10161,14 @@ async function handleGuestSignup() {
   const confirm  = document.getElementById('guest-confirm').value;
 
   if(!name||!location||!pass||!confirm) { showAuthError('guest-error','Please fill in all fields.'); return; }
+  if(!nmLooksLikeName(name))             { showAuthError('guest-error','Please enter your real name (letters only).'); return; }
   if(!validateStrongPassword(pass,'guest-error')) return;
   if(pass !== confirm) { showAuthError('guest-error','Passwords do not match. Please try again.'); return; }
+
+  // Device-level cap: stops one device from spinning up a batch of
+  // accounts back to back (see nmCheckSignupCap above).
+  const capCheck = nmCheckSignupCap();
+  if (capCheck.blocked) { showAuthError('guest-error', nmSignupCapMessage(capCheck.waitSec)); return; }
 
   // Check duplicate in memory first, then Supabase to be safe
   const localDup = NM_USERS.guests.find(g=>g.name.toLowerCase()===name.toLowerCase());
@@ -10041,6 +10192,7 @@ async function handleGuestSignup() {
     NM_USERS.guests = NM_USERS.guests.filter(g => g.id !== guestId);
     return;
   }
+  nmRecordSignup();
   trackUser('guest', name, location);
   loginAs({ type:'guest', name:guest.name, location:guest.location, plan:'Explorer', id:guest.id });
  showAuthSuccess('guest-success', ' Welcome, '+name+'! Taking you to the marketplace…');
@@ -10057,17 +10209,19 @@ async function handleGuestLogin() {
 
   if(!loginName||!loginLoc||!pass) { showAuthError('guest-login-error','Please fill in all fields before continuing.'); return; }
 
-  // Rate limiting: max 5 attempts per 2 minutes
-  const rl = nmRateLimit('guest-login:' + loginName.toLowerCase(), 5, 120000);
-  if (rl.blocked) { showAuthError('guest-login-error','Too many attempts. Please wait ' + rl.waitSec + ' seconds.'); return; }
+  // Persistent lockout: 5 failed attempts locks this name out for 3 hours,
+  // and survives page reloads (see nmCheckLockout above).
+  const lockCheck = nmCheckLockout('guest-login', loginName);
+  if (lockCheck.blocked) { showAuthError('guest-login-error', nmLockoutMessage(lockCheck.waitSec)); return; }
 
   showAuthError('guest-login-error', 'Checking account...');
   try {
     const result = await nmSupaQuery(() => _supa.from('users').select('*').eq('role','guest').ilike('name', loginName).limit(1));
     const guestByName = result && result.data && result.data[0];
-    if(!guestByName) { showAuthError('guest-login-error','\u274C No Explorer account found with that name. Please check your name or register.'); return; }
+    if(!guestByName) { nmRecordFailedAttempt('guest-login', loginName, 5, 3*60*60*1000); showAuthError('guest-login-error','\u274C No Explorer account found with that name. Please check your name or register.'); return; }
     const pwOk = await nmVerifyPassword(pass, guestByName.password);
-    if(!pwOk) { showAuthError('guest-login-error','\u274C Incorrect password. Please try again.'); return; }
+    if(!pwOk) { nmRecordFailedAttempt('guest-login', loginName, 5, 3*60*60*1000); showAuthError('guest-login-error','\u274C Incorrect password. Please try again.'); return; }
+    nmClearLockout('guest-login', loginName);
     loginAs({ type:'guest', name:guestByName.name, location:guestByName.email||loginLoc, plan:'Explorer', id:guestByName.id });
     showAuthSuccess('guest-login-success', '\u2713 Welcome back, '+guestByName.name+'!');
     setTimeout(()=>{ closeAuth(); showPage('marketplace'); }, 900);
