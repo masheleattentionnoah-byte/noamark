@@ -7495,13 +7495,22 @@ async function submitBusiness(){
   // "Near Me Now" and distance sorting have something to calculate against.
   // Never blocks submission — if geocoding fails, the listing still saves,
   // it just won't show a distance until it's geocoded later.
+  //
+  // IMPORTANT: many owners don't have a real street address — they enter
+  // something like a plot/stand number, which on its own is ambiguous
+  // (the same plot number exists in many different townships). The
+  // "Nearest Landmark" field (e.g. "near Thavhani Mall") is usually the
+  // only genuinely specific location cue we have, so it must be included
+  // here — folded into the address line the geocoder searches against —
+  // or geocoding can silently resolve to the wrong town entirely.
   if(submitBtn) submitBtn.textContent = '⏳ Locating your business...';
   let geocoded = { latitude: null, longitude: null };
   try {
+    const geocodeAddress = [address, landmark].filter(Boolean).join(', ');
     const geoRes = await fetch('/api/geocode', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address, area, city, province })
+      body: JSON.stringify({ address: geocodeAddress, landmark, area, city, province })
     });
     if(geoRes.ok) {
       const geoData = await geoRes.json();
