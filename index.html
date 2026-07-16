@@ -5358,6 +5358,49 @@ window.addEventListener('popstate', function(e) {
   }
 });
 
+// ── BACK BUTTON SAFETY NET ──
+// The handler above has many early `return`s across many priority branches
+// (modals, chat, lightbox, business-role redirects, orphaned gate/auth
+// states, etc). Each one is trusted to leave a valid page visible. Given how
+// many branches there are, and that some rely on chained history.go(-1)
+// calls whose popstate delivery isn't 100% guaranteed on every browser/
+// gesture, it only takes one edge case slipping through for the screen to
+// end up with every .page element inactive — a permanent blank white screen
+// that never repaints itself, since nothing else triggers a re-render.
+// This listener runs after the main one (registration order) on every
+// popstate and, purely as a last resort, checks whether anything is
+// actually visible. If not, it self-heals instead of leaving the person
+// stuck on a blank screen.
+window.addEventListener('popstate', function() {
+  setTimeout(() => {
+    const anyPageVisible = Array.from(document.querySelectorAll('.page'))
+      .some(p => p.classList.contains('active') && getComputedStyle(p).display !== 'none');
+    if (anyPageVisible) return;
+
+    console.warn('[NoaMark] Back-button safety net: no page was visible after popstate — self-healing.');
+    const state = history.state;
+    const sessionRole = (typeof currentUser !== 'undefined' && currentUser && currentUser.type) || null;
+
+    if (sessionRole === 'business') {
+      showPage('marketplace');
+      setTimeout(() => showMktView('admin', false), 100);
+      return;
+    }
+    if (state && state.nmPage === 'marketplace') {
+      showPage('marketplace');
+      const view = ['main','boost','add','admin'].includes(state.nmView) ? state.nmView : 'main';
+      setTimeout(() => showMktView(view, false), 100);
+      return;
+    }
+    if (state && state.nmPage && document.getElementById('page-' + state.nmPage)) {
+      showPage(state.nmPage);
+      return;
+    }
+    // Last resort — always render something rather than nothing.
+    showPage('home');
+  }, 60);
+});
+
 // ── REVEAL ANIMATION ──
 function initReveal(){
   const obs=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');}),{threshold:.1});
@@ -9525,6 +9568,10 @@ function openAuth(type, required) {
     const tabs = document.querySelectorAll('.auth-tab');
     switchAuthType(type, tabs[tabMap[type]||0]);
   }
+  // Remember exactly what was on screen before auth opened, so closeAuth()
+  // can restore it precisely instead of leaving a stray history entry
+  // behind (see note in closeAuth below — same bug/fix as openGate/closeGate).
+  window._authPriorState = history.state;
   // Push state so phone back button closes auth instead of exiting the site
   history.pushState({ nmPage: 'auth', nmView: 'modal' }, '', window.location.href);
 }
@@ -9549,6 +9596,18 @@ function closeAuth() {
     document.querySelectorAll('#auth-overlay input.auth-input').forEach(el => { el.value = ''; });
     document.querySelectorAll('#auth-overlay .auth-error').forEach(el => { el.textContent = ''; el.style.display = 'none'; });
   }
+  // BUG THIS FIXES: same root cause as closeGate() (see its comment for the
+  // full explanation) — closeAuth() never touched history, so every time
+  // auth was closed by a button (not the back button) it left a 'auth'
+  // ghost entry permanently stuck in the stack. Stack up a couple of these
+  // during a normal sign-up flow (gate -> quick access -> auth) and the
+  // back button eventually lands on a screen that never gets re-rendered:
+  // a permanent blank white screen. Always replace the current top-of-stack
+  // entry with whatever was really there before auth opened.
+  if (history.state && history.state.nmPage === 'auth') {
+    history.replaceState(window._authPriorState || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
+  }
+  window._authPriorState = null;
 }
 
 // ──────────────────────────────────────────────────
@@ -10354,12 +10413,38 @@ let pendingBizId = null;
 function openGate(bizId) {
   pendingBizId = bizId;
   document.getElementById('gate-overlay').classList.add('active');
+  // Remember exactly what was on screen before the gate opened, so closeGate()
+  // can restore it precisely (see note in closeGate below).
+  window._gatePriorState = history.state;
   // Push a history state so the phone back button closes the gate instead of leaving the site
   history.pushState({ nmPage: 'gate', nmView: 'modal' }, '', window.location.href);
 }
 function closeGate() {
   document.getElementById('gate-overlay').classList.remove('active');
   pendingBizId = null;
+  // BUG THIS FIXES: closeGate() used to only hide the overlay and never
+  // touched history at all. That was fine when the gate was closed BY the
+  // popstate handler (pressing back), because the handler did its own
+  // replaceState() right after calling this. But closeGate() is also called
+  // directly by UI buttons (Quick Access, Sign Up) and by loginAs() after a
+  // successful sign-in — and in those cases the 'gate' history entry pushed
+  // by openGate() was simply left behind on the stack, "orphaned", forever.
+  // Enough orphaned gate/auth entries pile up during a normal sign-up flow
+  // that the app's history.state gets out of sync with the browser's actual
+  // position in the stack — the popstate handler's own fallback for this
+  // (auto-skipping stray 'gate'/'auth' states via history.go(-1)) isn't
+  // reliable because chained go(-1) calls aren't guaranteed to each fire
+  // their own popstate on every browser/gesture. When that chain doesn't
+  // fully resolve, the page can be left with nothing marked visible —
+  // a permanent blank white screen after pressing back.
+  // Fix: always replace the CURRENT top-of-stack entry (whether that's the
+  // 'gate' entry itself, closed via a button, or already-popped-to via the
+  // back button) with whatever was really there before the gate opened, so
+  // no ghost entry is ever left in the stack.
+  if (history.state && history.state.nmPage === 'gate') {
+    history.replaceState(window._gatePriorState || { nmPage: 'marketplace', nmView: 'main' }, '', window.location.href);
+  }
+  window._gatePriorState = null;
 }
 
 // Override showBizProfile to check auth first
