@@ -51,35 +51,68 @@ export default async function handler(req, res) {
     const provinceKey = (province || '').toLowerCase().trim();
     const viewbox = PROVINCE_VIEWBOX[provinceKey];
 
-    const params = new URLSearchParams({
-      format: 'json',
-      limit: '6',
-      countrycodes: 'za',
-      addressdetails: '1',
-      q: query.trim(),
-    });
-    if (viewbox) params.set('viewbox', viewbox.join(','));
-    // Deliberately NOT setting bounded=1 here — see comment above.
+    async function search(q) {
+      const params = new URLSearchParams({
+        format: 'json',
+        limit: '6',
+        countrycodes: 'za',
+        addressdetails: '1',
+        q,
+      });
+      if (viewbox) params.set('viewbox', viewbox.join(','));
+      // Deliberately NOT setting bounded=1 here — see comment above.
 
-    const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'NoaMark/1.0 (support@noamark.com)',
-      },
-    });
+      const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'NoaMark/1.0 (support@noamark.com)',
+        },
+      });
+      if (!response.ok) return [];
 
-    if (!response.ok) {
-      return res.status(200).json({ results: [] });
+      const raw = await response.json();
+      return (Array.isArray(raw) ? raw : [])
+        .map(r => ({
+          label: r.display_name,
+          lat: parseFloat(r.lat),
+          lon: parseFloat(r.lon),
+        }))
+        .filter(r => r.label && !isNaN(r.lat) && !isNaN(r.lon));
     }
 
-    const raw = await response.json();
-    const results = (Array.isArray(raw) ? raw : [])
-      .map(r => ({
-        label: r.display_name,
-        lat: parseFloat(r.lat),
-        lon: parseFloat(r.lon),
-      }))
-      .filter(r => r.label && !isNaN(r.lat) && !isNaN(r.lon));
+    // Nominatim treats a comma-separated query as a structured address
+    // (place, area, city...), and if any ONE part doesn't match anything
+    // in OpenStreetMap — very common for informal township/section names,
+    // hand-described street addresses ("Straight Road, house number 36"),
+    // or plot numbers — the whole compound query can come back empty, even
+    // when part of it would succeed on its own. Rather than requiring the
+    // owner to know which wording will work, try the query several
+    // different ways and use whichever one actually finds something:
+    const trimmed = query.trim();
+    const parts = trimmed.split(',').map(s => s.trim()).filter(Boolean);
+
+    const attempts = [];
+    attempts.push(trimmed);                              // exactly as typed
+    if (parts.length > 1) {
+      attempts.push(parts.join(' '));                    // same words, no commas —
+                                                           // Nominatim's structured
+                                                           // parser can reject a
+                                                           // compound query that its
+                                                           // free-text parser accepts
+      attempts.push([parts[0], 'South Africa'].join(', ')); // most specific term + country
+      if (parts.length > 2) attempts.push(parts.slice(0, -1).join(', ')); // drop broadest term
+      // Try every remaining individual part on its own too — covers cases
+      // where the FIRST part is the one OSM doesn't recognize (e.g. a
+      // street name it doesn't have) but a later part (e.g. the suburb)
+      // would succeed.
+      for (const p of parts.slice(1)) attempts.push([p, 'South Africa'].join(', '));
+    }
+
+    let results = [];
+    for (const attempt of attempts) {
+      results = await search(attempt);
+      if (results.length > 0) break;
+    }
 
     return res.status(200).json({ results });
   } catch (err) {
