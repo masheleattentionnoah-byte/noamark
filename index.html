@@ -3479,6 +3479,11 @@
             <p style="font-size:11px;color:var(--white-dim);line-height:1.6;margin-bottom:12px;">Township and village addresses often can't be found precisely by automatic map lookup. Pin your exact spot yourself for the most accurate directions to your customers.</p>
             <button type="button" class="btn-ghost" id="biz_pin_open_btn" onclick="nmOpenPinMap()" style="padding:14px 20px;font-size:11px;">📍 Set Exact Location On Map</button>
             <div id="biz_pin_map_wrap" style="display:none;margin-top:14px;">
+              <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <input type="text" class="form-input" id="biz_pin_search_input" placeholder="Search for your landmark or area, e.g. Thavhani Mall" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();nmSearchPinLocation();}">
+                <button type="button" class="btn-ghost" onclick="nmSearchPinLocation()" style="padding:0 18px;font-size:11px;white-space:nowrap;">🔍 Search</button>
+              </div>
+              <div id="biz_pin_search_results" style="margin-bottom:10px;"></div>
               <div id="biz_pin_map" style="width:100%;height:260px;border-radius:8px;border:1px solid var(--border-soft);"></div>
               <p id="biz_pin_status" style="font-size:11px;color:var(--white-dim);margin:10px 0;line-height:1.6;"></p>
               <button type="button" class="btn-primary" id="biz_pin_confirm_btn" onclick="nmConfirmPin()" style="padding:12px 20px;font-size:11px;" disabled>✓ Confirm This Is My Exact Location</button>
@@ -5748,18 +5753,19 @@ async function nmOpenPinMap(){
   nmSetPinStatus('Loading map…');
   try { await nmLoadLeaflet(); } catch(e) { nmSetPinStatus('Could not load the map. Check your connection and try again.'); return; }
 
+  const addr = document.getElementById('biz_address').value.trim();
+  const land = document.getElementById('biz_landmark').value.trim();
+  const area = document.getElementById('biz_area').value.trim();
+  const city = document.getElementById('biz_city').value.trim();
+  const prov = document.getElementById('biz_province').value;
+
   let startLat, startLng, startZoom;
   if(typeof window._nmPinLat === 'number' && typeof window._nmPinLng === 'number') {
     startLat = window._nmPinLat; startLng = window._nmPinLng; startZoom = 16;
   } else {
-    const prov = document.getElementById('biz_province').value;
     const provCenter = NM_PROVINCE_CENTER[prov] || [-28.5, 24.7];
     startLat = provCenter[0]; startLng = provCenter[1];
     startZoom = NM_PROVINCE_CENTER[prov] ? 9 : 5;
-    const addr = document.getElementById('biz_address').value.trim();
-    const land = document.getElementById('biz_landmark').value.trim();
-    const area = document.getElementById('biz_area').value.trim();
-    const city = document.getElementById('biz_city').value.trim();
     if(prov && (addr || land || area || city)) {
       nmSetPinStatus('Looking up a starting point from your address…');
       try {
@@ -5791,6 +5797,66 @@ async function nmOpenPinMap(){
   // Leaflet mis-sizes itself if initialized while its container is hidden or
   // mid-transition — nudge it once the container has actually laid out.
   setTimeout(() => { if(_nmPinMap) _nmPinMap.invalidateSize(); }, 150);
+
+  // Pre-fill the search box with the most specific thing the owner typed
+  // (landmark beats a raw street address for finding named places like
+  // malls) and run the search automatically — the single-guess auto-center
+  // above is often off, but this gives the owner a ready list of real
+  // candidates to pick from with one glance, instead of typing from
+  // scratch. They can still search again with different words if none of
+  // these match.
+  const searchInput = document.getElementById('biz_pin_search_input');
+  if(searchInput && !searchInput.value.trim()) {
+    searchInput.value = [land, area, city].filter(Boolean).join(', ') || [addr, area, city].filter(Boolean).join(', ');
+  }
+  if(searchInput && searchInput.value.trim() && typeof window._nmPinLat !== 'number') {
+    nmSearchPinLocation();
+  }
+}
+
+// Searches for named places (landmarks, malls, suburbs) via /api/geocode-
+// search and lists several candidates for the owner to choose from — more
+// reliable than trusting one automatic guess, since the owner can actually
+// recognize the right result by name.
+async function nmSearchPinLocation(){
+  const input = document.getElementById('biz_pin_search_input');
+  const resultsEl = document.getElementById('biz_pin_search_results');
+  if(!input || !resultsEl) return;
+  const query = input.value.trim();
+  if(!query) return;
+  resultsEl.innerHTML = '<div style="font-size:11px;color:var(--white-dim);padding:8px 0;">Searching…</div>';
+  const province = document.getElementById('biz_province').value;
+  try {
+    const res = await fetch('/api/geocode-search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, province })
+    });
+    const data = res.ok ? await res.json() : { results: [] };
+    const results = data.results || [];
+    window._nmPinSearchResults = results;
+    if(results.length === 0) {
+      resultsEl.innerHTML = '<div style="font-size:11px;color:var(--white-dim);padding:8px 0;">No matches found. Try a shorter search (just the mall or landmark name), or drag the pin on the map below.</div>';
+      return;
+    }
+    resultsEl.innerHTML = results.map((r, i) =>
+      `<button type="button" onclick="nmPickPinSearchResult(${i})" style="display:block;width:100%;text-align:left;padding:10px 12px;margin-bottom:4px;font-size:11px;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white-soft);cursor:pointer;border-radius:4px;">${nmSafe(r.label)}</button>`
+    ).join('');
+  } catch(e) {
+    resultsEl.innerHTML = '<div style="font-size:11px;color:#f87171;padding:8px 0;">Search failed — check your connection and try again.</div>';
+  }
+}
+
+// Owner clicked a search result — move the map and pin there, then let
+// them drag to fine-tune before confirming.
+function nmPickPinSearchResult(i){
+  const r = (window._nmPinSearchResults || [])[i];
+  if(!r || !_nmPinMap || !_nmPinMarker) return;
+  _nmPinMap.setView([r.lat, r.lon], 17);
+  _nmPinMarker.setLatLng([r.lat, r.lon]);
+  nmSetPinCoords(r.lat, r.lon);
+  const resultsEl = document.getElementById('biz_pin_search_results');
+  if(resultsEl) resultsEl.innerHTML = '<div style="font-size:11px;color:#34d399;padding:8px 0;">✓ Moved the pin here — drag it to fine-tune if needed, then confirm below.</div>';
 }
 
 // Resets all manual-pin state — called when the form is cleared after a
@@ -5800,12 +5866,17 @@ function nmResetPinMap(){
   window._nmPinLat = null;
   window._nmPinLng = null;
   window._nmPinConfirmed = false;
+  window._nmPinSearchResults = [];
   if(_nmPinMap) { _nmPinMap.remove(); _nmPinMap = null; }
   _nmPinMarker = null;
   const wrap = document.getElementById('biz_pin_map_wrap');
   if(wrap) wrap.style.display = 'none';
   const openBtn = document.getElementById('biz_pin_open_btn');
   if(openBtn) { openBtn.style.display = ''; openBtn.textContent = '📍 Set Exact Location On Map'; }
+  const searchInput = document.getElementById('biz_pin_search_input');
+  if(searchInput) searchInput.value = '';
+  const resultsEl = document.getElementById('biz_pin_search_results');
+  if(resultsEl) resultsEl.innerHTML = '';
   nmSetPinStatus('');
 }
 
