@@ -5798,16 +5798,17 @@ async function nmOpenPinMap(){
   // mid-transition — nudge it once the container has actually laid out.
   setTimeout(() => { if(_nmPinMap) _nmPinMap.invalidateSize(); }, 150);
 
-  // Pre-fill the search box with the most specific thing the owner typed
-  // (landmark beats a raw street address for finding named places like
-  // malls) and run the search automatically — the single-guess auto-center
-  // above is often off, but this gives the owner a ready list of real
-  // candidates to pick from with one glance, instead of typing from
-  // scratch. They can still search again with different words if none of
-  // these match.
+  // Pre-fill the search box with just the SINGLE most specific term the
+  // owner typed — landmark beats a raw street address for finding named
+  // places like malls. Deliberately NOT combining it with area/city here:
+  // Nominatim treats a comma-joined query as a structured address, and if
+  // any one part (e.g. an informal township section name OSM doesn't know)
+  // fails to match, the WHOLE compound query can come back empty even
+  // though the landmark alone would succeed. Keep it simple; the owner can
+  // always broaden the search themselves if a single term is too vague.
   const searchInput = document.getElementById('biz_pin_search_input');
   if(searchInput && !searchInput.value.trim()) {
-    searchInput.value = [land, area, city].filter(Boolean).join(', ') || [addr, area, city].filter(Boolean).join(', ');
+    searchInput.value = land || area || addr || city;
   }
   if(searchInput && searchInput.value.trim() && typeof window._nmPinLat !== 'number') {
     nmSearchPinLocation();
