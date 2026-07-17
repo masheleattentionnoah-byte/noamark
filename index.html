@@ -5850,13 +5850,27 @@ async function nmSearchPinLocation(){
 // Owner clicked a search result — move the map and pin there, then let
 // them drag to fine-tune before confirming.
 function nmPickPinSearchResult(i){
-  const r = (window._nmPinSearchResults || [])[i];
-  if(!r || !_nmPinMap || !_nmPinMarker) return;
-  _nmPinMap.setView([r.lat, r.lon], 17);
-  _nmPinMarker.setLatLng([r.lat, r.lon]);
-  nmSetPinCoords(r.lat, r.lon);
-  const resultsEl = document.getElementById('biz_pin_search_results');
-  if(resultsEl) resultsEl.innerHTML = '<div style="font-size:11px;color:#34d399;padding:8px 0;">✓ Moved the pin here — drag it to fine-tune if needed, then confirm below.</div>';
+  try {
+    const r = (window._nmPinSearchResults || [])[i];
+    if(!r) return;
+    if(!_nmPinMap || !_nmPinMarker) {
+      nmSetPinStatus('Map wasn\'t ready — please close and reopen "Set Exact Location On Map", then search again.');
+      return;
+    }
+    // Leaflet can miscalculate its container size if it was initialized
+    // while hidden/mid-transition; invalidateSize() forces it to re-check
+    // before we move the view, otherwise setView can silently center on
+    // the wrong pixel offset even though the marker's data is correct.
+    _nmPinMap.invalidateSize();
+    _nmPinMap.setView([r.lat, r.lon], 17, { animate: false });
+    _nmPinMarker.setLatLng([r.lat, r.lon]);
+    nmSetPinCoords(r.lat, r.lon);
+    const resultsEl = document.getElementById('biz_pin_search_results');
+    if(resultsEl) resultsEl.innerHTML = '<div style="font-size:11px;color:#34d399;padding:8px 0;">✓ Moved the pin here — drag it to fine-tune if needed, then confirm below.</div>';
+  } catch(err) {
+    console.error('nmPickPinSearchResult failed:', err);
+    nmSetPinStatus('Something went wrong moving the pin. Please try dragging the pin on the map directly instead.');
+  }
 }
 
 // Resets all manual-pin state — called when the form is cleared after a
