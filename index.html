@@ -3474,6 +3474,16 @@
             </select>
           </div>
           <div class="form-group"><label class="form-label">Nearest Landmark *</label><input type="text" class="form-input" id="biz_landmark" placeholder="e.g. Next to Shoprite, Opposite the clinic, Corner of 4th Ave"></div>
+          <div class="form-group">
+            <label class="form-label">Exact Location <span style="font-size:10px;color:var(--white-dim);font-weight:400;">(optional, but recommended — pinpoints your business on the map instead of just the general area)</span></label>
+            <p style="font-size:11px;color:var(--white-dim);line-height:1.6;margin-bottom:12px;">Township and village addresses often can't be found precisely by automatic map lookup. Pin your exact spot yourself for the most accurate directions to your customers.</p>
+            <button type="button" class="btn-ghost" id="biz_pin_open_btn" onclick="nmOpenPinMap()" style="padding:14px 20px;font-size:11px;">📍 Set Exact Location On Map</button>
+            <div id="biz_pin_map_wrap" style="display:none;margin-top:14px;">
+              <div id="biz_pin_map" style="width:100%;height:260px;border-radius:8px;border:1px solid var(--border-soft);"></div>
+              <p id="biz_pin_status" style="font-size:11px;color:var(--white-dim);margin:10px 0;line-height:1.6;"></p>
+              <button type="button" class="btn-primary" id="biz_pin_confirm_btn" onclick="nmConfirmPin()" style="padding:12px 20px;font-size:11px;" disabled>✓ Confirm This Is My Exact Location</button>
+            </div>
+          </div>
           <div style="display:flex;gap:12px;">
             <button class="btn-ghost" onclick="nextStep(1)" style="flex:1;padding:16px;">← Back</button>
             <button class="form-submit" onclick="nextStep(3)" style="flex:2;margin-top:0;">Continue →</button>
@@ -5526,6 +5536,7 @@ async function loadListingsFromSupabase(force = false) {
           landmark:     l.landmark || '',
           lat:          (typeof l.latitude === 'number') ? l.latitude : null,
           lng:          (typeof l.longitude === 'number') ? l.longitude : null,
+          locationConfirmed: !!l.location_confirmed,
           logo:         l.logo_url || '',
           desc:         l.description || '',
           phone:        l.phone || '',
@@ -5648,6 +5659,154 @@ function nmDistanceToBiz(biz){
 function nmFormatDistance(km){
   if(km < 1) return Math.round(km * 1000) + 'm away';
   return km.toFixed(1) + 'km away';
+}
+
+// ── MANUAL LOCATION PIN (Add/Edit Business form) ───────────────────────────
+// Free-text geocoding (see /api/geocode) is only as good as OpenStreetMap's
+// coverage of informal SA addresses, which is often sparse — it can validly
+// resolve to the right suburb while landing nowhere near the actual
+// business. Letting the owner drag a pin to their real spot on a map is the
+// most reliable fix, since nobody knows where the business is better than
+// the owner. This is entirely optional and never blocks submission — if the
+// owner never opens the map, the listing falls back to the automatic
+// geocoder exactly as before.
+window._nmPinLat = null;
+window._nmPinLng = null;
+window._nmPinConfirmed = false;
+let _nmPinMap = null;
+let _nmPinMarker = null;
+
+// Rough per-province centers, used only to give the map a sane starting
+// view before any address has been geocoded — not for accuracy.
+const NM_PROVINCE_CENTER = {
+  'Limpopo':        [-23.4, 29.5],
+  'Gauteng':         [-26.0, 28.1],
+  'KwaZulu-Natal':   [-29.0, 30.8],
+  'Eastern Cape':    [-32.1, 26.4],
+  'Western Cape':    [-33.3, 20.5],
+  'North West':      [-25.8, 25.6],
+  'Mpumalanga':      [-25.5, 30.6],
+  'Free State':      [-28.9, 26.6],
+  'Northern Cape':   [-29.5, 21.8],
+};
+
+// Lazy-loads Leaflet (free, no API key) only when the owner actually opens
+// the pin map — most listing edits never touch this, so there's no reason
+// to pay the ~150KB cost on every form load.
+function nmLoadLeaflet(){
+  if(window.L) return Promise.resolve();
+  if(window._nmLeafletLoading) return window._nmLeafletLoading;
+  window._nmLeafletLoading = new Promise((resolve, reject) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+  return window._nmLeafletLoading;
+}
+
+function nmSetPinStatus(text){
+  const el = document.getElementById('biz_pin_status');
+  if(el) el.textContent = text;
+}
+
+function nmSetPinCoords(lat, lng){
+  window._nmPinLat = lat;
+  window._nmPinLng = lng;
+  window._nmPinConfirmed = false;
+  nmSetPinStatus('Drag the pin, or tap the map, to your exact spot — then confirm below.');
+  const confirmBtn = document.getElementById('biz_pin_confirm_btn');
+  if(confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = '✓ Confirm This Is My Exact Location'; }
+}
+
+function nmConfirmPin(){
+  if(typeof window._nmPinLat !== 'number' || typeof window._nmPinLng !== 'number') return;
+  window._nmPinConfirmed = true;
+  nmSetPinStatus('✓ Exact location confirmed — this will be used instead of the automatic address lookup.');
+  const confirmBtn = document.getElementById('biz_pin_confirm_btn');
+  if(confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = '✓ Location Confirmed'; }
+}
+
+// Opens the map, lazy-loading Leaflet first. Starting point priority:
+// 1. An already-set pin (e.g. re-opening the map, or editing a listing that
+//    already has coordinates saved).
+// 2. A live geocode of whatever address/landmark/area/city/province the
+//    owner has typed so far, as a helpful starting guess.
+// 3. The center of the selected province, or all of South Africa if no
+//    province is chosen yet.
+async function nmOpenPinMap(){
+  const wrap = document.getElementById('biz_pin_map_wrap');
+  const openBtn = document.getElementById('biz_pin_open_btn');
+  if(!wrap) return;
+  wrap.style.display = 'block';
+  if(openBtn) openBtn.style.display = 'none';
+  nmSetPinStatus('Loading map…');
+  try { await nmLoadLeaflet(); } catch(e) { nmSetPinStatus('Could not load the map. Check your connection and try again.'); return; }
+
+  let startLat, startLng, startZoom;
+  if(typeof window._nmPinLat === 'number' && typeof window._nmPinLng === 'number') {
+    startLat = window._nmPinLat; startLng = window._nmPinLng; startZoom = 16;
+  } else {
+    const prov = document.getElementById('biz_province').value;
+    const provCenter = NM_PROVINCE_CENTER[prov] || [-28.5, 24.7];
+    startLat = provCenter[0]; startLng = provCenter[1];
+    startZoom = NM_PROVINCE_CENTER[prov] ? 9 : 5;
+    const addr = document.getElementById('biz_address').value.trim();
+    const land = document.getElementById('biz_landmark').value.trim();
+    const area = document.getElementById('biz_area').value.trim();
+    const city = document.getElementById('biz_city').value.trim();
+    if(prov && (addr || land || area || city)) {
+      nmSetPinStatus('Looking up a starting point from your address…');
+      try {
+        const geoRes = await fetch('/api/geocode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: [addr, land].filter(Boolean).join(', '), landmark: land, area, city, province: prov })
+        });
+        if(geoRes.ok) {
+          const gd = await geoRes.json();
+          if(typeof gd.latitude === 'number' && typeof gd.longitude === 'number') {
+            startLat = gd.latitude; startLng = gd.longitude; startZoom = 16;
+          }
+        }
+      } catch(e) { /* fall back to province center below */ }
+    }
+  }
+
+  if(_nmPinMap) { _nmPinMap.remove(); _nmPinMap = null; }
+  _nmPinMap = L.map('biz_pin_map').setView([startLat, startLng], startZoom);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(_nmPinMap);
+  _nmPinMarker = L.marker([startLat, startLng], { draggable: true }).addTo(_nmPinMap);
+  nmSetPinCoords(startLat, startLng);
+  _nmPinMarker.on('dragend', () => { const p = _nmPinMarker.getLatLng(); nmSetPinCoords(p.lat, p.lng); });
+  _nmPinMap.on('click', (e) => { _nmPinMarker.setLatLng(e.latlng); nmSetPinCoords(e.latlng.lat, e.latlng.lng); });
+  // Leaflet mis-sizes itself if initialized while its container is hidden or
+  // mid-transition — nudge it once the container has actually laid out.
+  setTimeout(() => { if(_nmPinMap) _nmPinMap.invalidateSize(); }, 150);
+}
+
+// Resets all manual-pin state — called when the form is cleared after a
+// successful submit, so a fresh "Add Business" doesn't inherit the
+// previous listing's pin.
+function nmResetPinMap(){
+  window._nmPinLat = null;
+  window._nmPinLng = null;
+  window._nmPinConfirmed = false;
+  if(_nmPinMap) { _nmPinMap.remove(); _nmPinMap = null; }
+  _nmPinMarker = null;
+  const wrap = document.getElementById('biz_pin_map_wrap');
+  if(wrap) wrap.style.display = 'none';
+  const openBtn = document.getElementById('biz_pin_open_btn');
+  if(openBtn) { openBtn.style.display = ''; openBtn.textContent = '📍 Set Exact Location On Map'; }
+  nmSetPinStatus('');
 }
 
 // Remembers whether Near Me Now is active across page refreshes, so
@@ -6635,7 +6794,13 @@ function showBizProfile(id){
     window._nmBizPreview = false;
     history.pushState({ nmPage: 'marketplace', nmView: 'profile', nmBizId: String(id), nmBizPreview: _previewFlag }, '', '#marketplace/profile/' + id);
   }
-  const fullAddress=encodeURIComponent([biz.address,biz.area,biz.city,biz.province].filter(Boolean).join(', ')||biz.area||biz.name);
+  // Business name + landmark first: this string is only ever used as a Google
+  // Maps TEXT SEARCH fallback (when we have no geocoded lat/lng), and a bare
+  // street address in townships/villages is often too vague to resolve to the
+  // right pin — Google Maps matches far more reliably on "Business Name, near
+  // Landmark" than on the raw address line alone, which was previously
+  // resolving to the general area instead of the actual business.
+  const fullAddress=encodeURIComponent([biz.name,biz.landmark,biz.address,biz.area,biz.city,biz.province].filter(Boolean).join(', ')||biz.area||biz.name);
   // Use precise geocoded coordinates when we have them (same source of truth
   // as the embedded map below) so the outbound "Open in Google Maps" link
   // takes the visitor to the exact pin instead of re-searching by text, which
@@ -6773,7 +6938,7 @@ function showBizProfile(id){
           ${nmBuildHoursHTML(biz)}
           <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:28px;margin-bottom:16px;">
             <div class="biz-section-title">Location</div>
-            <div style="font-size:14px;color:var(--white-soft);margin-bottom:16px;display:flex;align-items:center;gap:6px;" class="nm-ico nm-ico-location"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg><span style="color:var(--white-soft);">${nmSafe(biz.area)}</span></div>
+            <div style="font-size:14px;color:var(--white-soft);margin-bottom:16px;display:flex;align-items:center;gap:6px;" class="nm-ico nm-ico-location"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg><span style="color:var(--white-soft);">${nmSafe(biz.area)}</span>${biz.locationConfirmed ? `<span style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#34d399;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3);padding:3px 8px;border-radius:10px;margin-left:4px;">✓ Verified Location</span>` : ''}</div>
             <div style="position:relative;width:100%;padding-top:56%;margin-bottom:14px;overflow:hidden;border-radius:8px;border:1px solid var(--border-soft);background:var(--black-3);">
               <iframe src="${mapEmbedUrl}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" title="Map showing location of ${nmSafe(biz.name)}"></iframe>
             </div>
@@ -7505,20 +7670,29 @@ async function submitBusiness(){
   // or geocoding can silently resolve to the wrong town entirely.
   if(submitBtn) submitBtn.textContent = '⏳ Locating your business...';
   let geocoded = { latitude: null, longitude: null };
-  try {
-    const geocodeAddress = [address, landmark].filter(Boolean).join(', ');
-    const geoRes = await fetch('/api/geocode', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address: geocodeAddress, landmark, area, city, province })
-    });
-    if(geoRes.ok) {
-      const geoData = await geoRes.json();
-      if(typeof geoData.latitude === 'number' && typeof geoData.longitude === 'number') {
-        geocoded = geoData;
+  let locationConfirmed = false;
+  if(window._nmPinConfirmed && typeof window._nmPinLat === 'number' && typeof window._nmPinLng === 'number') {
+    // Owner manually pinned and confirmed their exact spot on the map —
+    // this is more trustworthy than any automatic address lookup, so it
+    // takes priority and we skip calling the geocoder entirely.
+    geocoded = { latitude: window._nmPinLat, longitude: window._nmPinLng };
+    locationConfirmed = true;
+  } else {
+    try {
+      const geocodeAddress = [address, landmark].filter(Boolean).join(', ');
+      const geoRes = await fetch('/api/geocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: geocodeAddress, landmark, area, city, province })
+      });
+      if(geoRes.ok) {
+        const geoData = await geoRes.json();
+        if(typeof geoData.latitude === 'number' && typeof geoData.longitude === 'number') {
+          geocoded = geoData;
+        }
       }
-    }
-  } catch(e) { console.warn('Geocoding failed, listing will save without coordinates', e); }
+    } catch(e) { console.warn('Geocoding failed, listing will save without coordinates', e); }
+  }
 
   // ── UPLOAD/RETAIN LOGO ──
   // Separate from the photo gallery — one square logo image, optional.
@@ -7560,6 +7734,7 @@ async function submitBusiness(){
     email, whatsapp: wa, city, province,
     address, landmark,
     latitude: geocoded.latitude, longitude: geocoded.longitude,
+    location_confirmed: locationConfirmed,
     hours_weekday: hoursWD, hours_sat: hoursSat, hours_sun: hoursSun,
     business_status: status, years,
     payments, walkins,
@@ -7593,6 +7768,14 @@ async function submitBusiness(){
         const { latitude, longitude, ...payloadNoCoords } = { ...listingPayload, owner_email: ownerEmailVal };
         ({ error: updateErr } = await nmSupaQuery(() =>
           _supa.from('listings').update(payloadNoCoords).eq('id', listingId)
+        ));
+      }
+      if (updateErr && updateErr.message && updateErr.message.includes('location_confirmed')) {
+        // location_confirmed column doesn't exist yet (SQL migration not run) —
+        // retry without it so the listing still saves.
+        const { location_confirmed, ...payloadNoConfirmed } = { ...listingPayload, owner_email: ownerEmailVal };
+        ({ error: updateErr } = await nmSupaQuery(() =>
+          _supa.from('listings').update(payloadNoConfirmed).eq('id', listingId)
         ));
       }
       if (updateErr && updateErr.message && updateErr.message.includes('logo_url')) {
@@ -7630,6 +7813,14 @@ async function submitBusiness(){
         const { latitude, longitude, ...payloadNoCoords } = insertPayload;
         ({ data: listingData, error: insertErr } = await nmSupaQuery(() =>
           _supa.from('listings').insert(payloadNoCoords).select()
+        ));
+      }
+      if (insertErr && insertErr.message && insertErr.message.includes('location_confirmed')) {
+        // location_confirmed column doesn't exist yet (SQL migration not run) —
+        // retry without it so the listing still saves.
+        const { location_confirmed, ...payloadNoConfirmed } = insertPayload;
+        ({ data: listingData, error: insertErr } = await nmSupaQuery(() =>
+          _supa.from('listings').insert(payloadNoConfirmed).select()
         ));
       }
       if (insertErr && insertErr.message && insertErr.message.includes('logo_url')) {
@@ -7687,6 +7878,7 @@ async function submitBusiness(){
   ['biz_phone_country','biz_whatsapp_country'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
   nmUpdatePhonePlaceholders();
   nmResetLogoField();
+  nmResetPinMap();
   ['biz_hours_weekday_open','biz_hours_sat_open','biz_hours_sun_open'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='08:00';});
   ['biz_hours_weekday_close','biz_hours_sat_close','biz_hours_sun_close'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='17:00';});
   ['biz_hours_weekday_closed','biz_hours_sat_closed','biz_hours_sun_closed'].forEach(id=>{const el=document.getElementById(id);if(el){el.checked=false;}});
@@ -11263,6 +11455,16 @@ async function bpEditListing() {
     setVal('biz_province',      myListing.province);
     setVal('biz_address',       myListing.address);
     setVal('biz_landmark',      myListing.landmark);
+    // Seed the pin map with whatever coordinates this listing already has
+    // (auto-geocoded or previously manually pinned) so re-opening the map
+    // shows the current location instead of starting blank. Only a
+    // previously-confirmed manual pin counts as "confirmed" here — an
+    // automatic geocode still needs the owner to check and confirm it.
+    if(typeof myListing.lat === 'number' && typeof myListing.lng === 'number') {
+      window._nmPinLat = myListing.lat;
+      window._nmPinLng = myListing.lng;
+      window._nmPinConfirmed = !!myListing.locationConfirmed;
+    }
     // Phone/WhatsApp are now two-part fields (country selector + local
     // digits) — split the stored full number back into both parts rather
     // than dumping the whole thing into the local-digits field, which
@@ -11404,6 +11606,9 @@ async function bpFetchMyOwnListing() {
       id: row.id, name: row.name, owner: row.owner, owner_email: row.owner_email || row.email || '',
       cat: row.type || 'services', type: row.type || 'services', area: row.area || '', city: row.city || '',
       province: row.province || '', address: row.address || '', desc: row.description || '',
+      lat: (typeof row.latitude === 'number') ? row.latitude : null,
+      lng: (typeof row.longitude === 'number') ? row.longitude : null,
+      locationConfirmed: !!row.location_confirmed,
       phone: row.phone || '', email: row.email || '', boost: row.boost_tier || 'none',
       status: row.business_status || 'open', price: row.price_hint || 'Contact for pricing',
       photo: parsedPhotos[0] || '', photos: parsedPhotos, joinedAt: row.created_at || '',
