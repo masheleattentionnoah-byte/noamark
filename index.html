@@ -11050,10 +11050,29 @@ function openGate(bizId) {
   window._gatePriorState = history.state;
   // Push a history state so the phone back button closes the gate instead of leaving the site
   history.pushState({ nmPage: 'gate', nmView: 'modal' }, '', window.location.href);
+
+  // Lock background scroll. overflow:hidden on <body> alone does NOT
+  // reliably stop background scrolling on mobile (iOS/Android momentum
+  // scrolling bypasses it) — same fix already used for the chat panel.
+  window._gateScrollY = window.scrollY || window.pageYOffset || 0;
+  document.body.style.position = 'fixed';
+  document.body.style.top = '-' + window._gateScrollY + 'px';
+  document.body.style.width = '100%';
+  document.body.style.overflow = 'hidden';
+  document.body.classList.add('nm-scroll-locked');
 }
 function closeGate() {
   document.getElementById('gate-overlay').classList.remove('active');
   pendingBizId = null;
+
+  // Unlock background scroll and restore exact prior position.
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.width = '';
+  document.body.style.overflow = '';
+  document.body.classList.remove('nm-scroll-locked');
+  window.scrollTo(0, window._gateScrollY || 0);
+
   // BUG THIS FIXES: closeGate() used to only hide the overlay and never
   // touched history at all. That was fine when the gate was closed BY the
   // popstate handler (pressing back), because the handler did its own
@@ -15573,7 +15592,7 @@ document.addEventListener('keydown', function(e) {
     if(document.getElementById('nm-cookie-banner')) return;
     var wrap = document.createElement('div');
     wrap.id = 'nm-cookie-banner';
-    wrap.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:10000;background:#0A0D0F;border-top:1px solid rgba(244,196,48,.25);padding:20px;font-family:Poppins,sans-serif;box-shadow:0 -8px 30px rgba(0,0,0,.4);will-change:transform;transform:translateZ(0);backface-visibility:hidden;';
+    wrap.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9000;background:#0A0D0F;border-top:1px solid rgba(244,196,48,.25);padding:20px;font-family:Poppins,sans-serif;box-shadow:0 -8px 30px rgba(0,0,0,.4);will-change:transform;transform:translateZ(0);backface-visibility:hidden;';
     wrap.innerHTML =
       '<div style="max-width:920px;margin:0 auto;display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;">' +
         '<div style="flex:1;min-width:240px;display:flex;gap:12px;align-items:flex-start;">' +
