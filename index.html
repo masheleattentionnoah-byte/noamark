@@ -3266,10 +3266,14 @@
   <!-- BOOST PLANS VIEW -->
   <div id="mkt-boost-view" style="display:none;padding:48px 20px;">
     <button onclick="nmBackToMarketplace()" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);background:transparent;border:1px solid var(--border-soft);padding:10px 20px;cursor:pointer;margin-bottom:48px;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.color='var(--white-dim)'">← Back to Marketplace</button>
-    <div style="text-align:center;max-width:700px;margin:0 auto 80px;">
+    <div style="text-align:center;max-width:700px;margin:0 auto 40px;">
       <span class="section-tag">NoaMark Boost</span>
       <h2 class="section-title">Put Your Business <em>On Top</em></h2>
       <p style="font-size:14px;color:var(--white-dim);">Pay to get seen first. Reach more customers in your area. Cancel anytime after your boost expires.</p>
+    </div>
+    <div id="mkt-boost-results" style="display:none;max-width:700px;margin:0 auto 56px;text-align:center;border:1px solid rgba(212,175,55,.25);background:linear-gradient(135deg,rgba(212,175,55,.05),transparent);padding:28px;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:14px;">Results so far</div>
+      <div id="mkt-boost-results-body" style="font-size:14px;color:var(--white-soft);line-height:1.8;"></div>
     </div>
     <div class="boost-grid">
       <!-- STARTER -->
@@ -4047,6 +4051,22 @@
             <div id="bp-boost-advice-out" style="display:none;margin-top:16px;">
               <div class="bp-ai-box" id="bp-boost-advice-text"></div>
             </div>
+          </div>
+          <div id="bp-boost-results-card" style="display:none;background:linear-gradient(135deg,rgba(34,197,94,.06),transparent);border:1px solid rgba(34,197,94,.25);padding:32px;margin-bottom:24px;">
+            <div class="bp-section-label" style="color:#22c55e;">Your boost results</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;">
+              <div>
+                <div style="font-size:11px;color:var(--white-dim);text-transform:uppercase;letter-spacing:1px;">Before boost</div>
+                <div style="font-family:var(--font-display);font-size:36px;font-weight:300;color:var(--white-dim);" id="bp-boost-before-val">—</div>
+                <div style="font-size:11px;color:var(--white-dim);">enquiries</div>
+              </div>
+              <div>
+                <div style="font-size:11px;color:#22c55e;text-transform:uppercase;letter-spacing:1px;">Since boosting</div>
+                <div style="font-family:var(--font-display);font-size:36px;font-weight:300;color:#22c55e;" id="bp-boost-after-val">—</div>
+                <div style="font-size:11px;color:var(--white-dim);">enquiries</div>
+              </div>
+            </div>
+            <div style="font-size:11px;color:var(--white-dim);margin-top:16px;" id="bp-boost-results-sub"></div>
           </div>
           <div style="background:var(--black-2);border:1px solid var(--border-soft);padding:40px;margin-bottom:24px;">
             <div class="bp-section-label">Available boost plans</div>
@@ -5504,6 +5524,7 @@ async function loadListingsFromSupabase(force = false) {
           name:         l.name,
           owner:        l.owner,
           owner_email:  l.owner_email || l.email || '',
+          boost_started_at: l.boost_started_at || null,
           cat:          l.type || 'services',
           area:         l.area || '',
           city:         l.city || '',
@@ -6242,6 +6263,51 @@ function nmBackToMarketplace(){
   }
 }
 
+// ── PUBLIC "RESULTS SO FAR" — honest, real aggregate boost stats ──
+// Deliberately avoids showing small/embarrassing numbers: with very few
+// or zero boosted businesses so far, it shows an honest founder-style
+// message instead of a discouraging "0" or "1" on a public sales page.
+async function loadMktBoostResults() {
+  const card = document.getElementById('mkt-boost-results');
+  const body = document.getElementById('mkt-boost-results-body');
+  if (!card || !body) return;
+  try {
+    const { data: listings } = await nmSupaQuery(() =>
+      _supa.from('listings').select('id,boost_tier,boost_started_at')
+        .not('boost_tier', 'is', null).not('boost_tier', 'in', '(none,free)')
+    );
+    const boosted = (listings || []).filter(l => l.boost_started_at);
+
+    if (boosted.length === 0) {
+      card.style.display = 'block';
+      body.textContent = "We're just getting started — be one of the first businesses to boost your listing on NoaMark.";
+      return;
+    }
+
+    const ids = boosted.map(l => l.id);
+    const { data: enquiries } = await nmSupaQuery(() =>
+      _supa.from('enquiries').select('listing_id,created_at').in('listing_id', ids)
+    );
+    const rows = enquiries || [];
+    let totalSince = 0;
+    boosted.forEach(l => {
+      const start = new Date(l.boost_started_at);
+      totalSince += rows.filter(r => r.listing_id === l.id && new Date(r.created_at) >= start).length;
+    });
+
+    card.style.display = 'block';
+    if (totalSince < 5) {
+      // Not enough volume yet to be a convincing number — show business count only.
+      body.textContent = `${boosted.length} business${boosted.length === 1 ? ' is' : 'es are'} currently boosted on NoaMark.`;
+    } else {
+      body.innerHTML = `<strong style="color:var(--gold-dim);">${boosted.length}</strong> business${boosted.length === 1 ? '' : 'es'} currently boosted have generated <strong style="color:var(--gold-dim);">${totalSince}</strong> customer enquiries since boosting.`;
+    }
+  } catch (e) {
+    console.warn('Boost results load failed:', e);
+    card.style.display = 'none';
+  }
+}
+
 function showMktView(view, pushHistory){
   // pushHistory defaults to true — pass false when restoring state from popstate
   if(pushHistory === undefined) pushHistory = true;
@@ -6287,6 +6353,7 @@ function showMktView(view, pushHistory){
 
   if(view==='admin') populateBizDashboard();
   if(view==='main' && LISTINGS.length > 0) populateMarketplace();
+  if(view==='boost') loadMktBoostResults();
   // Show the 'Own a Business?' CTA only on main view AND only for guests (not logged-in users)
   if(view==='main') {
     const mktAddCta = document.getElementById('mkt-add-biz-cta');
@@ -11516,6 +11583,56 @@ function getMyListing() {
   return found;
 }
 
+// ── BOOST RESULTS — real before/after enquiry counts for this business ──
+// Only shows once a boost has been active a few days; a 1-day-old boost
+// doesn't have enough data to compare honestly, so we wait rather than
+// show a misleading "0 vs 1".
+async function bpLoadBoostResults() {
+  const card = document.getElementById('bp-boost-results-card');
+  if (!card) return;
+  const myListing = typeof getMyListing === 'function' ? getMyListing() : null;
+  if (!myListing || !myListing.boost_started_at) { card.style.display = 'none'; return; }
+
+  const startedAt = new Date(myListing.boost_started_at);
+  if (isNaN(startedAt.getTime())) { card.style.display = 'none'; return; }
+
+  const now = new Date();
+  const msPerDay = 86400000;
+  const daysSince = Math.floor((now - startedAt) / msPerDay);
+
+  if (daysSince < 3) {
+    card.style.display = 'block';
+    document.getElementById('bp-boost-before-val').textContent = '—';
+    document.getElementById('bp-boost-after-val').textContent = '—';
+    document.getElementById('bp-boost-results-sub').textContent =
+      'Your boost just started — check back in a few days to see real results.';
+    return;
+  }
+
+  try {
+    const compareWindow = Math.min(daysSince, 30); // fair, equal-length comparison either side
+    const beforeStart = new Date(startedAt.getTime() - compareWindow * msPerDay);
+    const { data } = await nmSupaQuery(() =>
+      _supa.from('enquiries').select('created_at').eq('listing_id', myListing.id)
+    );
+    const rows = data || [];
+    const beforeCount = rows.filter(r => {
+      const t = new Date(r.created_at);
+      return t >= beforeStart && t < startedAt;
+    }).length;
+    const afterCount = rows.filter(r => new Date(r.created_at) >= startedAt).length;
+
+    card.style.display = 'block';
+    document.getElementById('bp-boost-before-val').textContent = beforeCount;
+    document.getElementById('bp-boost-after-val').textContent = afterCount;
+    document.getElementById('bp-boost-results-sub').textContent =
+      `Comparing ${compareWindow} day${compareWindow === 1 ? '' : 's'} before boosting vs ${daysSince} day${daysSince === 1 ? '' : 's'} since.`;
+  } catch (e) {
+    console.warn('Boost results load failed:', e);
+    card.style.display = 'none';
+  }
+}
+
 function bpGoPage(p) {
   // Reset AI chat whenever navigating away from or to the AI tools page
   bpResetAIChat();
@@ -11544,6 +11661,7 @@ function bpGoPage(p) {
   if(p === 'enquiries') bpSyncEnquiriesFromSupabase();
   if(p === 'reviews') bpSyncReviewsFromSupabase();
   if(p === 'bookings') { bpLoadBookings().then(() => bpLoadAvailability()); }
+  if(p === 'boost') bpLoadBoostResults();
 
   // Remember which dashboard tab is active in the URL, so refreshing the page
   // returns to this exact tab instead of resetting to Overview.
@@ -11749,6 +11867,7 @@ async function bpFetchMyOwnListing() {
       lng: (typeof row.longitude === 'number') ? row.longitude : null,
       locationConfirmed: !!row.location_confirmed,
       phone: row.phone || '', email: row.email || '', boost: row.boost_tier || 'none',
+      boost_started_at: row.boost_started_at || null,
       status: row.business_status || 'open', price: row.price_hint || 'Contact for pricing',
       photo: parsedPhotos[0] || '', photos: parsedPhotos, joinedAt: row.created_at || '',
       hoursWeekday: row.hours_weekday || '', hoursSat: row.hours_sat || '',
@@ -13829,7 +13948,13 @@ async function admLoadApprovals() {
         const vBtn = l.verified
           ? `<button class="adm-btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.15);" onclick="admToggleVerified('${id}',true,this)">Remove Verified</button>`
           : `<button class="adm-btn" style="background:rgba(34,197,94,.15);color:#22C55E;border:1px solid rgba(34,197,94,.3);" onclick="admToggleVerified('${id}',false,this)">Mark Verified</button>`;
- return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${bt}</td><td>${own}</td><td>${vBadge}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')"> View</button><button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">Remove</button><br>${vBtn}</td></tr>`;
+        const boostSelect = `<select id="adm-boost-sel-${id}" style="background:#111;color:#fff;border:1px solid rgba(255,255,255,.2);font-size:11px;padding:4px 6px;border-radius:4px;margin-right:4px;">
+          <option value="none" ${!l.boost_tier||l.boost_tier==='none'?'selected':''}>None</option>
+          <option value="starter" ${l.boost_tier==='starter'?'selected':''}>Starter</option>
+          <option value="growth" ${l.boost_tier==='growth'?'selected':''}>Growth</option>
+          <option value="pro" ${l.boost_tier==='pro'?'selected':''}>Pro</option>
+        </select><button class="adm-btn" style="background:rgba(212,175,55,.15);color:#d4af37;border:1px solid rgba(212,175,55,.3);" onclick="admSetBoost('${id}',this)">Set</button>`;
+ return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${bt}</td><td>${own}</td><td>${vBadge}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')"> View</button><button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">Remove</button><br>${vBtn}<br><div style="margin-top:4px;">${boostSelect}</div></td></tr>`;
       }
       return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${own}</td><td><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)" style="margin-bottom:4px;">Re-approve</button><br><button class="adm-btn adm-btn-reject" onclick="admDeleteListing('${id}',this)" style="background:rgba(220,38,38,.2);color:#f87171;border-color:rgba(220,38,38,.4);">Delete Permanently</button></td></tr>`;
     };
@@ -13858,6 +13983,42 @@ async function admToggleVerified(id, currentlyVerified, btn) {
     console.error('Verify toggle error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
     alert('Error updating verified status. Make sure the "verified" column exists on your listings table.');
+  }
+}
+
+// Sets a listing's boost tier from the admin panel. Only stamps
+// boost_started_at when the tier is actually changing (none -> paid, or
+// switching tiers) so that re-saving the same tier doesn't reset the
+// results-tracking clock. Setting back to "none" clears the start date.
+async function admSetBoost(id, btn) {
+  const sel = document.getElementById('adm-boost-sel-' + id);
+  if (!sel) return;
+  const newTier = sel.value;
+  const current = (window._pendingListingsMap && window._pendingListingsMap[id]) || {};
+  const oldTier = current.boost_tier || 'none';
+  if (newTier === oldTier) { return; } // nothing to do, avoid resetting the tracking clock
+
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
+  try {
+    const update = { boost_tier: newTier === 'none' ? null : newTier };
+    if (newTier === 'none') {
+      update.boost_started_at = null;
+    } else {
+      update.boost_started_at = new Date().toISOString();
+    }
+    const { error } = await nmSupaQuery(() => _supa.from('listings').update(update).eq('id', id));
+    if (error) throw error;
+    if (window._pendingListingsMap && window._pendingListingsMap[id]) {
+      window._pendingListingsMap[id].boost_tier = update.boost_tier;
+      window._pendingListingsMap[id].boost_started_at = update.boost_started_at;
+    }
+    btn.textContent = ' Done!'; btn.style.opacity = '1';
+    setTimeout(() => { admLoadApprovals(); loadListingsFromSupabase(true); }, 700);
+  } catch(e) {
+    console.error('Set boost error:', e);
+    btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
+    alert('Error setting boost. Make sure the "boost_started_at" column exists on your listings table (run the migration SQL if not).');
   }
 }
 
