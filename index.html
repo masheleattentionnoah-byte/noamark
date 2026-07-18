@@ -10774,6 +10774,21 @@ const NAV_RULES = {
 
 function applyRoleNav(user) {
   const role = !user ? 'logged-out' : user.type;
+  const navCtaEl = document.querySelector('.nav-cta');
+
+  // SECURITY: always reset the nav CTA to its safe default (Sign Up) first.
+  // Previously this button's label/onclick were only ever overwritten for
+  // roles that needed something special (admin -> 'Admin Panel', business ->
+  // 'My Portal') and never reset back afterwards. That meant after an admin
+  // or business owner signed out, the button kept showing 'Admin Panel' /
+  // 'My Portal' and — critically — kept the OLD onclick handler wired
+  // straight to showAdminDashboard() / the business portal, fully clickable
+  // with no session behind it. Resetting here first, before any role-specific
+  // branch runs, means a stale privileged button can never survive logout.
+  if(navCtaEl) {
+    navCtaEl.textContent = 'Sign Up';
+    navCtaEl.onclick = () => openAuth('subscriber');
+  }
 
   // Admin gets their own dashboard — hide all nav, show admin button
   if(role === 'admin') {
@@ -13338,6 +13353,14 @@ bpLoad();
 // ════════════════════════════════════
 
 function showAdminDashboard() {
+  // SECURITY: never render admin data without a verified admin session.
+  // This used to be reachable with no auth check at all if anything —
+  // a stale button, a saved bookmark, a direct call — triggered it.
+  if (!currentUser || currentUser.type !== 'admin') {
+    openAuth('subscriber');
+    nmToast('Please sign in as an admin to view this page.');
+    return;
+  }
   document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
   ['home','marketplace','opportunities','learning','videos','plans','portal','subscribe','dashboard'].forEach(id => {
     const el = document.getElementById('page-' + id) || document.getElementById(id + '-page');
