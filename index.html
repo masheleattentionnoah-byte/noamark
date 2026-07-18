@@ -5605,7 +5605,7 @@ async function loadListingsFromSupabase(force = false) {
 // ── BOOST RANKING ALGORITHM ──
 // Priority: dominance(4) > growth(3) > starter(2) > none(1)
 // Within same tier: newest listing first (id desc)
-const BOOST_RANK={dominance:4,growth:3,starter:2,none:1};
+const BOOST_RANK={pro:4,dominance:4,growth:3,starter:2,none:1};
 
 function getSortedListings(list){
   return [...list].sort((a,b)=>{
@@ -6032,11 +6032,13 @@ function nmToast(msg, durationMs = 3500){
 }
 
 function renderCard(biz, idx){
-  const boostClass=biz.boost==='dominance'?'boosted-dominance':biz.boost==='growth'?'boosted-growth':'';
+  const boostClass=(biz.boost==='dominance'||biz.boost==='pro')?'boosted-dominance':biz.boost==='growth'?'boosted-growth':'';
   // Subtle staggered entrance — cap the delay so a long list doesn't make the
   // last cards feel slow to appear; cards beyond ~10th all animate together.
   const delayStyle = `style="animation-delay:${Math.min((idx||0)*45,450)}ms"`;
-  const badge=biz.boost==='dominance'
+  const badge=biz.boost==='pro'
+ ?'<div class="listing-boost-badge boost-dominance-badge"> Top Rated</div>'
+    :biz.boost==='dominance'
  ?'<div class="listing-boost-badge boost-dominance-badge"> Dominance</div>'
     :biz.boost==='growth'
  ?'<div class="listing-boost-badge boost-growth-badge"> Featured</div>':'';
@@ -6162,10 +6164,10 @@ function populateMarketplace(){
   });
   const sorted = currentSort==='ranking' ? getSortedListings(list) : getSortedByMode(list);
   const featured = currentSort==='ranking'
-    ? sorted.filter(l=>l.boost==='dominance'||l.boost==='growth')
+    ? sorted.filter(l=>l.boost==='dominance'||l.boost==='pro'||l.boost==='growth')
     : [];
   const latest = currentSort==='ranking'
-    ? sorted.filter(l=>l.boost==='none'||l.boost==='starter')
+    ? sorted.filter(l=>!(l.boost==='dominance'||l.boost==='pro'||l.boost==='growth'))
     : sorted;
   const featSec=document.getElementById('mkt-featured-section');
   const featGrid=document.getElementById('mkt-featured-grid');
@@ -8667,6 +8669,7 @@ function renderHomeBoosted(){
   Array.from(grid.children).forEach(c => { if(c.id !== 'home-boosted-empty') c.remove(); });
 
   const boostColors = {
+    pro: 'linear-gradient(135deg,#bbf7d0,#86efac)',
     dominance: 'linear-gradient(135deg,#fef3c7,#fde68a)',
     growth: 'linear-gradient(135deg,#d1fae5,#a7f3d0)',
     starter: 'linear-gradient(135deg,#dbeafe,#bfdbfe)'
@@ -8687,8 +8690,7 @@ function renderHomeBoosted(){
     card.innerHTML = `
       <div class="biz-img-wrap" style="position:relative;overflow:hidden;background:${boostColors[biz.boost]||'linear-gradient(135deg,#f3f4f6,#e5e7eb)'};">
         ${imgHTML}
- <div class="biz-boosted-label"> ${biz.boost === 'dominance' ? 'Dominance' : biz.boost === 'growth' ? 'Featured' : 'Boosted'}</div>
- <div class="biz-fav"></div>
+ <div class="biz-boosted-label"> ${biz.boost === 'pro' ? 'Top Rated' : biz.boost === 'dominance' ? 'Dominance' : biz.boost === 'growth' ? 'Featured' : 'Boosted'}</div>
       </div>
       <div class="biz-info">
         <div class="biz-name">${nmSafe(biz.name)}</div>
@@ -11950,7 +11952,8 @@ function populateBizDashboard() {
       renderStatusUI(myListing);
       if (myListing.approvalStatus === 'approved') {
         bpSyncListingPreview(myListing);
-        const boostLabel = myListing.boost === 'dominance' ? 'Dominance'
+        const boostLabel = myListing.boost === 'pro' ? 'Pro'
+                         : myListing.boost === 'dominance' ? 'Dominance'
                          : myListing.boost === 'growth'    ? 'Growth'
                          : myListing.boost === 'starter'   ? 'Starter' : 'None';
         document.getElementById('bpm-boost').textContent = boostLabel;
@@ -11981,7 +11984,8 @@ function populateBizDashboard() {
   else enqBadge.style.display = 'none';
 
   if(myListing && myListing.approvalStatus === 'approved') {
-    const boostLabel = myListing.boost === 'dominance' ? 'Dominance'
+    const boostLabel = myListing.boost === 'pro' ? 'Pro'
+                     : myListing.boost === 'dominance' ? 'Dominance'
                      : myListing.boost === 'growth'    ? 'Growth'
                      : myListing.boost === 'starter'   ? 'Starter' : 'None';
     document.getElementById('bpm-boost').textContent = boostLabel;
@@ -12017,7 +12021,7 @@ function bpSyncListingPreview(l) {
   document.getElementById('bpp-price').innerHTML = l.price ? '<span class="nm-ico nm-ico-money"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/></svg></span> ' + l.price : '';
   document.getElementById('bpp-desc').textContent = bpData.enhancedDesc || l.desc || 'No description provided.';
   const chips = document.getElementById('bpp-chips');
-  const features = [l.boost !== 'none' ? (l.boost === 'dominance' ? 'Dominance Boost' : 'Featured') : '', l.years ? l.years + ' in business' : ''].filter(Boolean);
+  const features = [l.boost !== 'none' ? (l.boost === 'pro' ? 'Top Rated' : l.boost === 'dominance' ? 'Dominance Boost' : 'Featured') : '', l.years ? l.years + ' in business' : ''].filter(Boolean);
   chips.innerHTML = features.map(f => `<span class="bp-preview-chip">${f}</span>`).join('');
   const menuTags = document.getElementById('bpp-menu-tags');
   if(l.menu && l.menu.length) {
