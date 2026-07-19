@@ -9846,21 +9846,12 @@ async function nmChangePassword(curId, newId, confId, errId, sucId, btnId) {
 }
 
 // ════════════════════════════════════════════════════════════
-// ⑨  PAYMENT GATEWAY — Real SA payment gateway integration
-//    Builds a self-submitting payment form for boost purchases.
-//    On return, the gateway posts ITN (Instant Transaction Notification)
-//    to your server; here we also poll Supabase for the boost_tier
-//    update that your payment webhook should write.
+// ⑨  PAYMENT GATEWAY — Ozow integration
+//    The private key never touches the browser: /api/ozow-initiate.js
+//    builds and signs the request server-side, this just submits the
+//    hidden form it returns straight to Ozow's hosted payment page.
 // ════════════════════════════════════════════════════════════
-const PAYMENT_CONFIG = {
- // Replace with your real merchant credentials before going live
-  merchant_id:  '10000100',          // sandbox merchant id
-  merchant_key: '46f0cd694581a',     // sandbox merchant key
-  passphrase:   'payment_passphrase', // set in gateway dashboard
-  sandbox: true,                     // change to false in production
-};
-
-function nmProcessBoost(planKey, planName, amount, listingId) {
+async function nmProcessOzowBoost(planKey, planName, listingId) {
   if (!currentUser || currentUser.type !== 'business') {
     bpToast('Please log in as a business to boost.');
     return;
@@ -9870,40 +9861,39 @@ function nmProcessBoost(planKey, planName, amount, listingId) {
     return;
   }
 
-  const baseUrl = PAYMENT_CONFIG.sandbox
-    ? 'https://sandbox.payfast.co.za/eng/process'
-    : 'https://www.payfast.co.za/eng/process';
+  bpToast(' Preparing secure payment...');
 
-  // Build a unique m_payment_id so we can match the ITN callback
-  const paymentRef = 'NM-' + planKey.toUpperCase() + '-' + (listingId || 'UNK') + '-' + Date.now();
+  let res, data;
+  try {
+    res = await fetch('/api/ozow-initiate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        planKey,
+        listingId,
+        email: currentUser.email || '',
+        name: currentUser.name || '',
+      }),
+    });
+    data = await res.json();
+  } catch (e) {
+    console.error('ozow-initiate request failed:', e);
+    bpToast('Could not start payment. Please try again.');
+    return;
+  }
 
-  const fields = {
-    merchant_id:  PAYMENT_CONFIG.merchant_id,
-    merchant_key: PAYMENT_CONFIG.merchant_key,
-    // return_url must be your live domain — adjust before production
-    return_url:   window.location.origin + window.location.pathname + '?boost_return=1&plan=' + planKey + '&listing=' + (listingId || ''),
-    cancel_url:   window.location.origin + window.location.pathname + '?boost_cancel=1',
-    // notify_url must be a publicly reachable HTTPS endpoint (your Vercel API route)
-    notify_url:   window.location.origin + '/api/payment-notify',
-    name_first:   (currentUser.name || 'Business').split(' ')[0],
-    name_last:    (currentUser.name || 'Owner').split(' ').slice(1).join(' ') || 'Owner',
-    email_address: currentUser.email || '',
-    m_payment_id: paymentRef,
-    amount:       Number(amount).toFixed(2),
-    item_name:    'NoaMark ' + planName + ' Boost',
-    item_description: 'Boost listing visibility on NoaMark marketplace',
-    custom_str1:  planKey,
-    custom_str2:  String(listingId || ''),
-    custom_str3:  currentUser.email || '',
-  };
+  if (!data || !data.ok) {
+    bpToast((data && data.reason) || 'Payments are not available right now.');
+    return;
+  }
 
-  // Build and auto-submit the hidden form
+  // Build and auto-submit the hidden form with the server-signed fields
   const form = document.createElement('form');
   form.method = 'POST';
-  form.action = baseUrl;
+  form.action = data.postUrl;
   form.style.display = 'none';
 
-  Object.entries(fields).forEach(([name, value]) => {
+  Object.entries(data.fields).forEach(([name, value]) => {
     const inp = document.createElement('input');
     inp.type  = 'hidden';
     inp.name  = name;
@@ -9911,48 +9901,36 @@ function nmProcessBoost(planKey, planName, amount, listingId) {
     form.appendChild(inp);
   });
 
-  // Show a user-friendly overlay before redirecting
  bpToast(' Redirecting to secure payment...');
   document.body.appendChild(form);
   setTimeout(() => form.submit(), 800);
 }
 
-// Handle payment return — check URL params and update boost status optimistically
+// Handle the customer's return from Ozow. This is DISPLAY ONLY — it never
+// writes to Supabase. The real activation happens server-side in
+// /api/ozow-notify.js once Ozow confirms the payment directly to your
+// server, which can't be faked by someone just visiting this URL with
+// made-up query params the way a client-side write could be.
 (function handlePaymentReturn() {
   const params = new URLSearchParams(window.location.search);
-  if (params.get('boost_return') === '1') {
-    const plan    = params.get('plan') || '';
-    const listing = params.get('listing') || '';
-    // Remove query string to keep URL clean
+  if (params.get('ozow_return') === '1') {
+    const status = params.get('status') || '';
     history.replaceState({}, '', window.location.pathname);
-    // Execute after DOM + session load
     const _doPaymentReturn = async () => {
       await new Promise(r => setTimeout(r, 1200));
-      if (plan && listing) {
-        try {
-          await nmSupaQuery(() =>
-            _supa.from('listings').update({ boost_tier: plan }).eq('id', listing)
-          );
-        } catch (e) { console.warn('Boost update after return failed; ITN will handle it.', e); }
+      if (status === 'success') {
+ bpToast(' Payment received! Your boost is being activated — this can take a minute, refresh shortly.');
+        setTimeout(() => { if (typeof loadListingsFromSupabase === 'function') loadListingsFromSupabase(); }, 4000);
+      } else if (status === 'cancel') {
+        bpToast('Payment cancelled. Your listing was not charged.');
+      } else {
+        bpToast('Payment could not be completed. Please try again or contact support.');
       }
- bpToast(' Payment received! Your boost is being activated. Please refresh the page in a moment.');
-      setTimeout(() => { if (typeof loadListingsFromSupabase === 'function') loadListingsFromSupabase(); }, 2000);
     };
     if (document.readyState === 'loading') {
       window.addEventListener('DOMContentLoaded', _doPaymentReturn);
     } else {
       _doPaymentReturn();
-    }
-  }
-  if (params.get('boost_cancel') === '1') {
-    history.replaceState({}, '', window.location.pathname);
-    const _doPaymentCancel = () => {
-      setTimeout(() => bpToast('Payment cancelled. Your listing was not charged.'), 1200);
-    };
-    if (document.readyState === 'loading') {
-      window.addEventListener('DOMContentLoaded', _doPaymentCancel);
-    } else {
-      _doPaymentCancel();
     }
   }
 })();
@@ -12669,17 +12647,21 @@ async function bpSaveAccountDetails() {
   }
 }
 
-// ── BOOST SELECT — currently manual activation (online checkout temporarily disabled) ──
+// ── BOOST SELECT — live Ozow checkout ──
 function bpSelectBoost(plan, price) {
   if (!currentUser || currentUser.type !== 'business') {
     bpToast('Please log in as a business owner to purchase a boost.');
     return;
   }
-  // NOTE: Online checkout is temporarily disabled while a new payment gateway
-  // is being integrated. Re-enable by restoring the nmProcessBoost(...) call
-  // below once the new gateway is live.
-  alert('' + plan + ' Boost selected (' + price + ').\n\nTo activate: contact us at support@noamark.com or +27 63 418 9749 with your business name and we will set this up for you.\n\nPayment: EFT or SnapScan.');
+  const planKey = plan.toLowerCase(); // 'Starter'/'Growth'/'Pro' -> 'starter'/'growth'/'pro'
+  const listingId = window._bpListingId;
+  if (!listingId) {
+    bpToast('Could not find your listing. Please refresh and try again.');
+    return;
+  }
+  nmProcessOzowBoost(planKey, plan, listingId);
 }
+
 
 // ── TOAST ──
 function bpToast(msg) {
