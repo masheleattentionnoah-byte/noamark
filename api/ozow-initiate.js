@@ -131,6 +131,18 @@ export default async function handler(req, res) {
 
   const hashCheck = buildHash(Object.values(fields), privateKey);
 
+  // TEMPORARY DEBUG LOGGING — safe to leave in short-term (never logs the
+  // private key itself), remove once payments are confirmed working.
+  // Checking JSON.stringify (not raw console.log) deliberately, so any
+  // hidden leading/trailing whitespace on env vars shows up as visible
+  // quote marks with a gap, instead of being invisible in the log.
+  console.log('[ozow-initiate] SiteCode from env:', JSON.stringify(siteCode));
+  console.log('[ozow-initiate] PrivateKey length from env:', privateKey.length);
+  console.log('[ozow-initiate] isTest:', isTest, '(OZOW_TEST_MODE raw:', JSON.stringify(process.env.OZOW_TEST_MODE), ')');
+  console.log('[ozow-initiate] fields sent to Ozow:', JSON.stringify(fields));
+  console.log('[ozow-initiate] hash input string (pre-lowercase, key excluded):', JSON.stringify(Object.values(fields).join('')));
+  console.log('[ozow-initiate] final HashCheck:', hashCheck);
+
   return res.status(200).json({
     ok: true,
     postUrl: 'https://pay.ozow.com',
