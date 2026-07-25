@@ -98,9 +98,18 @@ export default async function handler(req, res) {
   const optional2 = String(listingId);
   const optional3 = email || '';
 
-  const cancelUrl  = siteOrigin + '/?ozow_return=1&status=cancel';
-  const errorUrl   = siteOrigin + '/?ozow_return=1&status=error';
-  const successUrl = siteOrigin + '/?ozow_return=1&status=success';
+  // These must match EXACTLY what's whitelisted on Ozow's side for this
+  // site (confirmed via their support email: https://noamark.com/, no
+  // query string). Ozow silently rejects any request where these don't
+  // match character-for-character — it won't even show up as a failed
+  // transaction in their dashboard, which is what made this hard to debug.
+  // We no longer need ?ozow_return=1&status=... on these, because the
+  // frontend now tracks "a payment attempt is in progress" via
+  // sessionStorage instead (set right before the redirect), and the
+  // actual activation was always server-side via ozow-notify anyway.
+  const cancelUrl  = siteOrigin + '/';
+  const errorUrl   = siteOrigin + '/';
+  const successUrl = siteOrigin + '/';
   const notifyUrl  = siteOrigin.replace(/\/$/, '') + '/api/ozow-notify';
 
   // Field order below matches Ozow's own documented hash-generation
@@ -130,18 +139,6 @@ export default async function handler(req, res) {
   };
 
   const hashCheck = buildHash(Object.values(fields), privateKey);
-
-  // TEMPORARY DEBUG LOGGING — safe to leave in short-term (never logs the
-  // private key itself), remove once payments are confirmed working.
-  // Checking JSON.stringify (not raw console.log) deliberately, so any
-  // hidden leading/trailing whitespace on env vars shows up as visible
-  // quote marks with a gap, instead of being invisible in the log.
-  console.log('[ozow-initiate] SiteCode from env:', JSON.stringify(siteCode));
-  console.log('[ozow-initiate] PrivateKey length from env:', privateKey.length);
-  console.log('[ozow-initiate] isTest:', isTest, '(OZOW_TEST_MODE raw:', JSON.stringify(process.env.OZOW_TEST_MODE), ')');
-  console.log('[ozow-initiate] fields sent to Ozow:', JSON.stringify(fields));
-  console.log('[ozow-initiate] hash input string (pre-lowercase, key excluded):', JSON.stringify(Object.values(fields).join('')));
-  console.log('[ozow-initiate] final HashCheck:', hashCheck);
 
   return res.status(200).json({
     ok: true,
