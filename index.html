@@ -9901,6 +9901,14 @@ async function nmProcessOzowBoost(planKey, planName, listingId) {
     form.appendChild(inp);
   });
 
+  // The return URLs sent to Ozow can no longer carry ?status=... (Ozow
+  // requires them to match https://noamark.com/ exactly), so we track
+  // "a payment attempt is in progress" here instead, read back by
+  // handlePaymentReturn() below when the customer lands back on the site.
+  try {
+    sessionStorage.setItem('nm_ozow_pending', JSON.stringify({ planKey, listingId, ts: Date.now() }));
+  } catch (e) { /* sessionStorage unavailable — return message just won't show, non-critical */ }
+
  bpToast(' Redirecting to secure payment...');
   document.body.appendChild(form);
   setTimeout(() => form.submit(), 800);
@@ -9909,23 +9917,24 @@ async function nmProcessOzowBoost(planKey, planName, listingId) {
 // Handle the customer's return from Ozow. This is DISPLAY ONLY — it never
 // writes to Supabase. The real activation happens server-side in
 // /api/ozow-notify.js once Ozow confirms the payment directly to your
-// server, which can't be faked by someone just visiting this URL with
-// made-up query params the way a client-side write could be.
+// server, which can't be faked by someone just visiting this URL.
+//
+// NOTE: Ozow requires the Success/Cancel/Error URLs to exactly match what's
+// whitelisted on their side (https://noamark.com/, no query string), so we
+// can no longer tell from the URL whether the payment succeeded, was
+// cancelled, or failed — Ozow sends the customer back to the same plain
+// URL regardless of outcome. We use a sessionStorage flag set right before
+// redirecting to Ozow to at least know "the customer just attempted a
+// payment", and show a single honest, outcome-agnostic message.
 (function handlePaymentReturn() {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('ozow_return') === '1') {
-    const status = params.get('status') || '';
-    history.replaceState({}, '', window.location.pathname);
+  let pending = null;
+  try { pending = JSON.parse(sessionStorage.getItem('nm_ozow_pending') || 'null'); } catch (e) {}
+  if (pending && (Date.now() - pending.ts) < 30 * 60 * 1000) {
+    sessionStorage.removeItem('nm_ozow_pending');
     const _doPaymentReturn = async () => {
       await new Promise(r => setTimeout(r, 1200));
-      if (status === 'success') {
- bpToast(' Payment received! Your boost is being activated — this can take a minute, refresh shortly.');
-        setTimeout(() => { if (typeof loadListingsFromSupabase === 'function') loadListingsFromSupabase(); }, 4000);
-      } else if (status === 'cancel') {
-        bpToast('Payment cancelled. Your listing was not charged.');
-      } else {
-        bpToast('Payment could not be completed. Please try again or contact support.');
-      }
+ bpToast(' Thanks for completing that on Ozow. If your payment went through, your boost activates automatically within a minute — refresh shortly to check. If you cancelled or it failed, you were not charged.');
+      setTimeout(() => { if (typeof loadListingsFromSupabase === 'function') loadListingsFromSupabase(); }, 4000);
     };
     if (document.readyState === 'loading') {
       window.addEventListener('DOMContentLoaded', _doPaymentReturn);
