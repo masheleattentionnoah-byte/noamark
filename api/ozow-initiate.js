@@ -112,31 +112,45 @@ export default async function handler(req, res) {
   const successUrl = siteOrigin + '/';
   const notifyUrl  = siteOrigin.replace(/\/$/, '') + '/api/ozow-notify';
 
-  // Field order below matches Ozow's own documented hash-generation
-  // example, cross-checked against Ozow's published integration guide
-  // (SiteCode, CountryCode, CurrencyCode, Amount, TransactionReference,
-  // BankReference, Customer, Optional1-5, NotifyUrl, SuccessUrl, ErrorUrl,
-  // CancelUrl, IsTest) — this order is NOT arbitrary, Ozow will reject
-  // the request (or just never generate a matching hash) if it's wrong.
-  const fields = {
+  // Field order below matches a confirmed-working real integration against
+  // pay.ozow.com (SiteCode, CountryCode, CurrencyCode, Amount,
+  // TransactionReference, BankReference, Optional1-5, Customer, CancelUrl,
+  // ErrorUrl, SuccessUrl, NotifyUrl, IsTest). Two earlier attempts at this
+  // order were wrong: Customer needs to come AFTER the Optionals not
+  // before, and the URL order is Cancel/Error/Success/Notify, not
+  // Notify/Success/Error/Cancel. This order is NOT arbitrary — Ozow just
+  // silently produces a non-matching hash if it's wrong, with no error
+  // message pointing at the cause.
+  const rawFields = {
     SiteCode: siteCode,
     CountryCode: 'ZA',
     CurrencyCode: 'ZAR',
     Amount: amount,
     TransactionReference: transactionReference,
     BankReference: bankReference,
-    Customer: name || '',
     Optional1: optional1,
     Optional2: optional2,
     Optional3: optional3,
     Optional4: '',
     Optional5: '',
-    NotifyUrl: notifyUrl,
-    SuccessUrl: successUrl,
-    ErrorUrl: errorUrl,
+    Customer: name || '',
     CancelUrl: cancelUrl,
+    ErrorUrl: errorUrl,
+    SuccessUrl: successUrl,
+    NotifyUrl: notifyUrl,
     IsTest: isTest ? 'true' : 'false',
   };
+
+  // Blank optional/customer fields must be dropped entirely — not sent as
+  // empty strings — to match how Ozow's own algorithm builds the hash on
+  // their end. Required fields (amount, references, URLs, IsTest) are
+  // never blank so they're unaffected by this filter.
+  const fields = {};
+  for (const [key, value] of Object.entries(rawFields)) {
+    if (value !== '' && value !== null && value !== undefined) {
+      fields[key] = value;
+    }
+  }
 
   const hashCheck = buildHash(Object.values(fields), privateKey);
 
