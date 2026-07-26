@@ -37,9 +37,9 @@ const PLAN_PRICES = {
   pro: 299.99,
 };
 const PLAN_NAMES = {
-  starter: 'Starter Boost',
-  growth: 'Growth Boost',
-  pro: 'Pro Listing',
+  starter: 'Starter Plan',
+  growth: 'Growth Plan',
+  pro: 'Pro Plan',
 };
 
 function buildHash(fieldsInOrder, privateKey) {
