@@ -3793,6 +3793,13 @@
         </div>
       </div>
 
+      <!-- Trial / subscription status banner — hidden until populateBizDashboard()
+           decides what (if anything) to show based on trial_started_at / subscription_status -->
+      <div id="bp-trial-banner" style="display:none;margin:0 24px 0;padding:14px 20px;border-radius:10px;font-size:13px;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+        <span id="bp-trial-banner-text"></span>
+        <button id="bp-trial-banner-btn" class="bp-btn bp-btn-gold" onclick="showMktView('boost')" style="font-size:11px;flex-shrink:0;">Choose a Plan</button>
+      </div>
+
       <div class="bp-content">
 
         <!-- ══ PAGE: OVERVIEW ══ -->
@@ -11893,6 +11900,7 @@ async function bpFetchMyOwnListing() {
       boost_started_at: row.boost_started_at || null,
       status: row.business_status || 'open', price: row.price_hint || 'Contact for pricing',
       photo: parsedPhotos[0] || '', photos: parsedPhotos, joinedAt: row.created_at || '',
+      createdAt: row.created_at || null,
       hoursWeekday: row.hours_weekday || '', hoursSat: row.hours_sat || '',
       hoursSun:     row.hours_sun || '',
       whatsapp:     row.whatsapp || '',
@@ -11911,6 +11919,71 @@ async function bpFetchMyOwnListing() {
   } catch(e) {
     console.warn('bpFetchMyOwnListing failed:', e);
     return null;
+  }
+}
+
+// Computes where a listing stands re: free trial / active plan / grace period,
+// entirely from data that already exists — no new columns needed.
+// Business rule (per NoaMark's model): every new listing gets a 1-month free
+// trial from signup. If they never choose a paid plan, they get a 3-day
+// grace period after the trial ends, then the listing is deleted by the
+// daily cron job (/api/check-trials). Once a plan IS chosen (boost_tier !=
+// 'none'), it's treated as a monthly plan — same 1-month active window +
+// 3-day grace on renewal, calculated from boost_started_at instead of signup.
+function nmComputeSubStatus(listing) {
+  const DAY = 24 * 60 * 60 * 1000;
+  const TRIAL_DAYS = 30;
+  const GRACE_DAYS = 3;
+  const now = Date.now();
+  const created = listing.createdAt ? new Date(listing.createdAt).getTime() : now;
+
+  if (listing.boost && listing.boost !== 'none') {
+    const boostStart = listing.boost_started_at ? new Date(listing.boost_started_at).getTime() : created;
+    const activeUntil = boostStart + 30 * DAY; // all paid tiers are monthly now, regardless of tier
+    const graceUntil = activeUntil + GRACE_DAYS * DAY;
+    if (now < activeUntil) return { state: 'active', daysLeft: Math.ceil((activeUntil - now) / DAY) };
+    if (now < graceUntil) return { state: 'lapsed_grace', daysLeft: Math.ceil((graceUntil - now) / DAY) };
+    return { state: 'expired', daysLeft: 0 };
+  } else {
+    const trialUntil = created + TRIAL_DAYS * DAY;
+    const graceUntil = trialUntil + GRACE_DAYS * DAY;
+    if (now < trialUntil) return { state: 'trial', daysLeft: Math.ceil((trialUntil - now) / DAY) };
+    if (now < graceUntil) return { state: 'trial_grace', daysLeft: Math.ceil((graceUntil - now) / DAY) };
+    return { state: 'expired', daysLeft: 0 };
+  }
+}
+
+function bpRenderTrialBanner(listing) {
+  const banner = document.getElementById('bp-trial-banner');
+  const textEl = document.getElementById('bp-trial-banner-text');
+  if (!banner || !textEl) return;
+  if (!listing || listing.approvalStatus !== 'approved') { banner.style.display = 'none'; return; }
+
+  const { state, daysLeft } = nmComputeSubStatus(listing);
+  if (state === 'active') { banner.style.display = 'none'; return; }
+
+  banner.style.display = 'flex';
+  const plural = daysLeft === 1 ? '' : 's';
+  if (state === 'trial') {
+    banner.style.background = 'rgba(244,196,48,.08)';
+    banner.style.border = '1px solid rgba(244,196,48,.3)';
+    banner.style.color = 'var(--white)';
+    textEl.innerHTML = `🎁 You're on a free trial — <strong>${daysLeft} day${plural} left</strong>. Choose a plan anytime to keep your listing live after your trial ends.`;
+  } else if (state === 'trial_grace') {
+    banner.style.background = 'rgba(239,68,68,.08)';
+    banner.style.border = '1px solid rgba(239,68,68,.35)';
+    banner.style.color = 'var(--white)';
+    textEl.innerHTML = `⚠️ Your free trial has ended — your listing will be <strong>removed in ${daysLeft} day${plural}</strong> unless you choose a plan.`;
+  } else if (state === 'lapsed_grace') {
+    banner.style.background = 'rgba(239,68,68,.08)';
+    banner.style.border = '1px solid rgba(239,68,68,.35)';
+    banner.style.color = 'var(--white)';
+    textEl.innerHTML = `⚠️ Your plan has expired — your listing will be <strong>removed in ${daysLeft} day${plural}</strong> unless you renew.`;
+  } else if (state === 'expired') {
+    banner.style.background = 'rgba(239,68,68,.12)';
+    banner.style.border = '1px solid rgba(239,68,68,.4)';
+    banner.style.color = 'var(--white)';
+    textEl.innerHTML = `❌ Your listing is no longer active. Choose a plan to reactivate it.`;
   }
 }
 
@@ -11960,6 +12033,7 @@ function populateBizDashboard() {
       document.getElementById('bpm-status').style.color = 'var(--danger)';
       document.getElementById('bpm-status-sub').textContent = 'Add listing to go live';
     }
+    bpRenderTrialBanner(listing);
   };
 
   renderStatusUI(myListing);
@@ -11968,6 +12042,7 @@ function populateBizDashboard() {
   // that the approved-only LISTINGS cache can never see.
   bpFetchMyOwnListing().then(realListing => {
     if (!realListing) return;
+    bpRenderTrialBanner(realListing);
     if (realListing.approvalStatus !== 'approved' || !myListing) {
       myListing = realListing;
       renderStatusUI(myListing);
