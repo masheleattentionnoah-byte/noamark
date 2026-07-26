@@ -3244,6 +3244,9 @@
     <div id="mkt-latest-section" style="display:none;">
       <div class="mkt-section-label">🆕 Latest Listings</div>
       <div class="mkt-grid" id="mkt-latest-grid"></div>
+      <div style="text-align:center;margin-top:8px;">
+        <button type="button" id="mkt-load-more-btn" onclick="mktLoadMoreLatest()" style="display:none;background:transparent;border:1px solid var(--border-soft);color:var(--white-dim);padding:14px 32px;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.color='var(--white-dim)'">Load More <span id="mkt-load-more-count"></span></button>
+      </div>
     </div>
 
     <!-- EMPTY STATE -->
@@ -6236,6 +6239,11 @@ function populateMarketplace(){
   const latestGrid=document.getElementById('mkt-latest-grid');
   const empty=document.getElementById('mkt-empty');
   const latestSec = document.getElementById('mkt-latest-section');
+  // Pagination resets to page 1 every time filters/search/sort change —
+  // this function running at all means the result set just changed, so
+  // whatever page the user was on before no longer means anything.
+  window._mktLatestFull = [];
+  window._mktLatestShown = 0;
   if(sorted.length===0){
     if(featSec) featSec.style.display='none';
     if(latestSec) latestSec.style.display='none';
@@ -6251,13 +6259,45 @@ function populateMarketplace(){
     }
     if(latest.length>0){
       if(latestSec) latestSec.style.display='block';
-      if(latestGrid) latestGrid.innerHTML=latest.map((b,i)=>renderCard(b,i)).join('');
+      window._mktLatestFull = latest;
+      mktRenderLatestPage(true);
     } else {
       // All results are in featured — hide the Latest section cleanly
       if(latestSec) latestSec.style.display='none';
       if(latestGrid) latestGrid.innerHTML='';
     }
   }
+}
+
+// Renders the Latest grid one page at a time (24 cards) instead of every
+// matching business at once. reset=true clears and starts from page 1
+// (called whenever filters/search/sort change); reset=false appends the
+// next page on top of what's already shown (called by the Load More
+// button) — appending rather than re-rendering the whole slice avoids
+// redoing DOM work for cards that are already on screen.
+const MKT_PAGE_SIZE = 2; // TEMP: lowered for testing with a small number of real businesses — set back to 24 once confirmed working
+function mktRenderLatestPage(reset){
+  const latestGrid = document.getElementById('mkt-latest-grid');
+  const loadMoreBtn = document.getElementById('mkt-load-more-btn');
+  const loadMoreCount = document.getElementById('mkt-load-more-count');
+  if(!latestGrid) return;
+  const full = window._mktLatestFull || [];
+  if(reset){
+    window._mktLatestShown = 0;
+    latestGrid.innerHTML = '';
+  }
+  const start = window._mktLatestShown;
+  const nextBatch = full.slice(start, start + MKT_PAGE_SIZE);
+  latestGrid.insertAdjacentHTML('beforeend', nextBatch.map((b,i)=>renderCard(b, start+i)).join(''));
+  window._mktLatestShown = start + nextBatch.length;
+  const remaining = full.length - window._mktLatestShown;
+  if(loadMoreBtn){
+    loadMoreBtn.style.display = remaining > 0 ? 'inline-block' : 'none';
+    if(loadMoreCount) loadMoreCount.textContent = remaining > 0 ? `(${remaining} more)` : '';
+  }
+}
+function mktLoadMoreLatest(){
+  mktRenderLatestPage(false);
 }
 
 function filterListings(){
