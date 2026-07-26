@@ -5733,28 +5733,30 @@ function nmLoadLeaflet(){
   return window._nmLeafletLoading;
 }
 
-// Expands/collapses the location-picker map to fill the whole screen —
-// a 260px strip is unusable for precisely placing a pin on a phone.
-// Reuses the same scroll-lock technique as the sign-in gate modal, since
-// plain overflow:hidden on <body> doesn't reliably stop background
-// scrolling on mobile.
+// Expands/collapses the location-picker map to fill the whole screen — a
+// 260px strip is unusable for precisely placing a pin on a phone.
+// Deliberately does NOT touch document.body's scroll lock: this map is
+// opened from inside the Edit Listing modal, which already has its own
+// scroll lock active. An earlier version of this function set/cleared
+// body scroll styles directly, which on close wiped out the OUTER modal's
+// lock too — that's what was causing the page to look broken and stop
+// scrolling after backing out of the map. Since this overlay is fully
+// opaque (covers everything, nothing visible needs to be prevented from
+// scrolling behind it), it doesn't need its own lock at all.
 function nmToggleMapFullscreen(expand){
   const wrap = document.getElementById('biz_pin_map_wrap');
   if(!wrap) return;
+  const mapEl = document.getElementById('biz_pin_map');
   if(expand){
     wrap.classList.add('nm-map-fullscreen');
-    window._nmMapScrollY = window.scrollY || window.pageYOffset || 0;
-    document.body.style.position = 'fixed';
-    document.body.style.top = '-' + window._nmMapScrollY + 'px';
-    document.body.style.width = '100%';
-    document.body.style.overflow = 'hidden';
+    // Inline height from the base markup beats the fullscreen CSS rule
+    // (inline styles always win over stylesheet rules), which is why the
+    // map was staying visually small even while "fullscreen" — setting it
+    // directly here overrides that.
+    if(mapEl) mapEl.style.height = '65vh';
   } else {
     wrap.classList.remove('nm-map-fullscreen');
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.width = '';
-    document.body.style.overflow = '';
-    window.scrollTo(0, window._nmMapScrollY || 0);
+    if(mapEl) mapEl.style.height = '260px';
   }
   // Leaflet needs to be told its container changed size, or it keeps
   // rendering at the old dimensions until the next manual interaction.
