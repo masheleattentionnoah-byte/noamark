@@ -51,7 +51,7 @@ export default async function handler(req, res) {
     const provinceKey = (province || '').toLowerCase().trim();
     const viewbox = PROVINCE_VIEWBOX[provinceKey];
 
-    async function search(q) {
+    async function search(q, useViewbox) {
       const params = new URLSearchParams({
         format: 'json',
         limit: '6',
@@ -59,7 +59,7 @@ export default async function handler(req, res) {
         addressdetails: '1',
         q,
       });
-      if (viewbox) params.set('viewbox', viewbox.join(','));
+      if (useViewbox && viewbox) params.set('viewbox', viewbox.join(','));
       // Deliberately NOT setting bounded=1 here — see comment above.
 
       const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
@@ -68,7 +68,10 @@ export default async function handler(req, res) {
           'User-Agent': 'NoaMark/1.0 (support@noamark.com)',
         },
       });
-      if (!response.ok) return [];
+      if (!response.ok) {
+        console.warn(`Nominatim returned ${response.status} for query: ${q}`);
+        return [];
+      }
 
       const raw = await response.json();
       return (Array.isArray(raw) ? raw : [])
@@ -110,8 +113,18 @@ export default async function handler(req, res) {
 
     let results = [];
     for (const attempt of attempts) {
-      results = await search(attempt);
+      results = await search(attempt, true);
       if (results.length > 0) break;
+    }
+
+    // Final fallback: if every province-biased attempt came back empty,
+    // try the original query one more time with NO province bias at all.
+    // Covers the case where the owner picked the wrong province, or a
+    // place (like a mall near a provincial border) doesn't behave well
+    // with the rough biasing box — better to show a possibly-distant
+    // result than to tell the owner "no matches" when one genuinely exists.
+    if (results.length === 0 && viewbox) {
+      results = await search(trimmed, false);
     }
 
     return res.status(200).json({ results });
