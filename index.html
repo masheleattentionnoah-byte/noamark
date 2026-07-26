@@ -664,6 +664,19 @@
   .onboard-step.active{background:var(--gold);color:#111827;}
   .onboard-step.done{color:var(--success);border-bottom:2px solid var(--success);}
   .onboard-form-panel{display:none;}
+  /* Fullscreen map mode — toggled via nmToggleMapFullscreen(). Covers the
+     whole viewport so it's actually usable for precise pin placement on a
+     phone, instead of squeezed into a 260px strip inside the form. */
+  #biz_pin_map_wrap.nm-map-fullscreen{
+    position:fixed;inset:0;z-index:10500;background:var(--black-2);
+    padding:16px;display:flex;flex-direction:column;overflow-y:auto;
+  }
+  #biz_pin_map_wrap.nm-map-fullscreen #biz_pin_map{
+    flex:1;min-height:0;height:auto;
+  }
+  .nm-map-fullscreen-bar{display:none;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  #biz_pin_map_wrap.nm-map-fullscreen .nm-map-fullscreen-bar{display:flex;}
+
   .onboard-form-panel.active{display:block;}
 
   /* ── ADMIN PANEL ── */
@@ -2009,9 +2022,9 @@
         <div class="boost-price">R49.99</div>
         <div class="boost-duration">Monthly</div>
         <ul class="boost-features">
-          <li>Higher visibility</li>
+          <li>Active listing on NoaMark</li>
           <li>Show up in searches</li>
-          <li>Standard placement</li>
+          <li>Full business profile</li>
         </ul>
         <button class="boost-btn" onclick="if(!currentUser||currentUser.type!=='business'){showBusinessGate('boost');}else{showPage('marketplace',()=>setTimeout(()=>showMktView('boost'),100));}">Choose Starter</button>
       </div>
@@ -3282,10 +3295,10 @@
         <div class="boost-price"><sup>R</sup>49</div>
         <div class="boost-duration">Monthly</div>
         <ul class="boost-features starter">
-          <li>Slight ranking increase</li>
-          <li>Standard visibility</li>
-          <li>Listed above free businesses</li>
-          <li>No highlight badge</li>
+          <li>Active listing on NoaMark</li>
+          <li>Full business profile — photos, hours, contact info</li>
+          <li>Appears in search & category results</li>
+          <li>Renews monthly</li>
         </ul>
         <button class="boost-cta starter-cta" onclick="handleBoost('Starter','R49.99','Monthly')">Activate Starter</button>
       </div>
@@ -3342,7 +3355,7 @@
               <td style="padding:16px 20px;font-size:13px;color:var(--white-soft);">Ranking Priority</td>
               <td style="padding:16px 20px;text-align:center;color:var(--gold);font-weight:600;">#1</td>
               <td style="padding:16px 20px;text-align:center;color:var(--gold);">High</td>
-              <td style="padding:16px 20px;text-align:center;color:var(--white-dim);">Medium</td>
+              <td style="padding:16px 20px;text-align:center;color:var(--white-dim);">Standard</td>
               <td style="padding:16px 20px;text-align:center;color:rgba(160,160,160,.4);">Standard</td>
             </tr>
             <tr style="border-bottom:1px solid rgba(35,40,54,.6);">
@@ -3461,9 +3474,14 @@
             <p style="font-size:11px;color:var(--white-dim);line-height:1.6;margin-bottom:12px;">Township and village addresses often can't be found precisely by automatic map lookup. Pin your exact spot yourself for the most accurate directions to your customers.</p>
             <button type="button" class="btn-ghost" id="biz_pin_open_btn" onclick="nmOpenPinMap()" style="padding:14px 20px;font-size:11px;">📍 Set Exact Location On Map</button>
             <div id="biz_pin_map_wrap" style="display:none;margin-top:14px;">
+              <div class="nm-map-fullscreen-bar">
+                <button type="button" class="btn-ghost" onclick="nmToggleMapFullscreen(false)" style="padding:10px 16px;font-size:11px;">← Back</button>
+                <span style="font-size:11px;color:var(--white-dim);">Tap the map or drag the pin to your exact spot</span>
+              </div>
               <div style="display:flex;gap:8px;margin-bottom:10px;">
                 <input type="text" class="form-input" id="biz_pin_search_input" placeholder="Search for your landmark or area, e.g. Thavhani Mall" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();nmSearchPinLocation();}">
                 <button type="button" class="btn-ghost" onclick="nmSearchPinLocation()" style="padding:0 18px;font-size:11px;white-space:nowrap;">🔍 Search</button>
+                <button type="button" class="btn-ghost" id="biz_pin_expand_btn" onclick="nmToggleMapFullscreen(true)" title="Expand map to full screen" style="padding:0 16px;font-size:14px;">⛶</button>
               </div>
               <div id="biz_pin_search_results" style="margin-bottom:10px;"></div>
               <div id="biz_pin_map" style="width:100%;height:260px;border-radius:8px;border:1px solid var(--border-soft);"></div>
@@ -3695,7 +3713,7 @@
             </label>
             <label style="display:flex;align-items:center;gap:16px;padding:20px;border:1px solid var(--border-soft);cursor:pointer;transition:border-color .3s;" onmouseover="this.style.borderColor='var(--white-dim)'" onmouseout="this.style.borderColor='var(--border-soft)'">
               <input type="radio" name="boost_select" value="starter" style="accent-color:var(--gold);">
- <div><div style="font-size:13px;color:var(--white-soft);font-weight:500;"> Starter Plan, <span style="color:var(--gold);">R49.99 / month</span></div><div style="font-size:11px;color:var(--white-dim);margin-top:4px;">Ranking increase above free listings</div></div>
+ <div><div style="font-size:13px;color:var(--white-soft);font-weight:500;"> Starter Plan, <span style="color:var(--gold);">R49.99 / month</span></div><div style="font-size:11px;color:var(--white-dim);margin-top:4px;">Standard listing — no priority ranking or promotion</div></div>
             </label>
             <label style="display:flex;align-items:center;gap:16px;padding:20px;border:1px solid rgba(212,175,55,.3);cursor:pointer;background:rgba(212,175,55,.03);position:relative;overflow:hidden;">
               <div style="position:absolute;top:0;left:0;right:0;height:1px;background:var(--gold);box-shadow:0 0 8px rgba(212,175,55,.4);"></div>
@@ -3774,7 +3792,7 @@
           <span class="bp-live-pill bp-pill-offline" id="bp-live-pill">● Not listed</span>
  <button class="bp-btn" onclick="bpViewMyListing()" style="font-size:9px;"> View My Listing</button>
           <button class="bp-btn bp-btn-gold" onclick="bpEditListing()" style="font-size:9px;">+ Edit Listing</button>
- <button class="bp-btn bp-btn-g" onclick="showMktView('boost')" style="font-size:9px;"> Boost</button>
+ <button class="bp-btn bp-btn-g" onclick="bpGoPage('boost')" style="font-size:9px;"> Boost</button>
           <!-- Notification Bell -->
           <button id="bp-bell-btn" onclick="bpToggleNotifPanel()" style="position:relative;background:var(--black-3);border:1px solid var(--border-soft);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:15px;line-height:1;color:var(--white-dim);display:inline-flex;align-items:center;justify-content:center;" title="Notifications">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
@@ -3797,7 +3815,7 @@
            decides what (if anything) to show based on trial_started_at / subscription_status -->
       <div id="bp-trial-banner" style="display:none;margin:0 24px 0;padding:14px 20px;border-radius:10px;font-size:13px;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
         <span id="bp-trial-banner-text"></span>
-        <button id="bp-trial-banner-btn" class="bp-btn bp-btn-gold" onclick="showMktView('boost')" style="font-size:11px;flex-shrink:0;">Choose a Plan</button>
+        <button id="bp-trial-banner-btn" class="bp-btn bp-btn-gold" onclick="bpGoPage('boost')" style="font-size:11px;flex-shrink:0;">Choose a Plan</button>
       </div>
 
       <div class="bp-content">
@@ -3930,7 +3948,7 @@
               <div class="bp-card-title">Quick actions</div>
               <div style="display:flex;flex-direction:column;gap:10px;">
                 <button class="bp-btn bp-btn-g" onclick="bpEditListing()" style="justify-content:center;">Edit listing details</button>
- <button class="bp-btn bp-btn-gold" onclick="bpGoPage('boost');showMktView('boost');" style="justify-content:center;"> Upgrade boost plan</button>
+ <button class="bp-btn bp-btn-gold" onclick="bpGoPage('boost')" style="justify-content:center;"> Upgrade boost plan</button>
                 <button class="bp-btn" onclick="bpViewMyListing()" style="justify-content:center;">View my live listing</button>
  <button class="bp-btn" onclick="bpGoPage('aitools')" style="justify-content:center;"> Open AI tools</button>
               </div>
@@ -4084,9 +4102,9 @@
                 <div style="font-family:var(--font-display);font-size:40px;font-weight:300;color:var(--white);margin-bottom:4px;"><sup style="font-size:16px;color:var(--gold-dim);">R</sup>49.99</div>
                 <div style="font-size:10px;color:var(--white-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;">/ month</div>
                 <ul style="list-style:none;font-size:12px;color:var(--white-dim);text-align:left;margin-bottom:24px;display:flex;flex-direction:column;gap:10px;">
- <li> Priority above free listings</li>
- <li> Starter badge</li>
- <li> Basic visibility boost</li>
+ <li> Active listing on NoaMark</li>
+ <li> Full business profile</li>
+ <li> Appears in search & category results</li>
                 </ul>
                 <button class="bp-btn" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Starter','R49.99/month')">Select Starter</button>
               </div>
@@ -5532,6 +5550,7 @@ async function loadListingsFromSupabase(force = false) {
           owner:        l.owner,
           owner_email:  l.owner_email || l.email || '',
           boost_started_at: l.boost_started_at || null,
+          createdAt:    l.created_at || null,
           cat:          l.type || 'services',
           area:         l.area || '',
           city:         l.city || '',
@@ -5612,7 +5631,7 @@ async function loadListingsFromSupabase(force = false) {
 // ── BOOST RANKING ALGORITHM ──
 // Priority: dominance(4) > growth(3) > starter(2) > none(1)
 // Within same tier: newest listing first (id desc)
-const BOOST_RANK={pro:4,dominance:4,growth:3,starter:2,none:1};
+const BOOST_RANK={pro:4,dominance:4,growth:3,starter:1,none:1};
 
 function getSortedListings(list){
   return [...list].sort((a,b)=>{
@@ -5714,6 +5733,34 @@ function nmLoadLeaflet(){
   return window._nmLeafletLoading;
 }
 
+// Expands/collapses the location-picker map to fill the whole screen —
+// a 260px strip is unusable for precisely placing a pin on a phone.
+// Reuses the same scroll-lock technique as the sign-in gate modal, since
+// plain overflow:hidden on <body> doesn't reliably stop background
+// scrolling on mobile.
+function nmToggleMapFullscreen(expand){
+  const wrap = document.getElementById('biz_pin_map_wrap');
+  if(!wrap) return;
+  if(expand){
+    wrap.classList.add('nm-map-fullscreen');
+    window._nmMapScrollY = window.scrollY || window.pageYOffset || 0;
+    document.body.style.position = 'fixed';
+    document.body.style.top = '-' + window._nmMapScrollY + 'px';
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+  } else {
+    wrap.classList.remove('nm-map-fullscreen');
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    document.body.style.overflow = '';
+    window.scrollTo(0, window._nmMapScrollY || 0);
+  }
+  // Leaflet needs to be told its container changed size, or it keeps
+  // rendering at the old dimensions until the next manual interaction.
+  setTimeout(() => { if(_nmPinMap) _nmPinMap.invalidateSize(); }, 200);
+}
+
 function nmSetPinStatus(text){
   const el = document.getElementById('biz_pin_status');
   if(el) el.textContent = text;
@@ -5734,6 +5781,9 @@ function nmConfirmPin(){
   nmSetPinStatus('✓ Exact location confirmed — this will be used instead of the automatic address lookup.');
   const confirmBtn = document.getElementById('biz_pin_confirm_btn');
   if(confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = '✓ Location Confirmed'; }
+  // Return to the normal form view automatically — no reason to make them
+  // hit Back separately after they've just confirmed.
+  nmToggleMapFullscreen(false);
 }
 
 // Opens the map, lazy-loading Leaflet first. Starting point priority:
@@ -5796,6 +5846,9 @@ async function nmOpenPinMap(){
   // Leaflet mis-sizes itself if initialized while its container is hidden or
   // mid-transition — nudge it once the container has actually laid out.
   setTimeout(() => { if(_nmPinMap) _nmPinMap.invalidateSize(); }, 150);
+  // Go straight to fullscreen — a 260px strip isn't usable for precise pin
+  // placement on a phone, so there's no reason to make the owner ask for it.
+  nmToggleMapFullscreen(true);
 
   // Pre-fill the search box with just the SINGLE most specific term the
   // owner typed — landmark beats a raw street address for finding named
@@ -8048,8 +8101,18 @@ async function submitBusiness(){
 }
 
 // ── BOOST HANDLER ──
-function handleBoost(type,price,duration){
- alert(' '+type+' Boost selected ('+price+' / '+duration+').\n\nTo activate: contact us at support@noamark.com or +27 63 418 9749 with your business name and we will set this up for you.\n\nPayment: EFT or SnapScan.');
+function handleBoost(type, price, duration) {
+  if (!currentUser || currentUser.type !== 'business') {
+    bpToast('Please sign in as a business to choose a plan.');
+    openAuth('business');
+    return;
+  }
+  // Route into the real Business Portal Boost Plans tab — that's the one
+  // place this is actually wired up to Ozow. This page used to show its
+  // own dead-end "contact us via EFT" alert, which is exactly the kind of
+  // thing that goes stale the moment the real flow gets fixed elsewhere.
+  showPage('marketplace');
+  setTimeout(() => { showMktView('admin'); bpGoPage('boost'); }, 100);
 }
 
 // ── ADMIN ACTIONS ──
@@ -8646,7 +8709,7 @@ function renderHomeBoosted(){
   if(!grid) return;
 
   // Get only boosted listings, sorted by boost tier
-  const boosted = getSortedListings(LISTINGS).filter(l => l.boost !== 'none').slice(0, 4);
+  const boosted = getSortedListings(LISTINGS).filter(l => l.boost !== 'none' && l.boost !== 'starter').slice(0, 4);
 
   // Update hero stat counters — all real numbers, no placeholders.
   // Only touch these once LISTINGS actually has data: this function is also called
