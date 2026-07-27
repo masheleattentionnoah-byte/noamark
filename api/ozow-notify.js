@@ -103,6 +103,10 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         boost_tier: planKey,
         boost_started_at: new Date().toISOString(),
+        // Restores visibility for a listing that was previously unlisted
+        // (status='suspended') by check-trials.js after an unpaid grace
+        // period. Harmless no-op for a listing that was already approved.
+        status: 'approved',
       }),
     });
 
