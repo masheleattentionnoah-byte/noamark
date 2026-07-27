@@ -4,7 +4,10 @@
 // trial/subscription model:
 //   - New listings get a 1-month free trial from signup (created_at).
 //   - If no paid plan is chosen, a 3-day grace period follows, then the
-//     listing is deleted.
+//     listing is UNLISTED (status set to 'suspended') — NOT deleted. All
+//     data (photos, description, hours, etc.) is kept intact, so paying
+//     later restores the listing instantly instead of forcing the business
+//     to redo their entire signup from scratch.
 //   - Once a plan IS chosen (boost_tier != 'none'), it's treated as monthly
 //     — same 1-month active window + 3-day grace on renewal, calculated
 //     from boost_started_at instead of signup.
@@ -116,7 +119,7 @@ export default async function handler(req, res) {
   }
   const listings = await listRes.json();
 
-  const summary = { checked: listings.length, warned: 0, graceStarted: 0, deleted: 0, errors: 0 };
+  const summary = { checked: listings.length, warned: 0, graceStarted: 0, suspended: 0, errors: 0 };
 
   for (const listing of listings) {
     try {
@@ -147,15 +150,20 @@ export default async function handler(req, res) {
         summary.graceStarted++;
       } else if (state === 'expired') {
         await sendEmail(resendKey, emailFrom, to,
-          `Your NoaMark listing has been removed`,
-          `Hi ${listing.name},\n\nYour grace period has ended and your listing for ${listing.name} has been removed from NoaMark, since no plan was chosen in time.\n\nYou're welcome back anytime — just sign up again at noamark.com.`
+          `Your NoaMark listing has been unlisted`,
+          `Hi ${listing.name},\n\nYour grace period has ended and your listing for ${listing.name} has been unlisted from NoaMark, since no plan was chosen in time.\n\nGood news: nothing is lost. Your listing details, photos, and info are all still saved — just log back in and choose a plan to go live again instantly, no need to start over.\n\nnoamark.com`
         );
-        const delRes = await fetch(`${supaUrl}/rest/v1/listings?id=eq.${listing.id}`, {
-          method: 'DELETE',
+        // Soft-delete: unlist from the public marketplace by changing status,
+        // but keep the row (and all its data) intact so paying later restores
+        // it instantly instead of forcing the business to redo their entire
+        // listing from scratch.
+        const suspendRes = await fetch(`${supaUrl}/rest/v1/listings?id=eq.${listing.id}`, {
+          method: 'PATCH',
           headers,
+          body: JSON.stringify({ status: 'suspended' }),
         });
-        if (!delRes.ok) throw new Error('Delete failed: ' + (await delRes.text()));
-        summary.deleted++;
+        if (!suspendRes.ok) throw new Error('Suspend failed: ' + (await suspendRes.text()));
+        summary.suspended++;
       }
     } catch (e) {
       console.error('check-trials: error processing listing', listing.id, e.message);
