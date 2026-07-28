@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NetCash Payment Request — Test Page</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 520px; margin: 60px auto; padding: 0 20px; color: #1a1a1a; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  p.sub { color: #666; margin-top: 0; margin-bottom: 28px; font-size: 14px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 16px 0 6px; }
+  input, select { width: 100%; padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+  button { margin-top: 24px; width: 100%; padding: 14px; font-size: 16px; font-weight: 600; background: #14532d; color: white; border: none; border-radius: 6px; cursor: pointer; }
+  button:disabled { background: #999; cursor: not-allowed; }
+  #result { margin-top: 20px; padding: 14px; border-radius: 6px; font-size: 14px; white-space: pre-wrap; display: none; }
+  #result.ok { background: #dcfce7; color: #14532d; display: block; }
+  #result.fail { background: #fee2e2; color: #7f1d1d; display: block; }
+</style>
+</head>
+<body>
+
+<h1>NetCash Payment Request — Test</h1>
+<p class="sub">Sends a real test request to your live /api/netcash-payment-request endpoint. Use your own phone/email so you can see what the customer would receive.</p>
+
+<label for="plan">Plan</label>
+<select id="plan">
+  <option value="starter">Starter</option>
+  <option value="growth">Growth</option>
+  <option value="pro">Pro</option>
+</select>
+
+<label for="listingId">Listing ID</label>
+<input id="listingId" type="text" placeholder="any test ID, e.g. test-123">
+
+<label for="email">Your email (optional if using mobile)</label>
+<input id="email" type="email" placeholder="you@example.com">
+
+<label for="mobile">Your mobile number (optional if using email)</label>
+<input id="mobile" type="text" placeholder="e.g. 0821234567">
+
+<button id="sendBtn" onclick="sendTest()">Send Test Payment Request</button>
+
+<div id="result"></div>
+
+<script>
+async function sendTest() {
+  const btn = document.getElementById('sendBtn');
+  const resultEl = document.getElementById('result');
+  resultEl.style.display = 'none';
+  resultEl.className = '';
+
+  const plan = document.getElementById('plan').value;
+  const listingId = document.getElementById('listingId').value.trim();
+  const businessEmail = document.getElementById('email').value.trim();
+  const businessMobile = document.getElementById('mobile').value.trim();
+
+  if (!listingId) {
+    resultEl.textContent = 'Please enter a Listing ID (any test value works).';
+    resultEl.className = 'fail';
+    resultEl.style.display = 'block';
+    return;
+  }
+  if (!businessEmail && !businessMobile) {
+    resultEl.textContent = 'Enter at least an email or a mobile number to send the test to.';
+    resultEl.className = 'fail';
+    resultEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+
+  try {
+    const res = await fetch('/api/netcash-payment-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan, listingId, businessEmail, businessMobile }),
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      resultEl.textContent = '✅ Success! Reference: ' + data.reference + '\n\nCheck your phone/email now for the payment link.';
+      resultEl.className = 'ok';
+    } else {
+      resultEl.textContent = '❌ Failed: ' + (data.reason || 'Unknown error') + '\n\nCheck your Vercel logs for the raw response — it usually says exactly what went wrong.';
+      resultEl.className = 'fail';
+    }
+  } catch (e) {
+    resultEl.textContent = '❌ Could not reach the endpoint: ' + e.message;
+    resultEl.className = 'fail';
+  } finally {
+    resultEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Send Test Payment Request';
+  }
+}
+</script>
+
+</body>
+</html>
