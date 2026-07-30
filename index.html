@@ -9922,28 +9922,14 @@ async function nmChangePassword(curId, newId, confId, errId, sucId, btnId) {
   btn.disabled = true; btn.textContent = 'Updating...';
 
   try {
-    // Re-fetch the stored hash fresh from Supabase — currentUser (in memory
-    // / localStorage) never holds the password, by design, so this is the
-    // only place we can verify the current password against.
-    const result = await nmSupaQuery(() =>
-      _supa.from('users').select('id,password').ilike('email', currentUser.email).limit(1)
-    );
-    const row = result && result.data && result.data[0];
-    if (!row) { showAuthError(errId, 'Could not find your account. Please contact support.'); return; }
-
-    const ok = await nmVerifyPassword(curPass, row.password);
-    if (!ok) { showAuthError(errId, 'Your current password is incorrect.'); return; }
-
-    const { stored } = await nmHashPassword(newPass);
-    const { data, error } = await nmSupaQuery(() =>
-      _supa.from('users').update({ password: stored }).eq('id', row.id).select()
-    );
-    if (error) throw error;
-    if (!data || data.length === 0) {
-      // Same silent-RLS-block pattern as the admin delete buttons — verify
-      // the write actually landed instead of trusting an empty success.
-      throw new Error('The update did not go through. Please contact support.');
-    }
+    // SECURITY FIX: verification and update now happen server-side in
+    // /api/auth-change-password — the browser never receives the hash.
+    const chgRes = await fetch('/api/auth-change-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: currentUser.email, currentPassword: curPass, newPassword: newPass }),
+    });
+    const result = await chgRes.json();
+    if (!result.ok) { showAuthError(errId, result.reason || 'Could not update your password.'); return; }
 
  showAuthSuccess(sucId, ' Password updated. Use your new password next time you log in.');
     document.getElementById(curId).value  = '';
@@ -10061,7 +10047,10 @@ const NM_USERS = { businesses:[], subscribers:[], guests:[] };
 
 async function loadNMUsers() {
   try {
-    const result = await nmSupaQuery(() => _supa.from('users').select('*'));
+    // SECURITY FIX: explicitly exclude 'password' — this function runs on
+    // every page load for every visitor, so it must never touch the
+    // password column, even before RLS is tightened at the database level.
+    const result = await nmSupaQuery(() => _supa.from('users').select('id,name,owner,email,role,plan,created_at,joinedAt'));
     const data = result && result.data;
     if(data) {
       NM_USERS.businesses = data.filter(u=>u.role==='business');
@@ -10153,7 +10142,9 @@ async function nmHandleOAuthReturn() {
     if (!email) { sessionStorage.removeItem('nm_oauth_portal'); return; }
 
     const role = portal === 'biz' ? 'business' : 'subscriber';
-    const existing = await nmSupaQuery(() => _supa.from('users').select('*').eq('role', role).ilike('email', email).limit(1));
+    // SECURITY FIX: explicitly exclude 'password' — OAuth users never have
+    // a password to check here, so there was never a reason to read it.
+    const existing = await nmSupaQuery(() => _supa.from('users').select('id,name,owner,email,role,plan,joinedAt,created_at').eq('role', role).ilike('email', email).limit(1));
     let row = existing && existing.data && existing.data[0];
 
     if (!row && role === 'business') {
@@ -10207,6 +10198,14 @@ loadNMUsers();
 // trigger the admin login attempt in handleBizLogin() below — it grants
 // no access by itself.
 const ADMIN_EMAIL = 'supportnoamark@gmail.com';
+
+// Holds the signed admin session token issued by /api/auth-login on admin
+// login — required by every admin-only server endpoint (see admin-resets.js).
+let nmAdminToken = null;
+function nmGetAdminToken() {
+  if (nmAdminToken) return nmAdminToken;
+  try { return sessionStorage.getItem('nm_admin_token') || null; } catch(e) { return null; }
+}
 
 function saveNMUsers() { /* handled by Supabase now */ }
 
@@ -10525,6 +10524,8 @@ async function handleBizLogin() {
       });
       const adminData = await adminRes.json();
       if (adminData.ok) {
+        nmAdminToken = adminData.adminToken;
+        try { sessionStorage.setItem('nm_admin_token', nmAdminToken); } catch(e) {}
         loginAs(adminData.user);
         showAuthSuccess('biz-login-success', ' Welcome back, Admin!');
         setTimeout(()=>{ closeAuth(); showAdminDashboard(); }, 350);
@@ -13664,26 +13665,20 @@ async function handleForgotPassword() {
   btn.disabled = true; btn.textContent = 'Sending…';
 
   try {
-    // Check user exists in Supabase. Use ilike (case-insensitive), not eq —
-    // emails typed at signup may have been auto-capitalized by a mobile
-    // keyboard, and an exact-match eq() would wrongly say "no account found"
-    // for a real account whose stored email casing differs from what's typed here.
-    const result = await nmSupaQuery(() => _supa.from('users').select('id,email,name,role').ilike('email', email).maybeSingle());
-    if(!result || !result.data) {
-      errEl.textContent = 'No account found with that email address. Please check the email and try again.';
+    // SECURITY FIX: account check + reset request logging now happen
+    // server-side in /api/auth-forgot-password — the browser never queries
+    // the users table directly.
+    const fpRes = await fetch('/api/auth-forgot-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name }),
+    });
+    const result = await fpRes.json();
+    if (!result.ok) {
+      errEl.textContent = result.reason || 'Something went wrong. Please try again.';
       errEl.style.display = 'block';
       btn.disabled = false; btn.textContent = 'Send Reset Request →';
       return;
     }
-    // Save reset request to Supabase password_resets table
-    await nmSupaQuery(() => _supa.from('password_resets').insert({
-      email: email,
-      name: name,
-      user_role: result.data.role || 'unknown',
-      requested_at: new Date().toISOString(),
-      status: 'pending'
-    }));
-    // Update badge count for admin
     sucEl.textContent = 'Request sent successfully! The NoaMark team will contact you at ' + email + ' within 24 hours with your new temporary password.';
     sucEl.style.display = 'block';
  btn.textContent = 'Request Sent ';
@@ -13705,10 +13700,16 @@ async function admLoadResets() {
   listEl.innerHTML = '<div class="adm-empty">Loading…</div>';
 
   try {
-    const result = await nmSupaQuery(() =>
-      _supa.from('password_resets').select('*').order('requested_at', { ascending: false })
-    );
-    const resets = (result && result.data) || [];
+    // SECURITY FIX: now requires a valid admin session token, verified
+    // server-side in /api/admin-resets — password_resets is no longer
+    // publicly readable via the anon key.
+    const listRes = await fetch('/api/admin-resets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (nmGetAdminToken() || '') },
+      body: JSON.stringify({ action: 'list' }),
+    });
+    const listData = await listRes.json();
+    const resets = (listData && listData.ok && listData.resets) || [];
     const pending = resets.filter(r => r.status === 'pending');
 
     // Update badge
@@ -13756,7 +13757,14 @@ async function admLoadResets() {
 
 async function admMarkResetDone(id) {
   try {
-    await nmSupaQuery(() => _supa.from('password_resets').update({ status: 'done' }).eq('id', id));
+    // SECURITY FIX: now requires a valid admin session token.
+    const res = await fetch('/api/admin-resets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (nmGetAdminToken() || '') },
+      body: JSON.stringify({ action: 'mark-done', id }),
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.reason || 'Update failed');
     admLoadResets();
   } catch(e) { alert('Could not update status. Try again.'); }
 }
@@ -13771,10 +13779,16 @@ async function admLookupAccount() {
   if(!email) { resultEl.innerHTML = '<div class="adm-empty">Enter an email address to search.</div>'; return; }
   resultEl.innerHTML = '<div class="adm-empty">Searching…</div>';
   try {
-    const result = await nmSupaQuery(() =>
-      _supa.from('users').select('id,name,owner,email,role,plan,created_at,joinedAt,password').ilike('email', email)
-    );
-    const rows = (result && result.data) || [];
+    // SECURITY FIX: now goes through /api/admin-resets (admin-token gated)
+    // — the raw password hash never leaves the server, only a hasPassword
+    // boolean, which is all this table ever displayed anyway.
+    const lookupRes = await fetch('/api/admin-resets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (nmGetAdminToken() || '') },
+      body: JSON.stringify({ action: 'lookup', email }),
+    });
+    const lookupData = await lookupRes.json();
+    const rows = (lookupData && lookupData.ok && lookupData.rows) || [];
     if(rows.length === 0) {
       resultEl.innerHTML = '<div class="adm-empty">No account found with this email, under any role. They likely need to sign up (or their signup silently failed, ask them to try again and watch for an error message).</div>';
       return;
@@ -13783,7 +13797,7 @@ async function admLookupAccount() {
       rows.map(r => {
         const joined = r.created_at || r.joinedAt;
         const when = joined ? new Date(joined).toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'}) : '—';
- const hasPw = r.password ? ' Yes' : ' No password saved';
+ const hasPw = r.hasPassword ? ' Yes' : ' No password saved';
         return '<tr><td style="font-weight:600;color:#fff;">' + nmSafe(r.name || r.owner || '—') + '</td>' +
           '<td><span style="text-transform:uppercase;font-weight:700;color:' + (r.role === 'business' ? '#4ade80' : '#fbbf24') + ';">' + nmSafe(r.role || 'unknown') + '</span></td>' +
           '<td style="color:#63b3ed;">' + nmSafe(r.email || '—') + '</td>' +
@@ -13938,23 +13952,17 @@ async function admResetUserPassword() {
   }
 
   try {
-    // Hash the new password using the same method as registration
-    let storedPw = newPw;
-    try {
-      const hashed = await nmHashPassword(newPw);
-      storedPw = hashed.stored;
-    } catch(e) { console.warn('Hash failed, storing plain (not ideal):', e); }
+    // SECURITY FIX: password hashing + the users/password_resets writes now
+    // happen server-side in /api/admin-resets, gated by the admin session
+    // token — the anon key can no longer write to either table.
+    const resetRes = await fetch('/api/admin-resets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (nmGetAdminToken() || '') },
+      body: JSON.stringify({ action: 'reset-password', email, newPassword: newPw }),
+    });
+    const result = await resetRes.json();
 
-    // ilike (case-insensitive) — same reasoning as the forgot-password fix above:
-    // an exact eq() match fails silently whenever the stored email's casing
-    // differs even slightly from what's typed into this admin box.
-    const result = await nmSupaQuery(() =>
-      _supa.from('users').update({ password: storedPw }).ilike('email', email).select('id')
-    );
-    if(result && result.data && result.data.length > 0) {
-      // Mark any pending reset for this email as done
-      await nmSupaQuery(() => _supa.from('password_resets').update({ status: 'done' }).eq('email', email).eq('status', 'pending'));
-
+    if(result && result.ok) {
       // Email the temporary password directly to the user — previously this
       // only updated the database and left it to the admin to manually relay
       // the password (phone/WhatsApp/personal email), with no automated
@@ -13982,7 +13990,7 @@ async function admResetUserPassword() {
       admLoadResets();
     } else {
       msgEl.style.background = 'rgba(239,68,68,.15)'; msgEl.style.color = '#f87171';
-      msgEl.textContent = 'No user found with that email address. Check the email and try again.';
+      msgEl.textContent = (result && result.reason) || 'No user found with that email address. Check the email and try again.';
       msgEl.style.display = 'block';
     }
   } catch(e) {
@@ -14588,7 +14596,9 @@ async function admLoadRevenue() {
 
 async function admLoadUsers() {
   try {
-    const { data } = await nmSupaQuery(() => _supa.from('users').select('*').order('created_at',{ascending:false}));
+    // SECURITY FIX: explicitly exclude 'password' — this only counts users
+    // by role for the dashboard stat cards, never needs the hash.
+    const { data } = await nmSupaQuery(() => _supa.from('users').select('id,name,role,created_at').order('created_at',{ascending:false}));
     const users = data || [];
     const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
     set('adm-users-biz', users.filter(u => u.role === 'business').length);
