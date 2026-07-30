@@ -41,6 +41,33 @@
 
 import crypto from 'crypto';
 
+// Issues a simple signed token proving "this browser successfully logged in
+// as admin" — needed because admin actions after login (resetting a user's
+// password, viewing the reset queue) must be verifiable server-side too;
+// otherwise anyone could call those endpoints directly without ever
+// actually logging in. 12-hour expiry — long enough for a work session,
+// short enough that a leaked token doesn't stay valid indefinitely.
+export function issueAdminToken() {
+  const secret = process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD || '';
+  const expires = Date.now() + 12 * 60 * 60 * 1000;
+  const payload = String(expires);
+  const sig = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  return `${payload}.${sig}`;
+}
+
+export function verifyAdminToken(token) {
+  if (!token || typeof token !== 'string' || !token.includes('.')) return false;
+  const secret = process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD || '';
+  const [payload, sig] = token.split('.');
+  const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  // Timing-safe comparison — a plain === check on a signature leaks timing
+  // information an attacker could use to guess it byte-by-byte.
+  const sigBuf = Buffer.from(sig || '', 'hex');
+  const expBuf = Buffer.from(expected, 'hex');
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return false;
+  return Date.now() < Number(payload);
+}
+
 function pbkdf2Hex(password, saltHex) {
   const salt = Buffer.from(saltHex, 'hex');
   const derived = crypto.pbkdf2Sync(password, salt, 100000, 32, 'sha256');
@@ -112,6 +139,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         ok: true,
         user: { type: 'admin', name: 'NoaMark Admin', owner: 'NoaMark', email: adminEmail, plan: 'Admin', id: 'admin-001' },
+        adminToken: issueAdminToken(),
       });
     }
 
