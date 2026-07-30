@@ -10199,17 +10199,14 @@ document.addEventListener('DOMContentLoaded', nmHandleOAuthReturn);
 // Load users on startup
 loadNMUsers();
 
-// ── ADMIN CREDENTIALS — verified via SHA-256 hash, never stored in plaintext ──
+// ── ADMIN LOGIN — SECURITY FIX ──
+// Verification moved entirely server-side, see /api/auth-login.js.
+// The admin credential is now a Vercel environment variable
+// (ADMIN_EMAIL / ADMIN_PASSWORD) and is never present in this file.
+// This constant is kept only so the browser knows which email should
+// trigger the admin login attempt in handleBizLogin() below — it grants
+// no access by itself.
 const ADMIN_EMAIL = 'supportnoamark@gmail.com';
-// Hash = SHA-256('nm_admin_salt_2026::Noah#2026') — plaintext never in source
-const _ADMIN_PH = 'a5445015b3bf3e40a9a70ea92bb4beb429728bd2490711577fddae6f2c078989';
-async function _verifyAdminPass(pass) {
-  try {
-    const enc = new TextEncoder();
-    const buf = await crypto.subtle.digest('SHA-256', enc.encode('nm_admin_salt_2026::' + pass));
-    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('') === _ADMIN_PH;
-  } catch(e) { return false; }
-}
 
 function saveNMUsers() { /* handled by Supabase now */ }
 
@@ -10518,17 +10515,22 @@ async function handleBizLogin() {
   const pass      = document.getElementById('biz-login-password').value;
 
   // ── ADMIN LOGIN CHECK (runs FIRST — before name field validation) ──
+  // SECURITY FIX: verification now happens server-side in /api/auth-login —
+  // the password (and the admin credential itself) never live in this file.
   if(email && pass && email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-    const isAdmin = await _verifyAdminPass(pass);
-    if(isAdmin) {
-      loginAs({ type:'admin', name:'NoaMark Admin', owner:'NoaMark', email:ADMIN_EMAIL, plan:'Admin', id:'admin-001' });
- showAuthSuccess('biz-login-success', ' Welcome back, Admin!');
-      // Shortened from 900ms — this was pure waiting with no work happening,
-      // and it stacks with the dashboard's own load time right after,
-      // making the whole "log in as admin" flow feel sluggish.
-      setTimeout(()=>{ closeAuth(); showAdminDashboard(); }, 350);
-      return;
-    }
+    try {
+      const adminRes = await fetch('/api/auth-login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'admin', email, password: pass }),
+      });
+      const adminData = await adminRes.json();
+      if (adminData.ok) {
+        loginAs(adminData.user);
+        showAuthSuccess('biz-login-success', ' Welcome back, Admin!');
+        setTimeout(()=>{ closeAuth(); showAdminDashboard(); }, 350);
+        return;
+      }
+    } catch(e) { /* fall through to normal business login below */ }
   }
 
   if(!loginName||!email||!pass) { showAuthError('biz-login-error','Please fill in all fields before continuing.'); return; }
@@ -10541,43 +10543,29 @@ async function handleBizLogin() {
 
   showAuthError('biz-login-error', 'Checking account...');
   try {
-    // Query by EMAIL (the upsert conflict key — always unique, never has spacing/case issues).
-    // The old query used business name which failed when names had subtle differences.
-    const result = await nmSupaQuery(() =>
-      _supa.from('users').select('*').eq('role','business').ilike('email', email).limit(1)
-    );
-    const biz = result && result.data && result.data[0];
-    if (!biz) {
-      // Before giving up, check if this email exists under ANY role — this
-      // tells apart "never signed up" from "signed up but saved under the
-      // wrong role" (e.g. a signup that partially failed), which needs a
-      // different fix (an admin role correction, not a fresh signup).
-      let hint = '';
-      try {
-        const anyRole = await nmSupaQuery(() =>
-          _supa.from('users').select('role').ilike('email', email).limit(1)
-        );
-        const found = anyRole && anyRole.data && anyRole.data[0];
-        if (found) hint = ' We did find an account with this email registered as "' + (found.role || 'unknown') + '", if you meant to sign up as a business, contact support@noamark.com to have it corrected.';
-      } catch(e) { /* best-effort hint only, ignore failures */ }
+    // SECURITY FIX: password verification now happens server-side in
+    // /api/auth-login — the browser never receives the password hash.
+    const loginRes = await fetch('/api/auth-login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'business', email, name: loginName, password: pass }),
+    });
+    const result = await loginRes.json();
+
+    if (!result.ok) {
       nmRecordFailedAttempt('biz-login', email, 5, 3*60*60*1000);
-      showAuthError('biz-login-error', '\u274C No business account found with that email. Please check your email or sign up for a new account.' + hint);
+      if (result.reason === 'no_account') {
+        showAuthError('biz-login-error', '\u274C No business account found with that email. Please check your email or sign up for a new account.');
+      } else if (result.reason === 'name_mismatch') {
+        showAuthError('biz-login-error', '\u274C Business name does not match our records. Please use the exact name you registered with.');
+      } else {
+        showAuthError('biz-login-error', '\u274C Incorrect password. Please try again.');
+      }
       return;
     }
-    // Verify business name matches (case-insensitive) so the right business is confirmed
-    if (biz.name.trim().toLowerCase() !== loginName.trim().toLowerCase()) {
-      nmRecordFailedAttempt('biz-login', email, 5, 3*60*60*1000);
-      showAuthError('biz-login-error', '\u274C Business name does not match our records. Please use the exact name you registered with.');
-      return;
-    }
-    const pwOk = await nmVerifyPassword(pass, biz.password);
-    if (!pwOk) {
-      nmRecordFailedAttempt('biz-login', email, 5, 3*60*60*1000);
-      showAuthError('biz-login-error', '\u274C Incorrect password. Please try again.');
-      return;
-    }
+
     nmClearLockout('biz-login', email);
-    loginAs({ type:'business', name:biz.name, owner:biz.owner || biz.name, email:biz.email, plan:'Business', id:biz.id, joinedAt:biz.joinedAt || biz.created_at });
+    const biz = result.user;
+    loginAs(biz);
     showAuthSuccess('biz-login-success', '\u2713 Welcome back, ' + biz.name + '!');
     setTimeout(() => {
       closeAuth();
@@ -10660,15 +10648,29 @@ async function handleSubLogin() {
 
   showAuthError('sub-login-error', 'Checking account...');
   try {
-    const result = await nmSupaQuery(() => _supa.from('users').select('*').eq('role','subscriber').ilike('name', loginName).limit(1));
-    const subByName = result && result.data && result.data[0];
-    if(!subByName) { nmRecordFailedAttempt('sub-login', email, 5, 3*60*60*1000); showAuthError('sub-login-error','\u274C No learner account found with that name. Please check your name or sign up.'); return; }
-    if(subByName.email.toLowerCase() !== email.toLowerCase()) { nmRecordFailedAttempt('sub-login', email, 5, 3*60*60*1000); showAuthError('sub-login-error','\u274C That email does not match. Please check your email.'); return; }
-    const pwOk = await nmVerifyPassword(pass, subByName.password);
-    if(!pwOk) { nmRecordFailedAttempt('sub-login', email, 5, 3*60*60*1000); showAuthError('sub-login-error','\u274C Incorrect password. Please try again.'); return; }
+    // SECURITY FIX: password verification now happens server-side in
+    // /api/auth-login — the browser never receives the password hash.
+    const loginRes = await fetch('/api/auth-login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'subscriber', email, name: loginName, password: pass }),
+    });
+    const result = await loginRes.json();
+
+    if (!result.ok) {
+      nmRecordFailedAttempt('sub-login', email, 5, 3*60*60*1000);
+      if (result.reason === 'no_account') {
+        showAuthError('sub-login-error','\u274C No learner account found with that name. Please check your name or sign up.');
+      } else if (result.reason === 'email_mismatch') {
+        showAuthError('sub-login-error','\u274C That email does not match. Please check your email.');
+      } else {
+        showAuthError('sub-login-error','\u274C Incorrect password. Please try again.');
+      }
+      return;
+    }
+
     nmClearLockout('sub-login', email);
-    loginAs({ type:'subscriber', name:subByName.name, email:subByName.email, plan:subByName.plan||'Free', id:subByName.id });
-    showAuthSuccess('sub-login-success', '\u2713 Welcome back, '+subByName.name+'!');
+    loginAs(result.user);
+    showAuthSuccess('sub-login-success', '\u2713 Welcome back, '+result.user.name+'!');
     setTimeout(closeAuth, 900);
   } catch(e) { showAuthError('sub-login-error', navigator.onLine ? 'Connection error. Please try again.' : 'You are offline. Check your connection.'); }
 }
@@ -10738,14 +10740,29 @@ async function handleGuestLogin() {
 
   showAuthError('guest-login-error', 'Checking account...');
   try {
-    const result = await nmSupaQuery(() => _supa.from('users').select('*').eq('role','guest').ilike('name', loginName).limit(1));
-    const guestByName = result && result.data && result.data[0];
-    if(!guestByName) { nmRecordFailedAttempt('guest-login', loginName, 5, 3*60*60*1000); showAuthError('guest-login-error','\u274C No Explorer account found with that name. Please check your name or register.'); return; }
-    const pwOk = await nmVerifyPassword(pass, guestByName.password);
-    if(!pwOk) { nmRecordFailedAttempt('guest-login', loginName, 5, 3*60*60*1000); showAuthError('guest-login-error','\u274C Incorrect password. Please try again.'); return; }
+    // SECURITY FIX: password verification now happens server-side in
+    // /api/auth-login — the browser never receives the password hash.
+    const loginRes = await fetch('/api/auth-login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'guest', name: loginName, password: pass }),
+    });
+    const result = await loginRes.json();
+
+    if (!result.ok) {
+      nmRecordFailedAttempt('guest-login', loginName, 5, 3*60*60*1000);
+      if (result.reason === 'no_account') {
+        showAuthError('guest-login-error','\u274C No Explorer account found with that name. Please check your name or register.');
+      } else {
+        showAuthError('guest-login-error','\u274C Incorrect password. Please try again.');
+      }
+      return;
+    }
+
     nmClearLockout('guest-login', loginName);
-    loginAs({ type:'guest', name:guestByName.name, location:guestByName.email||loginLoc, plan:'Explorer', id:guestByName.id });
-    showAuthSuccess('guest-login-success', '\u2713 Welcome back, '+guestByName.name+'!');
+    const guestUser = result.user;
+    if (!guestUser.location) guestUser.location = loginLoc;
+    loginAs(guestUser);
+    showAuthSuccess('guest-login-success', '\u2713 Welcome back, '+guestUser.name+'!');
     setTimeout(()=>{ closeAuth(); showPage('marketplace'); }, 900);
   } catch(e) { showAuthError('guest-login-error', navigator.onLine ? 'Connection error. Please try again.' : 'You are offline. Check your connection.'); }
 }
