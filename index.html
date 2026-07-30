@@ -10254,6 +10254,11 @@ let activeAuthType = 'business';
 // ──────────────────────────────────────────────────
 function openAuth(type, required) {
   authRequired = !!required;
+  // BUG FIX: this modal never locked background scroll, unlike every other
+  // modal in the app (booking, gate) — on mobile this let the page behind
+  // it keep scrolling/rubber-banding, which is what showed marketplace
+  // content bleeding through around the edges of the forgot-password screen.
+  nmLockBodyScroll(true);
   document.getElementById('auth-overlay').classList.add('active');
   document.getElementById('auth-close-btn').style.display = authRequired ? 'none' : 'block';
   // Always start on the login form, not the forgot screen
@@ -10276,6 +10281,7 @@ function openAuth(type, required) {
 
 function closeAuth() {
   if(authRequired) return;
+  nmLockBodyScroll(false);
   document.getElementById('auth-overlay').classList.remove('active');
   // Always reset forgot password screen so next open starts fresh on the login form
   const forgotScreen = document.getElementById('auth-forgot-screen');
@@ -10293,6 +10299,11 @@ function closeAuth() {
   if (!window._nmAuthPrefillActive) {
     document.querySelectorAll('#auth-overlay input.auth-input').forEach(el => { el.value = ''; });
     document.querySelectorAll('#auth-overlay .auth-error').forEach(el => { el.textContent = ''; el.style.display = 'none'; });
+    // BUG FIX: success messages (e.g. "Welcome back, Piatto!") were never
+    // cleared here, only errors — so the previous account's greeting stayed
+    // visible and reappeared the next time the login form opened, even
+    // after logging out and trying to log in as someone else.
+    document.querySelectorAll('#auth-overlay [id$="-success"]').forEach(el => { el.textContent = ''; el.style.display = 'none'; });
   }
   // BUG THIS FIXES: same root cause as closeGate() (see its comment for the
   // full explanation) — closeAuth() never touched history, so every time
