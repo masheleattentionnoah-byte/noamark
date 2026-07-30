@@ -9924,9 +9924,9 @@ async function nmChangePassword(curId, newId, confId, errId, sucId, btnId) {
   try {
     // SECURITY FIX: verification and update now happen server-side in
     // /api/auth-change-password — the browser never receives the hash.
-    const chgRes = await fetch('/api/auth-change-password', {
+    const chgRes = await fetch('/api/auth', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: currentUser.email, currentPassword: curPass, newPassword: newPass }),
+      body: JSON.stringify({ mode: 'change-password', email: currentUser.email, currentPassword: curPass, newPassword: newPass }),
     });
     const result = await chgRes.json();
     if (!result.ok) { showAuthError(errId, result.reason || 'Could not update your password.'); return; }
@@ -10518,9 +10518,9 @@ async function handleBizLogin() {
   // the password (and the admin credential itself) never live in this file.
   if(email && pass && email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
     try {
-      const adminRes = await fetch('/api/auth-login', {
+      const adminRes = await fetch('/api/auth', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: 'admin', email, password: pass }),
+        body: JSON.stringify({ mode: 'login', role: 'admin', email, password: pass }),
       });
       const adminData = await adminRes.json();
       if (adminData.ok) {
@@ -10546,9 +10546,9 @@ async function handleBizLogin() {
   try {
     // SECURITY FIX: password verification now happens server-side in
     // /api/auth-login — the browser never receives the password hash.
-    const loginRes = await fetch('/api/auth-login', {
+    const loginRes = await fetch('/api/auth', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: 'business', email, name: loginName, password: pass }),
+      body: JSON.stringify({ mode: 'login', role: 'business', email, name: loginName, password: pass }),
     });
     const result = await loginRes.json();
 
@@ -10651,9 +10651,9 @@ async function handleSubLogin() {
   try {
     // SECURITY FIX: password verification now happens server-side in
     // /api/auth-login — the browser never receives the password hash.
-    const loginRes = await fetch('/api/auth-login', {
+    const loginRes = await fetch('/api/auth', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: 'subscriber', email, name: loginName, password: pass }),
+      body: JSON.stringify({ mode: 'login', role: 'subscriber', email, name: loginName, password: pass }),
     });
     const result = await loginRes.json();
 
@@ -10743,9 +10743,9 @@ async function handleGuestLogin() {
   try {
     // SECURITY FIX: password verification now happens server-side in
     // /api/auth-login — the browser never receives the password hash.
-    const loginRes = await fetch('/api/auth-login', {
+    const loginRes = await fetch('/api/auth', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: 'guest', name: loginName, password: pass }),
+      body: JSON.stringify({ mode: 'login', role: 'guest', name: loginName, password: pass }),
     });
     const result = await loginRes.json();
 
@@ -13668,9 +13668,9 @@ async function handleForgotPassword() {
     // SECURITY FIX: account check + reset request logging now happen
     // server-side in /api/auth-forgot-password — the browser never queries
     // the users table directly.
-    const fpRes = await fetch('/api/auth-forgot-password', {
+    const fpRes = await fetch('/api/auth', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, name }),
+      body: JSON.stringify({ mode: 'forgot-password', email, name }),
     });
     const result = await fpRes.json();
     if (!result.ok) {
@@ -13709,10 +13709,10 @@ async function admLoadResets() {
     // SECURITY FIX: now requires a valid admin session token, verified
     // server-side in /api/admin-resets — password_resets is no longer
     // publicly readable via the anon key.
-    const listRes = await fetch('/api/admin-resets', {
+    const listRes = await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (nmGetAdminToken() || '') },
-      body: JSON.stringify({ action: 'list' }),
+      body: JSON.stringify({ mode: 'admin', action: 'list' }),
     });
     const listData = await listRes.json();
     const resets = (listData && listData.ok && listData.resets) || [];
@@ -13765,10 +13765,10 @@ async function admLoadResets() {
 async function admMarkResetDone(id) {
   try {
     // SECURITY FIX: now requires a valid admin session token.
-    const res = await fetch('/api/admin-resets', {
+    const res = await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (nmGetAdminToken() || '') },
-      body: JSON.stringify({ action: 'mark-done', id }),
+      body: JSON.stringify({ mode: 'admin', action: 'mark-done', id }),
     });
     const result = await res.json();
     if (!result.ok) throw new Error(result.reason || 'Update failed');
@@ -13779,10 +13779,10 @@ async function admMarkResetDone(id) {
 async function admDeleteReset(id) {
   if (!confirm('Delete this password reset request? This just clears it from the list — it does not change the account\'s actual password.')) return;
   try {
-    const res = await fetch('/api/admin-resets', {
+    const res = await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (nmGetAdminToken() || '') },
-      body: JSON.stringify({ action: 'delete', id }),
+      body: JSON.stringify({ mode: 'admin', action: 'delete', id }),
     });
     const result = await res.json();
     if (!result.ok) throw new Error(result.reason || 'Delete failed');
@@ -13803,10 +13803,10 @@ async function admLookupAccount() {
     // SECURITY FIX: now goes through /api/admin-resets (admin-token gated)
     // — the raw password hash never leaves the server, only a hasPassword
     // boolean, which is all this table ever displayed anyway.
-    const lookupRes = await fetch('/api/admin-resets', {
+    const lookupRes = await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (nmGetAdminToken() || '') },
-      body: JSON.stringify({ action: 'lookup', email }),
+      body: JSON.stringify({ mode: 'admin', action: 'lookup', email }),
     });
     const lookupData = await lookupRes.json();
     const rows = (lookupData && lookupData.ok && lookupData.rows) || [];
@@ -13976,10 +13976,10 @@ async function admResetUserPassword() {
     // SECURITY FIX: password hashing + the users/password_resets writes now
     // happen server-side in /api/admin-resets, gated by the admin session
     // token — the anon key can no longer write to either table.
-    const resetRes = await fetch('/api/admin-resets', {
+    const resetRes = await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (nmGetAdminToken() || '') },
-      body: JSON.stringify({ action: 'reset-password', email, newPassword: newPw }),
+      body: JSON.stringify({ mode: 'admin', action: 'reset-password', email, newPassword: newPw }),
     });
     const result = await resetRes.json();
 
