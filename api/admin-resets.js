@@ -119,6 +119,14 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, rows: safeRows });
     }
 
+    if (action === 'delete') {
+      const { id } = req.body;
+      if (!id) return res.status(400).json({ ok: false, reason: 'Missing id' });
+      const del = await supaFetch(`password_resets?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!del.ok) throw new Error(await del.text());
+      return res.status(200).json({ ok: true });
+    }
+
     return res.status(400).json({ ok: false, reason: 'Unknown action' });
   } catch (e) {
     console.error('admin-resets error:', e);
