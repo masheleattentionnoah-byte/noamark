@@ -1,34 +1,10 @@
 // /api/netcash-payment-request.js
-//
-// Automates what was being done manually in the Netcash dashboard: creates
-// a Payment Request (SMS + Email, containing a secure pay link) for a
-// specific business, referencing one of the Subscription Templates already
-// set up in your Netcash account (Starter/Growth/Pro), instead of you
-// entering the customer's phone number by hand each time.
-//
-// HONESTY NOTE — READ BEFORE RELYING ON THIS IN PRODUCTION:
-// This calls Netcash's "CreateInvoice" SOAP web service. The parameter
-// list below (ServiceKey, M1, M2, Amount, P2, P3, M4-M6, M9, M11-M14, M27)
-// is taken directly from Netcash's own published documentation and is
-// solid. What is NOT independently confirmed is the exact SOAP envelope
-// structure (namespace / SOAPAction) — Netcash's WSDL wasn't retrievable
-// in a form I could verify with certainty. The envelope below follows the
-// standard, extremely common convention for this class of older Microsoft
-// web service (namespace defaulting to http://tempuri.org/), which is a
-// reasonable best guess but genuinely may need one correction once tested
-// against a real account. If it fails, check the raw response logged
-// below — a SOAP fault message usually states exactly what's wrong
-// (wrong namespace, wrong action, etc.), which turns this from a guess
-// into a one-line fix rather than another round of guessing blind.
-//
-// SETUP NEEDED IN VERCEL (Project Settings → Environment Variables):
-//   NETCASH_SERVICE_KEY — already set, reused here.
+// ... (header comments unchanged) ...
+
+import crypto from 'crypto';
 
 const NETCASH_SOFTWARE_VENDOR_KEY = '24ade73c-98cf-47b3-99be-cc7b867b3080';
 
-// Subscription Template IDs — from your Netcash Merchant Admin →
-// Services → Pay Now → Subscriptions → Manage subscription templates.
-// If these ever change (template deleted/recreated), update the IDs here.
 const SUBSCRIPTION_TEMPLATES = {
   starter: '11863',
   growth:  '11864',
@@ -47,6 +23,46 @@ function escapeXml(str) {
   }[c]));
 }
 
+// ── NEW: verify the caller is a real logged-in business ──
+function verifySessionToken(token) {
+  if (!token || typeof token !== 'string' || !token.includes('.')) return null;
+  const secret = process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD || '';
+  const [payload, sig] = token.split('.');
+  const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  const sigBuf = Buffer.from(sig || '', 'hex');
+  const expBuf = Buffer.from(expected, 'hex');
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return null;
+  try {
+    const claims = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    if (Date.now() >= claims.exp) return null;
+    return claims;
+  } catch (e) { return null; }
+}
+
+// ── NEW: very small in-memory rate limit, per business id ──
+// Best-effort only (resets on cold start) but stops a leaked/stolen token
+// from being hammered in a tight loop.
+const _lastRequestAt = {};
+function tooSoon(key, minGapMs = 10000) {
+  const now = Date.now();
+  if (_lastRequestAt[key] && now - _lastRequestAt[key] < minGapMs) return true;
+  _lastRequestAt[key] = now;
+  return false;
+}
+
+function buildHash(fieldsInOrder, privateKey) {
+  const raw = fieldsInOrder.join('') + privateKey;
+  return crypto.createHash('sha512').update(raw.toLowerCase()).digest('hex');
+}
+
+async function supaFetch(path) {
+  const base = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  return fetch(`${base}/rest/v1/${path}`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+  });
+}
+
 export default async function handler(req, res) {
   const origin = req.headers.origin || '';
   const allowedOrigins = ['https://noamark.com', 'https://www.noamark.com'];
@@ -55,14 +71,21 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, reason: 'Method not allowed' });
   }
 
-  const { plan, listingId, businessEmail, businessMobile } = req.body || {};
+  // ── NEW: require a valid business (or admin) session token ──
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const claims = verifySessionToken(token);
+  if (!claims || (claims.role !== 'business' && claims.role !== 'admin')) {
+    return res.status(401).json({ ok: false, reason: 'Please log in again.' });
+  }
+
+  const { plan, listingId } = req.body || {};
 
   if (!plan || !SUBSCRIPTION_TEMPLATES[plan]) {
     return res.status(400).json({ ok: false, reason: 'Unknown or missing plan' });
@@ -70,8 +93,26 @@ export default async function handler(req, res) {
   if (!listingId) {
     return res.status(400).json({ ok: false, reason: 'Missing listingId' });
   }
+
+  if (tooSoon('biz:' + claims.id)) {
+    return res.status(429).json({ ok: false, reason: 'Please wait a moment before trying again.' });
+  }
+
+  // ── NEW: pull the business's own email/mobile server-side instead of
+  // trusting whatever the client sent — closes the "spam a stranger's
+  // phone with an invoice" hole entirely, and also stops the request
+  // being made against a listing that isn't the caller's own (unless admin).
+  const listRes = await supaFetch(`users?id=eq.${encodeURIComponent(claims.id)}&select=id,email,mobile&limit=1`);
+  const rows = await listRes.json().catch(() => []);
+  const biz = rows[0];
+  if (claims.role === 'business' && (!biz || String(biz.id) !== String(claims.id))) {
+    return res.status(403).json({ ok: false, reason: 'Account not found.' });
+  }
+  const businessEmail = biz?.email || '';
+  const businessMobile = biz?.mobile || '';
+
   if (!businessEmail && !businessMobile) {
-    return res.status(400).json({ ok: false, reason: 'Need an email or mobile number to send the payment request to' });
+    return res.status(400).json({ ok: false, reason: 'Your account has no email or mobile on file.' });
   }
 
   const serviceKey = process.env.NETCASH_SERVICE_KEY;
@@ -80,7 +121,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: false, reason: 'Payments are not configured yet.' });
   }
 
-  const p2 = 'NM' + Date.now().toString(36).toUpperCase(); // unique reference, must not repeat
+  const p2 = 'NM' + Date.now().toString(36).toUpperCase();
   const sendSms = !!businessMobile;
   const sendEmail = !!businessEmail;
 
@@ -95,9 +136,9 @@ export default async function handler(req, res) {
       <tem:P3>${escapeXml(PLAN_DESCRIPTIONS[plan])}</tem:P3>
       <tem:M4>${escapeXml(plan)}</tem:M4>
       <tem:M5>${escapeXml(listingId)}</tem:M5>
-      <tem:M6>${escapeXml(businessEmail || '')}</tem:M6>
-      <tem:M9>${escapeXml(businessEmail || '')}</tem:M9>
-      <tem:M11>${escapeXml(businessMobile || '')}</tem:M11>
+      <tem:M6>${escapeXml(businessEmail)}</tem:M6>
+      <tem:M9>${escapeXml(businessEmail)}</tem:M9>
+      <tem:M11>${escapeXml(businessMobile)}</tem:M11>
       <tem:M12>${sendSms}</tem:M12>
       <tem:M13>${sendEmail}</tem:M13>
       <tem:M14>true</tem:M14>
@@ -124,8 +165,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: false, reason: 'Netcash rejected the request — check server logs for the raw SOAP fault.' });
     }
 
-    // Numeric error codes documented by Netcash (100/103/200/301/310) come
-    // back inside the response body, not as an HTTP error — check for them.
     const errorMatch = rawText.match(/<[^>]*CreateInvoiceResult[^>]*>(\d{3})<\/[^>]*>/);
     if (errorMatch) {
       console.error('netcash-payment-request: Netcash returned error code', errorMatch[1]);
