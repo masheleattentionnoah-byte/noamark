@@ -6,6 +6,84 @@
 //   BULKSMS_TOKEN_ID
 //   BULKSMS_TOKEN_SECRET
 // Then redeploy.
+//
+// RATE LIMITING — WHY THIS EXISTS:
+// This endpoint is called from several places in index.html, including by
+// visitors who are NOT logged in (submitting an enquiry, requesting a
+// booking) — so it can't require a login token the way
+// netcash-payment-request.js does, without breaking those features.
+// Instead this uses THREE layers, so a patient attacker who just waits
+// out a short cooldown still can't grind you down over hours:
+//   1. Burst cooldown — stops rapid-fire spam to one number/address.
+//   2. Daily cap PER RECIPIENT — stops sustained harassment of one
+//      person even if spread slowly across a whole day.
+//   3. Daily GLOBAL cap — a hard ceiling on total sends per day across
+//      everyone, so even a distributed attack (many numbers, many IPs)
+//      can't run up an unbounded bill or flood your BulkSMS account.
+// Best-effort in-memory only — resets whenever this function cold-starts
+// on Vercel, so it's not a mathematically perfect guarantee against a
+// determined attacker who can force/wait out cold starts, but it stops
+// everything short of that. If NoaMark's traffic grows and this becomes
+// a real concern, the upgrade path is persistent storage (Vercel KV /
+// Upstash Redis) instead of in-memory Maps — worth revisiting later,
+// not needed at current scale.
+
+const _recentByRecipient = new Map();     // phone -> last send timestamp (burst)
+const _dailyByRecipient = new Map();      // phone -> [timestamps in last 24h]
+const _recentByIp = new Map();            // ip -> [timestamps in last hour]
+const _dailyGlobal = [];                  // [timestamps in last 24h], all sends
+
+const RECIPIENT_COOLDOWN_MS = 30 * 1000;      // burst: 1 SMS per number per 30s
+const DAY_MS = 24 * 60 * 60 * 1000;
+// A busy business's phone number can legitimately receive many real
+// notifications in one day (new enquiries, booking requests, reschedule
+// confirmations, etc.) — 40 gives generous headroom for real traffic
+// while still stopping someone from deliberately flooding one number
+// hundreds of times in a day.
+const RECIPIENT_DAILY_MAX = 40;
+const IP_WINDOW_MS = 60 * 60 * 1000;          // 1 hour window
+const IP_MAX_PER_HOUR = 20;                   // max 20 SMS per IP per hour
+const GLOBAL_DAILY_MAX = 1000;                // hard ceiling: max 1000 SMS/day, site-wide
+
+function tooSoonForRecipient(key) {
+  const now = Date.now();
+  const last = _recentByRecipient.get(key);
+  if (last && now - last < RECIPIENT_COOLDOWN_MS) return true;
+  _recentByRecipient.set(key, now);
+  return false;
+}
+
+function recipientDailyLimitHit(key) {
+  const now = Date.now();
+  const times = (_dailyByRecipient.get(key) || []).filter(t => now - t < DAY_MS);
+  if (times.length >= RECIPIENT_DAILY_MAX) {
+    _dailyByRecipient.set(key, times);
+    return true;
+  }
+  times.push(now);
+  _dailyByRecipient.set(key, times);
+  return false;
+}
+
+function ipRateLimited(ip) {
+  const now = Date.now();
+  const times = (_recentByIp.get(ip) || []).filter(t => now - t < IP_WINDOW_MS);
+  if (times.length >= IP_MAX_PER_HOUR) {
+    _recentByIp.set(ip, times);
+    return true;
+  }
+  times.push(now);
+  _recentByIp.set(ip, times);
+  return false;
+}
+
+function globalDailyLimitHit() {
+  const now = Date.now();
+  while (_dailyGlobal.length && now - _dailyGlobal[0] > DAY_MS) _dailyGlobal.shift();
+  if (_dailyGlobal.length >= GLOBAL_DAILY_MAX) return true;
+  _dailyGlobal.push(now);
+  return false;
+}
 
 export default async function handler(req, res) {
   // Basic CORS lock-down — only allow calls from your own domain.
@@ -60,6 +138,22 @@ export default async function handler(req, res) {
     const e164 = raw.startsWith('0') ? '+27' + raw.slice(1)
                : raw.startsWith('27') ? '+' + raw
                : ('+27' + raw);
+
+    // ── Rate limiting — see comment at top of file ──
+    const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
+    if (tooSoonForRecipient(e164)) {
+      return res.status(429).json({ ok: false, reason: 'This number was just messaged — please wait a moment.' });
+    }
+    if (recipientDailyLimitHit(e164)) {
+      return res.status(429).json({ ok: false, reason: 'This number has reached its daily message limit.' });
+    }
+    if (ipRateLimited(ip)) {
+      return res.status(429).json({ ok: false, reason: 'Too many requests — please try again later.' });
+    }
+    if (globalDailyLimitHit()) {
+      console.error('send-sms: GLOBAL DAILY LIMIT reached — possible abuse in progress.');
+      return res.status(429).json({ ok: false, reason: 'Daily message limit reached — please try again tomorrow.' });
+    }
 
     const tokenId     = process.env.BULKSMS_TOKEN_ID;
     const tokenSecret = process.env.BULKSMS_TOKEN_SECRET;
