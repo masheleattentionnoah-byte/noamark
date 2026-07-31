@@ -11,9 +11,14 @@
   input, select { width: 100%; padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
   button { margin-top: 24px; width: 100%; padding: 14px; font-size: 16px; font-weight: 600; background: #14532d; color: white; border: none; border-radius: 6px; cursor: pointer; }
   button:disabled { background: #999; cursor: not-allowed; }
-  #result { margin-top: 20px; padding: 14px; border-radius: 6px; font-size: 14px; white-space: pre-wrap; display: none; }
-  #result.ok { background: #dcfce7; color: #14532d; display: block; }
-  #result.fail { background: #fee2e2; color: #7f1d1d; display: block; }
+  #result, #loginResult { margin-top: 20px; padding: 14px; border-radius: 6px; font-size: 14px; white-space: pre-wrap; display: none; }
+  #result.ok, #loginResult.ok { background: #dcfce7; color: #14532d; display: block; }
+  #result.fail, #loginResult.fail { background: #fee2e2; color: #7f1d1d; display: block; }
+  #loginBox { padding: 16px; border: 1px solid #e5e5e5; border-radius: 8px; background: #fafafa; }
+  #testBox { margin-top: 28px; opacity: 0.4; pointer-events: none; }
+  #testBox.unlocked { opacity: 1; pointer-events: auto; }
+  .status-pill { display: inline-block; font-size: 12px; padding: 3px 8px; border-radius: 999px; background: #e5e5e5; color: #555; margin-left: 8px; }
+  .status-pill.logged-in { background: #dcfce7; color: #14532d; }
 </style>
 </head>
 <body>
@@ -21,32 +26,112 @@
 <h1>NetCash Payment Request — Test</h1>
 <p class="sub">Sends a real test request to your live /api/netcash-payment-request endpoint. Use your own phone/email so you can see what the customer would receive.</p>
 
-<label for="plan">Plan</label>
-<select id="plan">
-  <option value="starter">Starter</option>
-  <option value="growth">Growth</option>
-  <option value="pro">Pro</option>
-</select>
+<!-- ── STEP 1: Log in to get a session token ──
+     /api/netcash-payment-request now requires a valid session token (added
+     as part of the auth.js / netcash-payment-request.js security fix), so
+     this test page needs to log in first, the same way the real site does,
+     before it can call the endpoint. -->
+<div id="loginBox">
+  <strong>Step 1 — Log in</strong>
+  <span id="loginStatus" class="status-pill">Not logged in</span>
+  <label for="adminEmail">Admin email</label>
+  <input id="adminEmail" type="email" placeholder="your admin email" autocomplete="username">
+  <label for="adminPass">Admin password</label>
+  <input id="adminPass" type="password" placeholder="your admin password" autocomplete="current-password">
+  <button id="loginBtn" onclick="doLogin()">Log In</button>
+  <div id="loginResult"></div>
+</div>
 
-<label for="listingId">Listing ID</label>
-<input id="listingId" type="text" placeholder="any test ID, e.g. test-123">
+<!-- ── STEP 2: Send the test payment request (unlocked after login) ── -->
+<div id="testBox">
+  <strong>Step 2 — Send test request</strong>
 
-<label for="email">Your email (optional if using mobile)</label>
-<input id="email" type="email" placeholder="you@example.com">
+  <label for="plan">Plan</label>
+  <select id="plan">
+    <option value="starter">Starter</option>
+    <option value="growth">Growth</option>
+    <option value="pro">Pro</option>
+  </select>
 
-<label for="mobile">Your mobile number (optional if using email)</label>
-<input id="mobile" type="text" placeholder="e.g. 0821234567">
+  <label for="listingId">Listing ID</label>
+  <input id="listingId" type="text" placeholder="any test ID, e.g. test-123">
 
-<button id="sendBtn" onclick="sendTest()">Send Test Payment Request</button>
+  <label for="email">Your email (optional if using mobile)</label>
+  <input id="email" type="email" placeholder="you@example.com">
 
-<div id="result"></div>
+  <label for="mobile">Your mobile number (optional if using email)</label>
+  <input id="mobile" type="text" placeholder="e.g. 0821234567">
+
+  <button id="sendBtn" onclick="sendTest()" disabled>Send Test Payment Request</button>
+
+  <div id="result"></div>
+</div>
 
 <script>
+let nmTestToken = null;
+
+async function doLogin() {
+  const btn = document.getElementById('loginBtn');
+  const resultEl = document.getElementById('loginResult');
+  const statusEl = document.getElementById('loginStatus');
+  resultEl.style.display = 'none';
+  resultEl.className = '';
+
+  const email = document.getElementById('adminEmail').value.trim();
+  const password = document.getElementById('adminPass').value;
+
+  if (!email || !password) {
+    resultEl.textContent = 'Enter your admin email and password.';
+    resultEl.className = 'fail';
+    resultEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Logging in...';
+
+  try {
+    const res = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'login', role: 'admin', email, password }),
+    });
+    const data = await res.json();
+
+    if (data.ok && (data.sessionToken || data.adminToken)) {
+      nmTestToken = data.sessionToken || data.adminToken;
+      resultEl.textContent = '✅ Logged in. You can now send a test request below.';
+      resultEl.className = 'ok';
+      statusEl.textContent = 'Logged in';
+      statusEl.classList.add('logged-in');
+      document.getElementById('testBox').classList.add('unlocked');
+      document.getElementById('sendBtn').disabled = false;
+    } else {
+      resultEl.textContent = '❌ Login failed: ' + (data.reason || 'Unknown error');
+      resultEl.className = 'fail';
+    }
+  } catch (e) {
+    resultEl.textContent = '❌ Could not reach /api/auth: ' + e.message;
+    resultEl.className = 'fail';
+  } finally {
+    resultEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Log In';
+  }
+}
+
 async function sendTest() {
   const btn = document.getElementById('sendBtn');
   const resultEl = document.getElementById('result');
   resultEl.style.display = 'none';
   resultEl.className = '';
+
+  if (!nmTestToken) {
+    resultEl.textContent = 'Please log in first (Step 1 above).';
+    resultEl.className = 'fail';
+    resultEl.style.display = 'block';
+    return;
+  }
 
   const plan = document.getElementById('plan').value;
   const listingId = document.getElementById('listingId').value.trim();
@@ -72,7 +157,10 @@ async function sendTest() {
   try {
     const res = await fetch('/api/netcash-payment-request', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + nmTestToken,
+      },
       body: JSON.stringify({ plan, listingId, businessEmail, businessMobile }),
     });
     const data = await res.json();
