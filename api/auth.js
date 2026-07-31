@@ -5,9 +5,16 @@
 // admin-resets.js). Vercel's Hobby plan caps a project at 12 serverless
 // functions total, and adding those 4 alongside the existing 9 pushed this
 // project to 13 — this merge brings it back down to 10, with room to spare.
-// Nothing about the security model changes: same server-side password
-// verification, same admin token gating, just routed through one file
-// instead of four via a `mode` field in the request body.
+//
+// UPDATE (session tokens for business logins):
+// Previously only admin logins got a signed session token — business
+// logins just returned a user object the frontend trusted blindly, which
+// meant any server endpoint that needed to know "is this really a logged-
+// in business, and which one" had no way to check. Now business (and
+// admin) logins both get a signed token, using the same HMAC pattern that
+// was already trusted for admin. Nothing about password verification
+// changes — this only adds a verifiable "who is calling" proof that other
+// endpoints (like netcash-payment-request.js) can require.
 //
 // SETUP NEEDED IN VERCEL (unchanged from before):
 //   SUPABASE_URL, SUPABASE_SERVICE_KEY, ADMIN_EMAIL, ADMIN_PASSWORD,
@@ -33,22 +40,29 @@ function hashNewPassword(password) {
   return saltHex + ':' + pbkdf2Hex(password, saltHex);
 }
 
-function issueAdminToken() {
+// Generalized session token — works for admin AND business (and could be
+// extended to subscriber/guest later the same way). Same HMAC-signed,
+// timing-safe-compared approach that was already used for admin only.
+function issueSessionToken(claims) {
   const secret = process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD || '';
-  const expires = Date.now() + 12 * 60 * 60 * 1000;
-  const payload = String(expires);
+  const expires = Date.now() + 12 * 60 * 60 * 1000; // 12 hours
+  const payload = Buffer.from(JSON.stringify({ ...claims, exp: expires })).toString('base64url');
   const sig = crypto.createHmac('sha256', secret).update(payload).digest('hex');
   return `${payload}.${sig}`;
 }
-function verifyAdminToken(token) {
-  if (!token || typeof token !== 'string' || !token.includes('.')) return false;
+function verifySessionToken(token) {
+  if (!token || typeof token !== 'string' || !token.includes('.')) return null;
   const secret = process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD || '';
   const [payload, sig] = token.split('.');
   const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
   const sigBuf = Buffer.from(sig || '', 'hex');
   const expBuf = Buffer.from(expected, 'hex');
-  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return false;
-  return Date.now() < Number(payload);
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return null;
+  try {
+    const claims = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    if (Date.now() >= claims.exp) return null;
+    return claims; // { role, id, email, exp }
+  } catch (e) { return null; }
 }
 
 async function supaFetch(path, opts = {}) {
@@ -86,7 +100,10 @@ async function handleLogin(body) {
     return { status: 200, json: {
       ok: true,
       user: { type: 'admin', name: 'NoaMark Admin', owner: 'NoaMark', email: adminEmail, plan: 'Admin', id: 'admin-001' },
-      adminToken: issueAdminToken(),
+      sessionToken: issueSessionToken({ role: 'admin', id: 'admin-001', email: adminEmail }),
+      // adminToken kept as an alias so existing frontend code that reads
+      // `data.adminToken` doesn't break before you update it to sessionToken.
+      adminToken: issueSessionToken({ role: 'admin', id: 'admin-001', email: adminEmail }),
     }};
   }
 
@@ -98,7 +115,11 @@ async function handleLogin(body) {
     if (!biz) return { status: 200, json: { ok: false, reason: 'no_account' } };
     if (biz.name.trim().toLowerCase() !== name.trim().toLowerCase()) return { status: 200, json: { ok: false, reason: 'name_mismatch' } };
     if (!verifyStoredPassword(password, biz.password)) return { status: 200, json: { ok: false, reason: 'bad_password' } };
-    return { status: 200, json: { ok: true, user: { type: 'business', name: biz.name, owner: biz.owner || biz.name, email: biz.email, plan: 'Business', id: biz.id, joinedAt: biz.joinedAt || biz.created_at } } };
+    return { status: 200, json: {
+      ok: true,
+      user: { type: 'business', name: biz.name, owner: biz.owner || biz.name, email: biz.email, plan: 'Business', id: biz.id, joinedAt: biz.joinedAt || biz.created_at },
+      sessionToken: issueSessionToken({ role: 'business', id: biz.id, email: biz.email }),
+    }};
   }
 
   if (role === 'subscriber') {
@@ -167,7 +188,8 @@ async function handleForgotPassword(body) {
 
 async function handleAdmin(req, body) {
   const adminToken = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  if (!verifyAdminToken(adminToken)) {
+  const claims = verifySessionToken(adminToken);
+  if (!claims || claims.role !== 'admin') {
     return { status: 401, json: { ok: false, reason: 'Admin session expired or invalid. Please log in again.' } };
   }
 
