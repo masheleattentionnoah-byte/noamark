@@ -7196,7 +7196,7 @@ function showBizProfile(id){
               <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:14px;">Leave a Review</div>
               <input id="pub-rev-name" placeholder="Your name" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 14px;font-size:13px;font-family:var(--font-body);outline:none;margin-bottom:10px;box-sizing:border-box;" />
               <div id="pub-rev-stars" style="display:flex;gap:6px;margin-bottom:10px;">
- ${[1,2,3,4,5].map(n=>`<span onclick="pubSetStar(${n},'${biz.id}')" data-star="${n}" style="font-size:24px;cursor:pointer;color:#374151;transition:color .15s;"></span>`).join('')}
+ ${[1,2,3,4,5].map(n=>`<span onclick="pubSetStar(${n},'${biz.id}')" data-star="${n}" style="font-size:24px;cursor:pointer;color:#374151;transition:color .15s;">★</span>`).join('')}
               </div>
               <textarea id="pub-rev-text" placeholder="Share your experience…" rows="3" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 14px;font-size:13px;font-family:var(--font-body);outline:none;resize:vertical;margin-bottom:10px;box-sizing:border-box;"></textarea>
               <button onclick="pubSubmitReview('${biz.id}')" style="background:var(--gold);color:#111;border:none;padding:11px 24px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:var(--font-body);width:100%;">Submit Review</button>
@@ -7252,7 +7252,7 @@ async function pubLoadReviews(listingId) {
       return;
     }
     el.innerHTML = data.map(r => {
- const stars = ''.repeat(r.rating || 5) + ''.repeat(5 - (r.rating || 5));
+ const stars = '★'.repeat(r.rating || 5) + '☆'.repeat(5 - (r.rating || 5));
       const reply = r.reply ? `<div style="margin-top:10px;padding:10px 14px;background:rgba(212,175,55,.06);border-left:2px solid var(--gold);font-size:11px;color:var(--white-dim);">
         <span style="color:var(--gold);font-weight:700;font-size:10px;">Owner reply:</span> ${nmSafe(r.reply)}
       </div>` : '';
