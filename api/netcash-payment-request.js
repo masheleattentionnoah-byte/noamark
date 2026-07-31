@@ -101,15 +101,24 @@ export default async function handler(req, res) {
   // ── NEW: pull the business's own email/mobile server-side instead of
   // trusting whatever the client sent — closes the "spam a stranger's
   // phone with an invoice" hole entirely, and also stops the request
-  // being made against a listing that isn't the caller's own (unless admin).
-  const listRes = await supaFetch(`users?id=eq.${encodeURIComponent(claims.id)}&select=id,email,mobile&limit=1`);
-  const rows = await listRes.json().catch(() => []);
-  const biz = rows[0];
-  if (claims.role === 'business' && (!biz || String(biz.id) !== String(claims.id))) {
-    return res.status(403).json({ ok: false, reason: 'Account not found.' });
+  // being made against a listing that isn't the caller's own.
+  // Admin is trusted to specify a test recipient directly (e.g. from the
+  // netcash-test.html tool) since only a real admin token reaches here.
+  let businessEmail = '';
+  let businessMobile = '';
+  if (claims.role === 'admin') {
+    businessEmail = (req.body?.businessEmail || '').trim();
+    businessMobile = (req.body?.businessMobile || '').trim();
+  } else {
+    const listRes = await supaFetch(`users?id=eq.${encodeURIComponent(claims.id)}&select=id,email,mobile&limit=1`);
+    const rows = await listRes.json().catch(() => []);
+    const biz = rows[0];
+    if (!biz || String(biz.id) !== String(claims.id)) {
+      return res.status(403).json({ ok: false, reason: 'Account not found.' });
+    }
+    businessEmail = biz.email || '';
+    businessMobile = biz.mobile || '';
   }
-  const businessEmail = biz?.email || '';
-  const businessMobile = biz?.mobile || '';
 
   if (!businessEmail && !businessMobile) {
     return res.status(400).json({ ok: false, reason: 'Your account has no email or mobile on file.' });
