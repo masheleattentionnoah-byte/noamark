@@ -5081,7 +5081,19 @@ function showPage(id, cb){
     // grid. That left the category tabs and search bar visible with no
     // listings underneath — looking exactly like "the page shows up but
     // it's empty" — especially if listings hadn't finished loading yet.
-    showMktView('main');
+    //
+    // SECOND BUG THIS FIXES: showMktView() defaults to PUSHING a new history
+    // entry (it's meant to for drilling from the main grid into a profile/
+    // boost/add view). But reaching Marketplace here is a SIDEWAYS move from
+    // the top nav — the same kind of move Home/Opportunities/Learn/Videos/
+    // Pricing all make below using replaceState, specifically so browsing
+    // through several menu items doesn't stack up history entries. Marketplace
+    // was the one section still pushing instead of replacing, so it alone
+    // left a stray entry behind every time it was visited from the menu —
+    // which is why the back button had to unwind through it (and every
+    // section visited after it) before actually leaving the site. Passing
+    // false here makes Marketplace replace just like its sibling pages.
+    showMktView('main', false);
     if(cb) setTimeout(cb, 150);
     return;
   }
@@ -11369,7 +11381,7 @@ function homeSearchGo() {
   const bizVal = (document.getElementById('home-search-business')||{}).value || '';
   const areaVal = (document.getElementById('home-search-area')||{}).value || '';
   showPage('marketplace', ()=>{
-    showMktView('main');
+    showMktView('main', false);
     setTimeout(()=>{
       const mktSearch = document.getElementById('mkt-search');
       const mktLoc = document.getElementById('mkt-location');
