@@ -11,6 +11,18 @@ const SUBSCRIPTION_TEMPLATES = {
   pro:     '11865',
 };
 
+// Same canonical prices as ozow-initiate.js — never trust a client-sent
+// amount. This was previously missing entirely from the SOAP call, which
+// is a required field per Netcash's CreateInvoice spec (Amount comes
+// right after M1/M2, before P2) — its absence is the likely cause of the
+// confusing "Invalid email address" (338) response, since the request
+// was incomplete.
+const PLAN_PRICES = {
+  starter: 49.99,
+  growth: 219.99,
+  pro: 299.99,
+};
+
 const PLAN_DESCRIPTIONS = {
   starter: 'NoaMark Starter Plan (monthly)',
   growth:  'NoaMark Growth Plan (monthly)',
@@ -133,6 +145,7 @@ export default async function handler(req, res) {
   const p2 = 'NM' + Date.now().toString(36).toUpperCase();
   const sendSms = !!businessMobile;
   const sendEmail = !!businessEmail;
+  const amount = PLAN_PRICES[plan].toFixed(2);
 
   const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
@@ -141,11 +154,11 @@ export default async function handler(req, res) {
       <tem:ServiceKey>${escapeXml(serviceKey)}</tem:ServiceKey>
       <tem:M1>${escapeXml(serviceKey)}</tem:M1>
       <tem:M2>${escapeXml(NETCASH_SOFTWARE_VENDOR_KEY)}</tem:M2>
+      <tem:Amount>${amount}</tem:Amount>
       <tem:P2>${escapeXml(p2)}</tem:P2>
       <tem:P3>${escapeXml(PLAN_DESCRIPTIONS[plan])}</tem:P3>
       <tem:M4>${escapeXml(plan)}</tem:M4>
       <tem:M5>${escapeXml(listingId)}</tem:M5>
-      <tem:M6>${escapeXml(businessEmail)}</tem:M6>
       <tem:M9>${escapeXml(businessEmail)}</tem:M9>
       <tem:M11>${escapeXml(businessMobile)}</tem:M11>
       <tem:M12>${sendSms}</tem:M12>
