@@ -5086,8 +5086,17 @@ function showPage(id, cb){
     return;
   }
 
-  // All non-marketplace pages: push one clean history entry
-  history.pushState({ nmPage: id, nmView: 'main' }, '', '#' + id);
+  // Sibling top-level nav pages (Home/Opportunities/Learn/Videos/Pricing) —
+  // switching between them is a sideways move, not drilling deeper into the
+  // site, so this uses replaceState rather than pushState. Previously every
+  // menu click pushed a brand new history entry, so clicking through several
+  // menu items meant the back button had to unwind through every single one
+  // before it would actually leave the site — confusing and unprofessional.
+  // replaceState keeps only the CURRENT page in history at this level, so
+  // one back press takes you to wherever you were before you started
+  // browsing the menu (or out of the site), regardless of how many menu
+  // items you clicked through along the way.
+  history.replaceState({ nmPage: id, nmView: 'main' }, '', '#' + id);
   if(id === 'dashboard') renderDashboardStats();
   if(id === 'videos') {
     nmSupaQuery(() => _supa.from('videos').select('*').order('created_at', {ascending: false}))
