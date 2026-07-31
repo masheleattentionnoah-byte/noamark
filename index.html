@@ -10202,6 +10202,8 @@ const ADMIN_EMAIL = 'supportnoamark@gmail.com';
 // Holds the signed admin session token issued by /api/auth-login on admin
 // login — required by every admin-only server endpoint (see admin-resets.js).
 let nmAdminToken = null;
+let nmBizToken = null;
+try { nmBizToken = sessionStorage.getItem('nm_biz_token') || null; } catch(e) {}
 function nmGetAdminToken() {
   if (nmAdminToken) return nmAdminToken;
   try { return sessionStorage.getItem('nm_admin_token') || null; } catch(e) { return null; }
@@ -10577,6 +10579,8 @@ async function handleBizLogin() {
 
     nmClearLockout('biz-login', email);
     const biz = result.user;
+    nmBizToken = result.sessionToken;
+    try { sessionStorage.setItem('nm_biz_token', nmBizToken); } catch(e) {}
     loginAs(biz);
     showAuthSuccess('biz-login-success', '\u2713 Welcome back, ' + biz.name + '!');
     setTimeout(() => {
