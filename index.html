@@ -5081,19 +5081,7 @@ function showPage(id, cb){
     // grid. That left the category tabs and search bar visible with no
     // listings underneath — looking exactly like "the page shows up but
     // it's empty" — especially if listings hadn't finished loading yet.
-    //
-    // SECOND BUG THIS FIXES: showMktView() defaults to PUSHING a new history
-    // entry (it's meant to for drilling from the main grid into a profile/
-    // boost/add view). But reaching Marketplace here is a SIDEWAYS move from
-    // the top nav — the same kind of move Home/Opportunities/Learn/Videos/
-    // Pricing all make below using replaceState, specifically so browsing
-    // through several menu items doesn't stack up history entries. Marketplace
-    // was the one section still pushing instead of replacing, so it alone
-    // left a stray entry behind every time it was visited from the menu —
-    // which is why the back button had to unwind through it (and every
-    // section visited after it) before actually leaving the site. Passing
-    // false here makes Marketplace replace just like its sibling pages.
-    showMktView('main', false);
+    showMktView('main');
     if(cb) setTimeout(cb, 150);
     return;
   }
@@ -11381,7 +11369,7 @@ function homeSearchGo() {
   const bizVal = (document.getElementById('home-search-business')||{}).value || '';
   const areaVal = (document.getElementById('home-search-area')||{}).value || '';
   showPage('marketplace', ()=>{
-    showMktView('main', false);
+    showMktView('main');
     setTimeout(()=>{
       const mktSearch = document.getElementById('mkt-search');
       const mktLoc = document.getElementById('mkt-location');
@@ -12563,7 +12551,20 @@ async function bpDeleteReview(id) {
   bpData.reviews = bpData.reviews.filter(r => String(r.id) !== String(id));
   bpSave(); bpRenderReviews(); bpRenderAnalytics(); bpToast('Deleted.');
   try {
-    await nmSupaQuery(() => _supa.from('reviews').delete().eq('id', id));
+    // SECURITY FIX: this used to delete directly via the browser's public
+    // Supabase key, which — combined with an RLS policy on 'reviews' that
+    // was `USING (true)` — meant ANY visitor could delete ANY review on
+    // the platform, not just a business deleting a review on their own
+    // listing. Now routed through a server endpoint that verifies a real
+    // session token AND confirms this business actually owns the listing
+    // the review is on, before deleting anything.
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+      body: JSON.stringify({ mode: 'delete-review', reviewId: id }),
+    });
+    const result = await res.json();
+    if (!result.ok) console.warn('Review delete failed:', result.reason);
   } catch(e) { console.warn('Review delete from Supabase failed', e); }
 }
 
@@ -14595,15 +14596,18 @@ async function admDeleteListing(id, btn) {
   const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = '⏳ Deleting...'; btn.style.opacity = '.6';
   try {
-    // Must delete related records first or Supabase will throw a
-    // foreign key constraint error (enquiries_listing_id_fkey etc.)
-    await nmSupaQuery(() => _supa.from('enquiries').delete().eq('listing_id', id));
-    await nmSupaQuery(() => _supa.from('bookings').delete().eq('listing_id', id));
-    await nmSupaQuery(() => _supa.from('notifications').delete().eq('listing_id', id));
-    await nmSupaQuery(() => _supa.from('reviews').delete().eq('listing_id', id));
-    // Now safe to delete the listing itself
-    const { error } = await nmSupaQuery(() => _supa.from('listings').delete().eq('id', id));
-    if(error) throw error;
+    // SECURITY FIX: this used to delete directly via the browser's public
+    // Supabase key, which — combined with an RLS policy that looked
+    // scoped ("Admin can delete listings") but was actually `USING (true)`
+    // — meant ANY visitor could delete ANY listing. Now routed through a
+    // server endpoint that verifies a real admin session token first.
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'delete-listing', listingId: id }),
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.reason || 'Delete failed');
     // Remove the row immediately from the UI
     const row = btn.closest('tr');
     if(row) { row.style.opacity = '0'; row.style.transition = 'opacity .3s'; setTimeout(()=>row.remove(), 300); }
@@ -14618,7 +14622,7 @@ async function admDeleteListing(id, btn) {
   } catch(e) {
     console.error('Delete error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
-    alert('Delete failed. Run this in Supabase SQL Editor:\n\nDELETE FROM enquiries WHERE listing_id = \'' + id + '\';\nDELETE FROM bookings WHERE listing_id = \'' + id + '\';\nDELETE FROM notifications WHERE listing_id = \'' + id + '\';\nDELETE FROM reviews WHERE listing_id = \'' + id + '\';\nDELETE FROM listings WHERE id = \'' + id + '\';');
+    alert('Delete failed: ' + (e.message || 'please try again, or check Vercel logs.'));
   }
 }
 
