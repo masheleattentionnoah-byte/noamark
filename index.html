@@ -4996,6 +4996,31 @@ function closeBusinessGate() {
     history.back();
   }
 }
+// BUG FIX: the gate's two action buttons used to call
+// closeBusinessGate();openAuth(...) back to back. closeBusinessGate() calls
+// history.back() to consume the gate's history entry, but that navigation
+// is asynchronous — it doesn't finish before the very next line runs.
+// openAuth() immediately does its own synchronous history.pushState() to
+// open the signup/login screen, so for a moment there were two competing
+// navigations in flight. When the delayed "back" from the gate finally
+// landed, it arrived right after the auth screen had already been pushed,
+// and the popstate handler read that as "the user pressed back" and closed
+// auth again — so both buttons appeared to do nothing but close the popup.
+// Fix: don't call history.back() here at all. Since we're moving straight
+// from one modal to another (not actually going back to the page beneath),
+// replace the gate's history entry in place instead — that's synchronous,
+// fires no popstate, and leaves a clean single entry for openAuth() to push
+// its own 'auth' state on top of.
+function nmGateToAuth(mode) {
+  const gate = document.getElementById('biz-gate-modal');
+  if (gate) gate.remove();
+  nmLockBodyScroll(false);
+  if (history.state && history.state.nmPage === 'biz-gate') {
+    history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.href);
+  }
+  openAuth('business');
+  switchAuthMode('biz', mode, document.querySelectorAll('#biz-mode-toggle .auth-mode-btn')[mode === 'signup' ? 0 : 1]);
+}
 function showBusinessGate(action) {
   // Remove any existing gate modal
   const existing = document.getElementById('biz-gate-modal');
@@ -5013,10 +5038,10 @@ function showBusinessGate(action) {
       <h3 style="font-family:'Poppins',sans-serif;font-size:26px;font-weight:700;color:#fff;margin-bottom:12px;">You need a Business account to ${actionLabel}</h3>
       <p style="font-size:13px;color:#9ca3af;line-height:1.7;margin-bottom:32px;">Create a free Business account to list your business, manage your profile, and boost your visibility on NoaMark.</p>
       <div style="display:flex;flex-direction:column;gap:12px;">
-        <button onclick="closeBusinessGate();openAuth('business');switchAuthMode('biz','signup',document.querySelectorAll('#biz-mode-toggle .auth-mode-btn')[0])" style="background:#166534;color:#fff;border:none;padding:16px 28px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;transition:background .2s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#166534'">
+        <button onclick="nmGateToAuth('signup')" style="background:#166534;color:#fff;border:none;padding:16px 28px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;transition:background .2s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#166534'">
           Create Free Business Account →
         </button>
-        <button onclick="closeBusinessGate();openAuth('business');switchAuthMode('biz','login',document.querySelectorAll('#biz-mode-toggle .auth-mode-btn')[1])" style="background:transparent;color:#9ca3af;border:1px solid #374151;padding:14px 28px;border-radius:8px;font-size:13px;cursor:pointer;font-family:'Poppins',sans-serif;">
+        <button onclick="nmGateToAuth('login')" style="background:transparent;color:#9ca3af;border:1px solid #374151;padding:14px 28px;border-radius:8px;font-size:13px;cursor:pointer;font-family:'Poppins',sans-serif;">
           Already have an account? Log In
         </button>
       </div>
