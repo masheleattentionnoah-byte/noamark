@@ -4053,11 +4053,11 @@
               <div class="bp-form-field">
                 <label>Rating</label>
                 <div style="display:flex;gap:6px;margin-top:4px;" id="bp-star-picker">
- <span style="font-size:22px;cursor:pointer;color:var(--white-dim);" onclick="bpSetStars(1)"></span>
- <span style="font-size:22px;cursor:pointer;color:var(--white-dim);" onclick="bpSetStars(2)"></span>
- <span style="font-size:22px;cursor:pointer;color:var(--white-dim);" onclick="bpSetStars(3)"></span>
- <span style="font-size:22px;cursor:pointer;color:var(--white-dim);" onclick="bpSetStars(4)"></span>
- <span style="font-size:22px;cursor:pointer;color:var(--white-dim);" onclick="bpSetStars(5)"></span>
+ <span style="font-size:22px;cursor:pointer;color:var(--white-dim);" onclick="bpSetStars(1)">★</span>
+ <span style="font-size:22px;cursor:pointer;color:var(--white-dim);" onclick="bpSetStars(2)">★</span>
+ <span style="font-size:22px;cursor:pointer;color:var(--white-dim);" onclick="bpSetStars(3)">★</span>
+ <span style="font-size:22px;cursor:pointer;color:var(--white-dim);" onclick="bpSetStars(4)">★</span>
+ <span style="font-size:22px;cursor:pointer;color:var(--white-dim);" onclick="bpSetStars(5)">★</span>
                 </div>
               </div>
               <div class="bp-form-field"><label>Review</label><textarea id="bp-rev-text" placeholder="What did the customer say?"></textarea></div>
@@ -7251,6 +7251,7 @@ function showBizProfile(id){
               <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:14px;">Message This Business</div>
               <input id="pub-enq-name" placeholder="Your name" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 14px;font-size:13px;font-family:var(--font-body);outline:none;margin-bottom:10px;box-sizing:border-box;" />
               <input id="pub-enq-phone" placeholder="Your phone / WhatsApp number" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 14px;font-size:13px;font-family:var(--font-body);outline:none;margin-bottom:10px;box-sizing:border-box;" />
+              <input id="pub-enq-email" type="email" placeholder="Your email (optional, for a reply)" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 14px;font-size:13px;font-family:var(--font-body);outline:none;margin-bottom:10px;box-sizing:border-box;" />
               <textarea id="pub-enq-msg" placeholder="What do you need? (price, availability, location…)" rows="4" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 14px;font-size:13px;font-family:var(--font-body);outline:none;resize:vertical;margin-bottom:10px;box-sizing:border-box;"></textarea>
               <button onclick="pubSubmitEnquiry('${biz.id}','${nmSafe(biz.name)}')" style="background:var(--green-dark);color:#fff;border:none;padding:11px 24px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:var(--font-body);width:100%;">Send Message</button>
               <div id="pub-enq-msg-status" style="margin-top:10px;font-size:12px;display:none;"></div>
@@ -7351,6 +7352,7 @@ async function pubSubmitReview(listingId) {
 async function pubSubmitEnquiry(listingId, bizName) {
   const name  = (document.getElementById('pub-enq-name')?.value || '').trim();
   const phone = (document.getElementById('pub-enq-phone')?.value || '').trim();
+  const email = (document.getElementById('pub-enq-email')?.value || '').trim();
   const msg   = (document.getElementById('pub-enq-msg')?.value || '').trim();
   const statusEl = document.getElementById('pub-enq-msg-status');
   if (!name) { alert('Please enter your name.'); return; }
@@ -7363,7 +7365,7 @@ async function pubSubmitEnquiry(listingId, bizName) {
     const { error } = await nmSupaQuery(() =>
       _supa.from('enquiries').insert({
         listing_id: listingId,
-        name, phone, msg,
+        name, phone, email, msg,
         subject: 'Customer Enquiry',
         replied: false,
         created_at: new Date().toISOString()
@@ -7372,6 +7374,7 @@ async function pubSubmitEnquiry(listingId, bizName) {
     if (error) throw error;
     document.getElementById('pub-enq-name').value = '';
     document.getElementById('pub-enq-phone').value = '';
+    document.getElementById('pub-enq-email').value = '';
     document.getElementById('pub-enq-msg').value = '';
     // Insert portal notification for business owner
     _supa.from('notifications').insert({
@@ -11769,7 +11772,7 @@ async function bpSyncEnquiriesFromSupabase() {
       if (!exists) {
         const d = new Date(e.created_at || Date.now());
         const time = d.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'}) + ', ' + d.toLocaleDateString('en-ZA',{day:'numeric',month:'short'});
-        bpData.enquiries.unshift({ id: e.id, name: e.name, subject: e.subject || 'Customer Enquiry', msg: e.msg, phone: e.phone || '', time, replied: e.replied || false, replyText: e.reply || '', smsSent: e.reply_sms_sent === undefined ? null : !!e.reply_sms_sent });
+        bpData.enquiries.unshift({ id: e.id, name: e.name, subject: e.subject || 'Customer Enquiry', msg: e.msg, phone: e.phone || '', email: e.email || '', time, replied: e.replied || false, replyText: e.reply || '', smsSent: e.reply_sms_sent === undefined ? null : !!e.reply_sms_sent, emailSent: e.reply_email_sent === undefined ? null : !!e.reply_email_sent });
       }
     });
     bpSave();
@@ -12427,8 +12430,9 @@ function bpRenderEnquiries(filter = 'all') {
           <span style="font-size:10px;color:var(--white-dim);margin-left:auto;">${nmSafe(e.time)}</span>
         </div>
         <div class="bp-enq-sub">${nmSafe(e.subject)}</div>
+ ${(e.phone || e.email) ? `<div style="font-size:11px;color:var(--white-dim);margin-top:2px;">${nmSafe([e.phone, e.email].filter(Boolean).join(' · '))}</div>` : ''}
         <div class="bp-enq-msg">"${nmSafe(e.msg)}"</div>
- ${e.replied && e.replyText ? `<div style="background:rgba(22,101,52,.08);border:1px solid rgba(22,101,52,.15);padding:10px 12px;margin-top:8px;font-size:12px;color:var(--green-fresh);line-height:1.6;"><div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green-fresh);opacity:.6;margin-bottom:3px;display:flex;align-items:center;gap:6px;">Your reply ${e.smsSent === false ? '<span style="color:#fbbf24;opacity:1;">· SMS not delivered</span>' : e.smsSent === true ? '<span style="opacity:1;">· SMS sent</span>' : ''}</div>${nmSafe(e.replyText)}</div>` : ''}
+ ${e.replied && e.replyText ? `<div style="background:rgba(22,101,52,.08);border:1px solid rgba(22,101,52,.15);padding:10px 12px;margin-top:8px;font-size:12px;color:var(--green-fresh);line-height:1.6;"><div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green-fresh);opacity:.6;margin-bottom:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">Your reply ${e.smsSent === false ? '<span style="color:#fbbf24;opacity:1;">· SMS not delivered</span>' : e.smsSent === true ? '<span style="opacity:1;">· SMS sent</span>' : ''} ${e.emailSent === false ? '<span style="color:#fbbf24;opacity:1;">· Email not delivered</span>' : e.emailSent === true ? '<span style="opacity:1;">· Email sent</span>' : ''}</div>${nmSafe(e.replyText)}</div>` : ''}
         <div class="bp-enq-actions">
  ${!e.replied ? `<button class="bp-btn bp-btn-g" onclick="bpAIDraftReply('${e.id}')" style="font-size:9px;"> AI draft reply</button><button class="bp-btn" onclick="bpToggleReply('${e.id}')" style="font-size:9px;">Reply manually</button>` : ''}
           <button class="bp-btn bp-btn-danger" onclick="bpDeleteEnquiry('${e.id}')" style="font-size:9px;">Delete</button>
@@ -12460,24 +12464,33 @@ async function bpSendReply(id) {
   if(sendBtn){ sendBtn.textContent = 'Sending…'; sendBtn.disabled = true; }
 
   // Actually notify the customer — reply text alone in the dashboard never reaches them.
+  const bizName = currentUser?.name || 'the business';
   let smsResult = { ok: false, reason: 'no phone on file' };
   if (enq.phone) {
-    const bizName = currentUser?.name || 'the business';
     smsResult = await nmSendSMS(enq.phone, 'NoaMark: ' + bizName + ' replied to your enquiry: "' + text.slice(0,200) + '", Reply via WhatsApp or call them directly.');
+  }
+  let emailResult = { ok: false, reason: 'no email on file' };
+  if (enq.email) {
+    emailResult = await nmSendEmail(enq.email, bizName + ' replied to your enquiry on NoaMark',
+      bizName + ' replied to your enquiry:\n\n"' + text + '"\n\nYou can reply directly to them via WhatsApp or phone if you left a number, or reply to this email.');
   }
 
   bpData.enquiries[idx].replied = true;
   bpData.enquiries[idx].replyText = text;
-  bpData.enquiries[idx].smsSent = !!smsResult.ok;
+  bpData.enquiries[idx].smsSent = enq.phone ? !!smsResult.ok : null;
+  bpData.enquiries[idx].emailSent = enq.email ? !!emailResult.ok : null;
   bpSave();
   bpRenderEnquiries();
 
-  if (smsResult.ok) {
-    bpToast('Reply sent! Customer notified by SMS.');
-  } else if (!enq.phone) {
-    bpToast('Reply saved. No customer phone number on file, they will only see it if they revisit your listing.');
+  const channels = [];
+  if (smsResult.ok) channels.push('SMS');
+  if (emailResult.ok) channels.push('email');
+  if (channels.length) {
+    bpToast('Reply sent! Customer notified by ' + channels.join(' and ') + '.');
+  } else if (!enq.phone && !enq.email) {
+    bpToast('Reply saved. No phone or email on file, they will only see it if they revisit your listing.');
   } else {
- bpToast(' Reply saved, but SMS notification failed to send. Customer was not notified.');
+ bpToast(' Reply saved, but notification failed to send. Customer was not notified.');
   }
 
   const n = bpData.enquiries.filter(e=>!e.replied).length;
@@ -12486,7 +12499,7 @@ async function bpSendReply(id) {
   if(sendBtn){ sendBtn.textContent = 'Send reply'; sendBtn.disabled = false; }
   // Persist reply + delivery status to Supabase
   try {
-    await nmSupaQuery(() => _supa.from('enquiries').update({ replied: true, reply: text, reply_sms_sent: !!smsResult.ok }).eq('id', id));
+    await nmSupaQuery(() => _supa.from('enquiries').update({ replied: true, reply: text, reply_sms_sent: !!smsResult.ok, reply_email_sent: !!emailResult.ok }).eq('id', id));
   } catch(e) { console.warn('Reply sync to Supabase failed', e); }
 }
 async function bpAIDraftReply(id) {
@@ -12554,7 +12567,7 @@ function bpRenderReviews() {
           <div class="bp-enq-av" style="background:rgba(59,130,246,.12);color:#60A5FA;">${nmSafe(r.name).split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
           <div><div style="font-size:13px;font-weight:700;color:var(--white);">${nmSafe(r.name)}</div><div style="font-size:10px;color:var(--white-dim);">${nmSafe(r.date || r.time || '')}</div></div>
         </div>
- <div class="bp-stars">${Array.from({length:5},(_,i)=>`<span class="${i<r.stars?'bp-star-on':'bp-star-off'}">${i<r.stars?'':''}</span>`).join('')}</div>
+ <div class="bp-stars">${Array.from({length:5},(_,i)=>`<span class="${i<r.stars?'bp-star-on':'bp-star-off'}">★</span>`).join('')}</div>
       </div>
       <div style="font-size:13px;color:var(--white-dim);line-height:1.7;">"${nmSafe(r.text)}"</div>
       ${r.ownerReply ? `<div class="bp-review-reply"><div class="bp-review-reply-label">Your reply</div>${nmSafe(r.ownerReply)}</div>` : ''}
@@ -12581,7 +12594,7 @@ function bpRenderRatingOverview() {
     <div style="display:flex;align-items:center;gap:20px;">
       <div style="text-align:center;min-width:80px;">
         <div style="font-family:var(--font-display);font-size:52px;font-weight:300;color:var(--white);line-height:1;">${avg}</div>
- <div class="bp-stars" style="justify-content:center;margin:4px 0;">${Array.from({length:5},(_,i)=>`<span class="${i<Math.round(avg)?'bp-star-on':'bp-star-off'}">${i<Math.round(avg)?'':''}</span>`).join('')}</div>
+ <div class="bp-stars" style="justify-content:center;margin:4px 0;">${Array.from({length:5},(_,i)=>`<span class="${i<Math.round(avg)?'bp-star-on':'bp-star-off'}">★</span>`).join('')}</div>
         <div style="font-size:10px;color:var(--white-dim);">${revs.length} review${revs.length>1?'s':''}</div>
       </div>
       <div style="flex:1;">
