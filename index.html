@@ -1041,6 +1041,13 @@
   }
   .auth-input:focus { border-color:var(--green-dark); }
   .auth-input.error { border-color:var(--danger); }
+  @keyframes nmShake {
+    10%,90% { transform:translateX(-1px); }
+    20%,80% { transform:translateX(2px); }
+    30%,50%,70% { transform:translateX(-4px); }
+    40%,60% { transform:translateX(4px); }
+  }
+  .nm-shake { animation: nmShake .4s; }
 
   .auth-btn {
     width:100%;padding:15px;border:none;border-radius:8px;
@@ -10315,6 +10322,13 @@ function closeAuth() {
     // visible and reappeared the next time the login form opened, even
     // after logging out and trying to log in as someone else.
     document.querySelectorAll('#auth-overlay [id$="-success"]').forEach(el => { el.textContent = ''; el.style.display = 'none'; });
+    // BUG FIX: the live "Business name is available" hint under the name
+    // field was never cleared on close (it's not an .auth-error or
+    // -success element, so the wipe above missed it) — leaving stale
+    // "available" text visible the next time the form opened, even before
+    // the person typed anything into the now-empty name field.
+    const bizNameHint = document.getElementById('biz-name-hint');
+    if (bizNameHint) { bizNameHint.textContent = ''; bizNameHint.style.display = 'none'; }
   }
   // BUG THIS FIXES: same root cause as closeGate() (see its comment for the
   // full explanation) — closeAuth() never touched history, so every time
@@ -10433,6 +10447,35 @@ function togglePwVis(inputId, btn) {
 }
 
 // ──────────────────────────────────────────────────
+// HIGHLIGHT MISSING REQUIRED FIELDS
+// ──────────────────────────────────────────────────
+// Red outline + brief shake on whichever fields are actually empty, instead
+// of just a generic "please fill in all fields" banner that leaves the
+// person hunting for what they missed. Clears itself the moment they start
+// typing in a flagged field.
+function nmMarkEmptyFields(ids) {
+  let firstEmpty = null;
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (!el.value.trim()) {
+      el.classList.add('error', 'nm-shake');
+      if (!firstEmpty) firstEmpty = el;
+      el.addEventListener('input', function nmClearErr() {
+        el.classList.remove('error');
+        el.removeEventListener('input', nmClearErr);
+      }, { once: true });
+    } else {
+      el.classList.remove('error');
+    }
+  });
+  if (firstEmpty) {
+    firstEmpty.focus();
+    setTimeout(() => firstEmpty.classList.remove('nm-shake'), 400);
+  }
+}
+
+// ──────────────────────────────────────────────────
 // CHECK BUSINESS NAME AVAILABILITY (live hint)
 // ──────────────────────────────────────────────────
 function checkBizNameAvail() {
@@ -10464,7 +10507,7 @@ async function handleBizSignup() {
   const pass    = document.getElementById('biz-reg-password').value;
   const confirm = document.getElementById('biz-reg-confirm').value;
 
-  if(!name||!owner||!email||!pass||!confirm) { showAuthError('biz-signup-error','Please fill in all fields.'); return; }
+  if(!name||!owner||!email||!pass||!confirm) { showAuthError('biz-signup-error','Please fill in all fields.'); nmMarkEmptyFields(['biz-reg-name','biz-reg-owner','biz-reg-email','biz-reg-password','biz-reg-confirm']); return; }
   if(!validateEmail(email))                   { showAuthError('biz-signup-error','Please enter a valid email address.'); return; }
   if(!nmLooksLikeName(owner))                  { showAuthError('biz-signup-error','Please enter your real name (letters only) in the owner field.'); return; }
   if(!validateStrongPassword(pass,'biz-signup-error')) return;
@@ -10556,7 +10599,7 @@ async function handleBizLogin() {
     } catch(e) { /* fall through to normal business login below */ }
   }
 
-  if(!loginName||!email||!pass) { showAuthError('biz-login-error','Please fill in all fields before continuing.'); return; }
+  if(!loginName||!email||!pass) { showAuthError('biz-login-error','Please fill in all fields before continuing.'); nmMarkEmptyFields(['biz-login-name','biz-login-email','biz-login-password']); return; }
   if(!validateEmail(email))     { showAuthError('biz-login-error','Please enter a valid email address.'); return; }
 
   // Persistent lockout: 5 failed attempts locks this email out for 3 hours,
@@ -10613,7 +10656,7 @@ async function handleSubSignup() {
   const pass    = document.getElementById('sub-reg-password').value;
   const confirm = document.getElementById('sub-reg-confirm').value;
 
-  if(!name||!email||!pass||!confirm) { showAuthError('sub-signup-error','Please fill in all fields.'); return; }
+  if(!name||!email||!pass||!confirm) { showAuthError('sub-signup-error','Please fill in all fields.'); nmMarkEmptyFields(['sub-reg-name','sub-reg-email','sub-reg-password','sub-reg-confirm']); return; }
   if(!validateEmail(email))           { showAuthError('sub-signup-error','Please enter a valid email address.'); return; }
   if(!nmLooksLikeName(name))           { showAuthError('sub-signup-error','Please enter your real name (letters only).'); return; }
   if(!validateStrongPassword(pass,'sub-signup-error')) return;
@@ -10663,7 +10706,7 @@ async function handleSubLogin() {
   const email     = document.getElementById('sub-login-email').value.trim();
   const pass      = document.getElementById('sub-login-password').value;
 
-  if(!loginName||!email||!pass) { showAuthError('sub-login-error','Please fill in all fields before continuing.'); return; }
+  if(!loginName||!email||!pass) { showAuthError('sub-login-error','Please fill in all fields before continuing.'); nmMarkEmptyFields(['sub-login-name','sub-login-email','sub-login-password']); return; }
   if(!validateEmail(email))     { showAuthError('sub-login-error','Please enter a valid email address.'); return; }
 
   // Persistent lockout: 5 failed attempts locks this email out for 3 hours,
@@ -10709,7 +10752,7 @@ async function handleGuestSignup() {
   const pass     = document.getElementById('guest-password').value;
   const confirm  = document.getElementById('guest-confirm').value;
 
-  if(!name||!location||!pass||!confirm) { showAuthError('guest-error','Please fill in all fields.'); return; }
+  if(!name||!location||!pass||!confirm) { showAuthError('guest-error','Please fill in all fields.'); nmMarkEmptyFields(['guest-name','guest-location','guest-password','guest-confirm']); return; }
   if(!nmLooksLikeName(name))             { showAuthError('guest-error','Please enter your real name (letters only).'); return; }
   if(!validateStrongPassword(pass,'guest-error')) return;
   if(pass !== confirm) { showAuthError('guest-error','Passwords do not match. Please try again.'); return; }
@@ -10756,7 +10799,7 @@ async function handleGuestLogin() {
   const loginLoc   = document.getElementById('guest-login-location').value.trim();
   const pass       = document.getElementById('guest-login-password').value;
 
-  if(!loginName||!loginLoc||!pass) { showAuthError('guest-login-error','Please fill in all fields before continuing.'); return; }
+  if(!loginName||!loginLoc||!pass) { showAuthError('guest-login-error','Please fill in all fields before continuing.'); nmMarkEmptyFields(['guest-login-name','guest-login-location','guest-login-password']); return; }
 
   // Persistent lockout: 5 failed attempts locks this name out for 3 hours,
   // and survives page reloads (see nmCheckLockout above).
