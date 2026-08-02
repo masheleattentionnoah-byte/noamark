@@ -343,6 +343,116 @@ async function handleSaveAvailability(claims, body) {
   }
 }
 
+// Looks up a notification and confirms the calling business owns the
+// listing it belongs to. Returns { notif } on success or { error }.
+async function getOwnedNotification(claims, notifId) {
+  const res = await supaFetch(`notifications?id=eq.${encodeURIComponent(notifId)}&select=id,listing_id&limit=1`);
+  const rows = await res.json();
+  const notif = rows[0];
+  if (!notif) return { error: { status: 404, json: { ok: false, reason: 'Notification not found.' } } };
+
+  const owns = await businessOwnsListing(claims, notif.listing_id);
+  if (!owns) return { error: { status: 403, json: { ok: false, reason: 'You can only manage notifications on your own listing.' } } };
+
+  return { notif };
+}
+
+// ── mode: list-notifications (admin, or business who owns the listing) ──
+async function handleListNotifications(claims, body) {
+  if (claims.role !== 'admin' && claims.role !== 'business') {
+    return { status: 401, json: { ok: false, reason: 'Please log in again.' } };
+  }
+  const { listingId } = body;
+  if (!listingId) return { status: 400, json: { ok: false, reason: 'Missing listingId' } };
+
+  try {
+    const owns = await businessOwnsListing(claims, listingId);
+    if (!owns) return { status: 403, json: { ok: false, reason: 'You can only view notifications on your own listing.' } };
+
+    const res = await supaFetch(`notifications?listing_id=eq.${encodeURIComponent(listingId)}&select=*&order=created_at.desc&limit=30`);
+    if (!res.ok) throw new Error(await res.text());
+    const notifications = await res.json();
+
+    return { status: 200, json: { ok: true, notifications } };
+  } catch (e) {
+    console.error('moderate/list-notifications error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: notif-unread-count (admin, or business who owns the listing) ──
+// Lightweight — powers just the bell badge, not the full panel.
+async function handleNotifUnreadCount(claims, body) {
+  if (claims.role !== 'admin' && claims.role !== 'business') {
+    return { status: 401, json: { ok: false, reason: 'Please log in again.' } };
+  }
+  const { listingId } = body;
+  if (!listingId) return { status: 400, json: { ok: false, reason: 'Missing listingId' } };
+
+  try {
+    const owns = await businessOwnsListing(claims, listingId);
+    if (!owns) return { status: 403, json: { ok: false, reason: 'You can only view notifications on your own listing.' } };
+
+    const res = await supaFetch(`notifications?listing_id=eq.${encodeURIComponent(listingId)}&read=eq.false&select=id`);
+    if (!res.ok) throw new Error(await res.text());
+    const rows = await res.json();
+
+    return { status: 200, json: { ok: true, count: rows.length } };
+  } catch (e) {
+    console.error('moderate/notif-unread-count error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: mark-notif-read (admin, or business who owns the listing) ──
+async function handleMarkNotifRead(claims, body) {
+  if (claims.role !== 'admin' && claims.role !== 'business') {
+    return { status: 401, json: { ok: false, reason: 'Please log in again.' } };
+  }
+  const { notifId } = body;
+  if (!notifId) return { status: 400, json: { ok: false, reason: 'Missing notifId' } };
+
+  try {
+    const { error } = await getOwnedNotification(claims, notifId);
+    if (error) return error;
+
+    const upd = await supaFetch(`notifications?id=eq.${encodeURIComponent(notifId)}`, {
+      method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ read: true }),
+    });
+    if (!upd.ok) throw new Error(await upd.text());
+
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/mark-notif-read error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: mark-all-notif-read (admin, or business who owns the listing) ──
+async function handleMarkAllNotifRead(claims, body) {
+  if (claims.role !== 'admin' && claims.role !== 'business') {
+    return { status: 401, json: { ok: false, reason: 'Please log in again.' } };
+  }
+  const { listingId } = body;
+  if (!listingId) return { status: 400, json: { ok: false, reason: 'Missing listingId' } };
+
+  try {
+    const owns = await businessOwnsListing(claims, listingId);
+    if (!owns) return { status: 403, json: { ok: false, reason: 'You can only manage notifications on your own listing.' } };
+
+    const upd = await supaFetch(
+      `notifications?listing_id=eq.${encodeURIComponent(listingId)}&read=eq.false`,
+      { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ read: true }) }
+    );
+    if (!upd.ok) throw new Error(await upd.text());
+
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/mark-all-notif-read error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
 // ── mode: delete-review (admin, or business who owns the listing) ──
 async function handleDeleteReview(claims, body) {
   if (claims.role !== 'admin' && claims.role !== 'business') {
@@ -411,6 +521,10 @@ export default async function handler(req, res) {
     else if (mode === 'update-booking-status') result = await handleUpdateBookingStatus(claims, body);
     else if (mode === 'reschedule-booking') result = await handleRescheduleBooking(claims, body);
     else if (mode === 'save-availability') result = await handleSaveAvailability(claims, body);
+    else if (mode === 'list-notifications') result = await handleListNotifications(claims, body);
+    else if (mode === 'notif-unread-count') result = await handleNotifUnreadCount(claims, body);
+    else if (mode === 'mark-notif-read') result = await handleMarkNotifRead(claims, body);
+    else if (mode === 'mark-all-notif-read') result = await handleMarkAllNotifRead(claims, body);
     else result = { status: 400, json: { ok: false, reason: 'Unknown or missing mode' } };
 
     return res.status(result.status).json(result.json);
