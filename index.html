@@ -15627,10 +15627,21 @@ async function bpLoadBookings() {
     // Store for use by other functions
     window._bpListingId = listingId;
     bpRefreshNotifBadge();
-    const res = await nmSupaQuery(() =>
-      _supa.from('bookings').select('*').eq('listing_id', listingId).order('created_at', { ascending: false })
-    );
-    const bookings = (res && res.data) || [];
+    // SECURITY FIX: this used to read directly from Supabase via the
+    // public key, protected only by a 'bookings' RLS SELECT policy that
+    // was `USING (true)` — meaning any visitor could read every
+    // customer's name, phone number, and appointment time across every
+    // business on the platform. Now routed through a server endpoint that
+    // verifies the session token and confirms this business owns the
+    // listing before returning anything.
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+      body: JSON.stringify({ mode: 'list-bookings', listingId }),
+    });
+    const result = await res.json();
+    if (!result.ok) { listEl.innerHTML = '<div class="bp-empty"><div class="bp-empty-text">Could not load bookings. Check your connection.</div></div>'; return; }
+    const bookings = result.bookings || [];
     // Update badge
     const pending = bookings.filter(b => b.status === 'pending').length;
     const badge = document.getElementById('bp-book-badge');
@@ -15686,21 +15697,24 @@ async function bpRescheduleBooking(bookingId, customerName, currentDate, current
   const newTime = prompt('Enter new time (HH:MM, 24-hour):', currentTime || '');
   if (!newTime) return;
   try {
-    await nmSupaQuery(() =>
-      _supa.from('bookings').update({
-        status: 'rescheduled',
-        booking_date: newDate,
-        booking_time: newTime,
-        updated_at: new Date().toISOString()
-      }).eq('id', bookingId)
-    );
+    // SECURITY FIX: this used to write directly to Supabase via the public
+    // key, protected only by a 'bookings' RLS UPDATE policy that was
+    // `USING (true)` — meaning anyone could reschedule any booking on any
+    // business's listing, not just their own. Now routed through a server
+    // endpoint that verifies the session token and confirms listing
+    // ownership before writing anything. The server also returns the
+    // booking's contact details so we don't need a second unguarded read.
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+      body: JSON.stringify({ mode: 'reschedule-booking', bookingId, newDate, newTime }),
+    });
+    const result = await res.json();
+    if (!result.ok) { alert('Could not reschedule booking: ' + (result.reason || 'please try again.')); return; }
+    const b = result.booking;
     // Notify customer by SMS + email
     let smsOk = false, emailOk = false, hadContact = false;
     try {
-      const bRes = await nmSupaQuery(() =>
-        _supa.from('bookings').select('customer_name,customer_phone,customer_email,booking_type').eq('id', bookingId).limit(1)
-      );
-      const b = bRes && bRes.data && bRes.data[0];
       if (b) {
         const dateLabel = new Date(newDate + 'T00:00:00').toLocaleDateString('en-ZA', { weekday:'short', day:'numeric', month:'short' });
         if (b.customer_phone) {
@@ -15742,17 +15756,24 @@ function bpFilterBookings(filter, btn) {
 
 async function bpRespondBooking(bookingId, status) {
   try {
-    await nmSupaQuery(() =>
-      _supa.from('bookings').update({ status, updated_at: new Date().toISOString() }).eq('id', bookingId)
-    );
+    // SECURITY FIX: this used to write directly to Supabase via the public
+    // key, protected only by a 'bookings' RLS UPDATE policy that was
+    // `USING (true)` — meaning anyone could accept/decline any booking on
+    // any business's listing, not just their own. Now routed through a
+    // server endpoint that verifies the session token and confirms
+    // listing ownership first.
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+      body: JSON.stringify({ mode: 'update-booking-status', bookingId, status }),
+    });
+    const result = await res.json();
+    if (!result.ok) { alert('Could not update booking: ' + (result.reason || 'please try again.')); return; }
+    const b = result.booking;
     // Notify customer by SMS + email
     let smsOk = false, hadPhone = false;
     let emailOk = false, hadEmail = false;
     try {
-      const bRes = await nmSupaQuery(() =>
-        _supa.from('bookings').select('customer_name,customer_phone,customer_email,booking_type,booking_date,service').eq('id', bookingId).limit(1)
-      );
-      const b = bRes && bRes.data && bRes.data[0];
       if (b) {
         const dateStr = b.booking_date ? new Date(b.booking_date + 'T00:00:00').toLocaleDateString('en-ZA', { weekday:'short', day:'numeric', month:'short' }) : '';
         if (b.customer_phone) {
