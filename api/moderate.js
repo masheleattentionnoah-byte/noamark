@@ -84,18 +84,22 @@ async function handleDeleteListing(claims, body) {
 }
 
 // ── shared helper: does this business (or admin) own the given listing? ──
+// PERFORMANCE NOTE: these two lookups don't depend on each other — who the
+// token belongs to, and who the listing belongs to — so they run in
+// parallel instead of one-after-another. Same security checks, one fewer
+// sequential round-trip on every guarded call.
 async function businessOwnsListing(claims, listingId) {
   if (claims.role === 'admin') return true;
   if (claims.role !== 'business') return false;
 
-  const bizRes = await supaFetch(`users?id=eq.${encodeURIComponent(claims.id)}&select=email&limit=1`);
+  const [bizRes, listingRes] = await Promise.all([
+    supaFetch(`users?id=eq.${encodeURIComponent(claims.id)}&select=email&limit=1`),
+    supaFetch(`listings?id=eq.${encodeURIComponent(listingId)}&select=id,email,owner_email&limit=1`),
+  ]);
   const bizRows = await bizRes.json();
   const businessEmail = bizRows[0]?.email || '';
   if (!businessEmail) return false;
 
-  const listingRes = await supaFetch(
-    `listings?id=eq.${encodeURIComponent(listingId)}&select=id,email,owner_email&limit=1`
-  );
   const listingRows = await listingRes.json();
   const listing = listingRows[0];
   if (!listing) return false;
@@ -354,22 +358,8 @@ async function handleDeleteReview(claims, body) {
     if (!review) return { status: 404, json: { ok: false, reason: 'Review not found.' } };
 
     if (claims.role === 'business') {
-      const bizRes = await supaFetch(`users?id=eq.${encodeURIComponent(claims.id)}&select=email&limit=1`);
-      const bizRows = await bizRes.json();
-      const businessEmail = bizRows[0]?.email || '';
-
-      const listingRes = await supaFetch(
-        `listings?id=eq.${encodeURIComponent(review.listing_id)}&select=id,email,owner_email&limit=1`
-      );
-      const listingRows = await listingRes.json();
-      const listing = listingRows[0];
-
-      const ownsIt = listing && businessEmail && (
-        (listing.email || '').toLowerCase() === businessEmail.toLowerCase() ||
-        (listing.owner_email || '').toLowerCase() === businessEmail.toLowerCase()
-      );
-
-      if (!ownsIt) {
+      const owns = await businessOwnsListing(claims, review.listing_id);
+      if (!owns) {
         return { status: 403, json: { ok: false, reason: 'You can only delete reviews on your own listing.' } };
       }
     }
