@@ -15531,10 +15531,19 @@ async function bpLoadNotifications() {
   }
   listEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--white-dim);font-size:12px;">Loading…</div>';
   try {
-    const res = await nmSupaQuery(() =>
-      _supa.from('notifications').select('*').eq('listing_id', lid).order('created_at', { ascending: false }).limit(30)
-    );
-    const notifs = (res && res.data) || [];
+    // SECURITY FIX: this used to read directly from Supabase via the
+    // public key, protected only by a 'notifications' RLS SELECT policy
+    // that was `USING (true)` — meaning any visitor could read every
+    // business's notification feed. Now routed through a server endpoint
+    // that verifies the session token and confirms listing ownership.
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+      body: JSON.stringify({ mode: 'list-notifications', listingId: lid }),
+    });
+    const result = await res.json();
+    if (!result.ok) { listEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--white-dim);font-size:12px;">Could not load notifications.</div>'; return; }
+    const notifs = result.notifications || [];
     const unread = notifs.filter(n => !n.read).length;
     const badge = document.getElementById('bp-bell-badge');
     if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'inline' : 'none'; }
@@ -15561,7 +15570,18 @@ async function bpLoadNotifications() {
 
 async function bpMarkNotifRead(notifId, rowEl) {
   if (rowEl) { rowEl.style.background = 'transparent'; const dot = rowEl.querySelector('span[style*="border-radius:50%"]'); if (dot) dot.remove(); }
-  await _supa.from('notifications').update({ read: true }).eq('id', notifId).then(()=>{}).catch(()=>{});
+  // SECURITY FIX: this used to write directly to Supabase via the public
+  // key, protected only by a 'notifications' RLS UPDATE policy that was
+  // `USING (true)` — meaning anyone could mark (or tamper with) any
+  // business's notifications. Now routed through a server endpoint that
+  // verifies the session token and confirms listing ownership first.
+  try {
+    await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+      body: JSON.stringify({ mode: 'mark-notif-read', notifId }),
+    });
+  } catch(e) {}
   // Update badge count
   const badge = document.getElementById('bp-bell-badge');
   if (badge) {
@@ -15573,7 +15593,15 @@ async function bpMarkNotifRead(notifId, rowEl) {
 async function bpMarkAllNotifRead() {
   const lid = window._bpListingId;
   if (!lid) return;
-  await _supa.from('notifications').update({ read: true }).eq('listing_id', lid).eq('read', false).then(()=>{}).catch(()=>{});
+  // SECURITY FIX: same as bpMarkNotifRead above, but for the bulk
+  // "mark all read" action — now routed through the guarded endpoint too.
+  try {
+    await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+      body: JSON.stringify({ mode: 'mark-all-notif-read', listingId: lid }),
+    });
+  } catch(e) {}
   await bpLoadNotifications();
 }
 
@@ -15593,10 +15621,20 @@ async function bpRefreshNotifBadge() {
   bpRefreshNotifBadge._lastRun = now;
   bpRefreshNotifBadge._inFlight = (async () => {
     try {
-      const res = await nmSupaQuery(() =>
-        _supa.from('notifications').select('id').eq('listing_id', lid).eq('read', false)
-      );
-      const unread = (res && res.data && res.data.length) || 0;
+      // SECURITY FIX: this used to read directly from Supabase via the
+      // public key, protected only by a 'notifications' RLS SELECT policy
+      // that was `USING (true)` — meaning any visitor could read every
+      // business's notification feed. Now routed through a server
+      // endpoint that verifies the session token and confirms listing
+      // ownership. Uses the lightweight count-only mode since this just
+      // powers the little bell badge, not the full notification list.
+      const res = await fetch('/api/moderate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+        body: JSON.stringify({ mode: 'notif-unread-count', listingId: lid }),
+      });
+      const result = await res.json();
+      const unread = result.ok ? (result.count || 0) : 0;
       const badge = document.getElementById('bp-bell-badge');
       if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'inline' : 'none'; }
     } catch(e) {
