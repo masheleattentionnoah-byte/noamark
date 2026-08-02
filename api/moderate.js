@@ -291,6 +291,54 @@ async function handleRescheduleBooking(claims, body) {
   }
 }
 
+// ── mode: save-availability (admin, or business who owns the listing) ──
+// Availability READS stay public (customers need to see hours to book),
+// only the WRITE path needs guarding — this handles both the first-time
+// insert and later updates as a single upsert.
+async function handleSaveAvailability(claims, body) {
+  if (claims.role !== 'admin' && claims.role !== 'business') {
+    return { status: 401, json: { ok: false, reason: 'Please log in again.' } };
+  }
+  const { listingId, day_0, day_1, day_2, day_3, day_4, day_5, day_6, open_time, close_time } = body;
+  if (!listingId || !open_time || !close_time) {
+    return { status: 400, json: { ok: false, reason: 'Missing listingId, open_time, or close_time' } };
+  }
+
+  try {
+    const owns = await businessOwnsListing(claims, listingId);
+    if (!owns) return { status: 403, json: { ok: false, reason: 'You can only update availability on your own listing.' } };
+
+    const payload = {
+      listing_id: listingId,
+      day_0: !!day_0, day_1: !!day_1, day_2: !!day_2, day_3: !!day_3,
+      day_4: !!day_4, day_5: !!day_5, day_6: !!day_6,
+      open_time, close_time,
+      updated_at: new Date().toISOString(),
+    };
+
+    const existingRes = await supaFetch(`business_availability?listing_id=eq.${encodeURIComponent(listingId)}&select=id&limit=1`);
+    const existingRows = await existingRes.json();
+    const row = existingRows[0];
+
+    if (row) {
+      const upd = await supaFetch(`business_availability?id=eq.${encodeURIComponent(row.id)}`, {
+        method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(payload),
+      });
+      if (!upd.ok) throw new Error(await upd.text());
+    } else {
+      const ins = await supaFetch(`business_availability`, {
+        method: 'POST', prefer: 'return=minimal', body: JSON.stringify(payload),
+      });
+      if (!ins.ok) throw new Error(await ins.text());
+    }
+
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/save-availability error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
 // ── mode: delete-review (admin, or business who owns the listing) ──
 async function handleDeleteReview(claims, body) {
   if (claims.role !== 'admin' && claims.role !== 'business') {
@@ -372,6 +420,7 @@ export default async function handler(req, res) {
     else if (mode === 'list-bookings') result = await handleListBookings(claims, body);
     else if (mode === 'update-booking-status') result = await handleUpdateBookingStatus(claims, body);
     else if (mode === 'reschedule-booking') result = await handleRescheduleBooking(claims, body);
+    else if (mode === 'save-availability') result = await handleSaveAvailability(claims, body);
     else result = { status: 400, json: { ok: false, reason: 'Unknown or missing mode' } };
 
     return res.status(result.status).json(result.json);
