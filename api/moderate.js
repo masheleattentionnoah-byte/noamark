@@ -192,6 +192,105 @@ async function handleDeleteEnquiry(claims, body) {
   }
 }
 
+// Looks up a booking and confirms the calling business owns the listing
+// it belongs to. Returns { booking } on success or { error } on failure.
+async function getOwnedBooking(claims, bookingId) {
+  const bkRes = await supaFetch(
+    `bookings?id=eq.${encodeURIComponent(bookingId)}&select=id,listing_id,customer_name,customer_phone,customer_email,booking_type,booking_date,booking_time,service&limit=1`
+  );
+  const bkRows = await bkRes.json();
+  const booking = bkRows[0];
+  if (!booking) return { error: { status: 404, json: { ok: false, reason: 'Booking not found.' } } };
+
+  const owns = await businessOwnsListing(claims, booking.listing_id);
+  if (!owns) return { error: { status: 403, json: { ok: false, reason: 'You can only manage bookings on your own listing.' } } };
+
+  return { booking };
+}
+
+// ── mode: list-bookings (admin, or business who owns the listing) ──
+async function handleListBookings(claims, body) {
+  if (claims.role !== 'admin' && claims.role !== 'business') {
+    return { status: 401, json: { ok: false, reason: 'Please log in again.' } };
+  }
+  const { listingId } = body;
+  if (!listingId) return { status: 400, json: { ok: false, reason: 'Missing listingId' } };
+
+  try {
+    const owns = await businessOwnsListing(claims, listingId);
+    if (!owns) return { status: 403, json: { ok: false, reason: 'You can only view bookings on your own listing.' } };
+
+    const res = await supaFetch(`bookings?listing_id=eq.${encodeURIComponent(listingId)}&select=*&order=created_at.desc`);
+    if (!res.ok) throw new Error(await res.text());
+    const bookings = await res.json();
+
+    return { status: 200, json: { ok: true, bookings } };
+  } catch (e) {
+    console.error('moderate/list-bookings error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: update-booking-status (admin, or business who owns the listing) ──
+// Used for Accept/Decline. Returns the customer's contact details so the
+// browser can send the SMS/email notification through the existing
+// nmSendSMS/nmSendEmail endpoints — this endpoint only touches the DB.
+async function handleUpdateBookingStatus(claims, body) {
+  if (claims.role !== 'admin' && claims.role !== 'business') {
+    return { status: 401, json: { ok: false, reason: 'Please log in again.' } };
+  }
+  const { bookingId, status } = body;
+  const allowedStatuses = ['confirmed', 'declined', 'completed'];
+  if (!bookingId || !allowedStatuses.includes(status)) {
+    return { status: 400, json: { ok: false, reason: 'Missing bookingId or invalid status' } };
+  }
+
+  try {
+    const { booking, error } = await getOwnedBooking(claims, bookingId);
+    if (error) return error;
+
+    const upd = await supaFetch(`bookings?id=eq.${encodeURIComponent(bookingId)}`, {
+      method: 'PATCH',
+      prefer: 'return=minimal',
+      body: JSON.stringify({ status, updated_at: new Date().toISOString() }),
+    });
+    if (!upd.ok) throw new Error(await upd.text());
+
+    return { status: 200, json: { ok: true, booking } };
+  } catch (e) {
+    console.error('moderate/update-booking-status error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: reschedule-booking (admin, or business who owns the listing) ──
+async function handleRescheduleBooking(claims, body) {
+  if (claims.role !== 'admin' && claims.role !== 'business') {
+    return { status: 401, json: { ok: false, reason: 'Please log in again.' } };
+  }
+  const { bookingId, newDate, newTime } = body;
+  if (!bookingId || !newDate || !newTime) {
+    return { status: 400, json: { ok: false, reason: 'Missing bookingId, newDate, or newTime' } };
+  }
+
+  try {
+    const { booking, error } = await getOwnedBooking(claims, bookingId);
+    if (error) return error;
+
+    const upd = await supaFetch(`bookings?id=eq.${encodeURIComponent(bookingId)}`, {
+      method: 'PATCH',
+      prefer: 'return=minimal',
+      body: JSON.stringify({ status: 'rescheduled', booking_date: newDate, booking_time: newTime, updated_at: new Date().toISOString() }),
+    });
+    if (!upd.ok) throw new Error(await upd.text());
+
+    return { status: 200, json: { ok: true, booking } };
+  } catch (e) {
+    console.error('moderate/reschedule-booking error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
 // ── mode: delete-review (admin, or business who owns the listing) ──
 async function handleDeleteReview(claims, body) {
   if (claims.role !== 'admin' && claims.role !== 'business') {
@@ -270,6 +369,9 @@ export default async function handler(req, res) {
     else if (mode === 'list-enquiries') result = await handleListEnquiries(claims, body);
     else if (mode === 'reply-enquiry') result = await handleReplyEnquiry(claims, body);
     else if (mode === 'delete-enquiry') result = await handleDeleteEnquiry(claims, body);
+    else if (mode === 'list-bookings') result = await handleListBookings(claims, body);
+    else if (mode === 'update-booking-status') result = await handleUpdateBookingStatus(claims, body);
+    else if (mode === 'reschedule-booking') result = await handleRescheduleBooking(claims, body);
     else result = { status: 400, json: { ok: false, reason: 'Unknown or missing mode' } };
 
     return res.status(result.status).json(result.json);
