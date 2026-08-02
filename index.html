@@ -15580,14 +15580,31 @@ async function bpMarkAllNotifRead() {
 async function bpRefreshNotifBadge() {
   const lid = window._bpListingId;
   if (!lid) return;
-  try {
-    const res = await nmSupaQuery(() =>
-      _supa.from('notifications').select('id').eq('listing_id', lid).eq('read', false)
-    );
-    const unread = (res && res.data && res.data.length) || 0;
-    const badge = document.getElementById('bp-bell-badge');
-    if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'inline' : 'none'; }
-  } catch(e) {}
+  // PERFORMANCE FIX: this used to fire a brand new Supabase request every
+  // time it was called — and it gets called up to 4 times in quick
+  // succession on portal open (dashboard init, listing-status check,
+  // bpLoadBookings, bpLoadAvailability), each one a separate full
+  // round-trip for the exact same unread count. Now concurrent calls
+  // share one in-flight request, and repeat calls within 3s are skipped
+  // entirely since the count can't have meaningfully changed that fast.
+  const now = Date.now();
+  if (bpRefreshNotifBadge._inFlight) return bpRefreshNotifBadge._inFlight;
+  if (bpRefreshNotifBadge._lastRun && now - bpRefreshNotifBadge._lastRun < 3000) return;
+  bpRefreshNotifBadge._lastRun = now;
+  bpRefreshNotifBadge._inFlight = (async () => {
+    try {
+      const res = await nmSupaQuery(() =>
+        _supa.from('notifications').select('id').eq('listing_id', lid).eq('read', false)
+      );
+      const unread = (res && res.data && res.data.length) || 0;
+      const badge = document.getElementById('bp-bell-badge');
+      if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'inline' : 'none'; }
+    } catch(e) {
+    } finally {
+      bpRefreshNotifBadge._inFlight = null;
+    }
+  })();
+  return bpRefreshNotifBadge._inFlight;
 }
 
 // ── BOOKING PORTAL FUNCTIONS ─────────────────────────────────────────────────
