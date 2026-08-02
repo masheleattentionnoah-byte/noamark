@@ -12544,16 +12544,39 @@ function bpSetStars(n) {
     s.style.color = i < n ? 'var(--gold-dim)' : 'var(--white-dim)';
   });
 }
-function bpAddReview() {
+async function bpAddReview() {
   const name = document.getElementById('bp-rev-name').value.trim();
   const text = document.getElementById('bp-rev-text').value.trim();
   if(!name || !bpStars || !text) { bpToast('Enter name, select rating, and write a review.'); return; }
-  const d = new Date();
-  bpData.reviews.push({ id: Date.now(), name, stars: bpStars, text, date: d.toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'}), ownerReply: '' });
-  bpSave();
-  document.getElementById('bp-rev-name').value = ''; document.getElementById('bp-rev-text').value = '';
-  bpSetStars(0);
-  bpRenderReviews(); bpToast('Review added.');
+  const myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
+  if (!myListing) { bpToast('Could not find your listing — try reloading the page.'); return; }
+  const btn = document.querySelector('[onclick="bpAddReview()"]');
+  if (btn) { btn.textContent = 'Adding…'; btn.disabled = true; }
+  const stars = bpStars;
+  const created = new Date().toISOString();
+  try {
+    // BUG FIX: this used to only push into local device storage and never
+    // actually reached Supabase — it looked like it worked (the toast said
+    // "Review added"), but the next time the page synced with the database
+    // it vanished, since the database never had it. Real customer reviews
+    // from the public listing page were never affected, only this tool.
+    const { data, error } = await nmSupaQuery(() =>
+      _supa.from('reviews').insert({ listing_id: myListing.id, name, text, rating: stars, created_at: created }).select()
+    );
+    if (error) throw error;
+    const savedId = (data && data[0] && data[0].id) || Date.now();
+    const d = new Date(created);
+    bpData.reviews.push({ id: savedId, name, stars, text, time: d.toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'}), ownerReply: '' });
+    bpSave();
+    document.getElementById('bp-rev-name').value = ''; document.getElementById('bp-rev-text').value = '';
+    bpSetStars(0);
+    bpRenderReviews(); bpToast('Review added.');
+  } catch(e) {
+    console.warn('Review save failed:', e);
+    bpToast('Could not save the review — please try again.');
+  } finally {
+    if (btn) { btn.textContent = 'Add review'; btn.disabled = false; }
+  }
 }
 function bpRenderReviews() {
   bpRenderRatingOverview();
