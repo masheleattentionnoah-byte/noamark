@@ -11762,11 +11762,23 @@ async function bpSyncEnquiriesFromSupabase() {
   const myListing = typeof LISTINGS !== 'undefined' ? getMyListing() : null;
   if (!myListing) return;
   try {
-    const { data, error } = await nmSupaQuery(() =>
-      _supa.from('enquiries').select('*').eq('listing_id', myListing.id).order('created_at', { ascending: false })
-    );
-    if (error || !data) return;
-    // Merge Supabase enquiries into bpData without duplicates
+    // SECURITY FIX: this used to read directly from Supabase via the public
+    // key, protected only by an 'enquiries' RLS SELECT policy that was
+    // `USING (true)` — meaning any visitor, logged in or not, could read
+    // every customer's name, phone number, and message across every
+    // business on the platform. Now routed through a server endpoint that
+    // verifies a real session token and confirms this business actually
+    // owns the listing before returning anything.
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+      body: JSON.stringify({ mode: 'list-enquiries', listingId: myListing.id }),
+    });
+    const result = await res.json();
+    if (!result.ok) { console.warn('Enquiry load failed:', result.reason); return; }
+    const data = result.enquiries;
+    if (!data) return;
+    // Merge into bpData without duplicates
     data.forEach(e => {
       const exists = bpData.enquiries.find(x => String(x.id) === String(e.id));
       if (!exists) {
@@ -12497,9 +12509,20 @@ async function bpSendReply(id) {
   const badge = document.getElementById('bp-enq-badge');
   if(badge){ badge.style.display = n>0 ? 'inline' : 'none'; if(n>0) badge.textContent = n; }
   if(sendBtn){ sendBtn.textContent = 'Send reply'; sendBtn.disabled = false; }
-  // Persist reply + delivery status to Supabase
+  // SECURITY FIX: this used to write directly to Supabase via the public
+  // key, protected only by an 'enquiries' RLS UPDATE policy that was
+  // `USING (true)` — meaning anyone could edit any enquiry's reply on
+  // any business's listing, not just their own. Now routed through a
+  // server endpoint that verifies the session token and confirms
+  // ownership of the listing before writing anything.
   try {
-    await nmSupaQuery(() => _supa.from('enquiries').update({ replied: true, reply: text, reply_sms_sent: !!smsResult.ok, reply_email_sent: !!emailResult.ok }).eq('id', id));
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+      body: JSON.stringify({ mode: 'reply-enquiry', enquiryId: id, replyText: text, smsSent: !!smsResult.ok, emailSent: !!emailResult.ok }),
+    });
+    const result = await res.json();
+    if (!result.ok) console.warn('Reply sync failed:', result.reason);
   } catch(e) { console.warn('Reply sync to Supabase failed', e); }
 }
 async function bpAIDraftReply(id) {
@@ -12525,8 +12548,20 @@ Write a professional, friendly reply in under 80 words. Include a call to action
 async function bpDeleteEnquiry(id) {
   bpData.enquiries = bpData.enquiries.filter(e => String(e.id) !== String(id));
   bpSave(); bpRenderEnquiries(); bpToast('Deleted.');
+  // SECURITY FIX: this used to delete directly via the browser's public
+  // Supabase key, protected only by an 'enquiries' RLS DELETE policy that
+  // was `USING (true)` — meaning any visitor could delete any customer
+  // enquiry on any business's listing, with no login required at all.
+  // Now routed through a server endpoint that verifies a real session
+  // token and confirms this business owns the listing first.
   try {
-    await nmSupaQuery(() => _supa.from('enquiries').delete().eq('id', id));
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+      body: JSON.stringify({ mode: 'delete-enquiry', enquiryId: id }),
+    });
+    const result = await res.json();
+    if (!result.ok) console.warn('Enquiry delete failed:', result.reason);
   } catch(e) { console.warn('Enquiry delete from Supabase failed', e); }
 }
 function bpFilterEnq(f, btn) {
