@@ -15898,7 +15898,7 @@ async function bpSaveAvailability() {
   if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
   // Build payload using day_0..day_6 boolean columns (matches Supabase schema)
   const payload = {
-    listing_id:  window._bpListingId || '', // listing.id, must be set by bpLoadBookings
+    listingId:  window._bpListingId || '', // listing.id, must be set by bpLoadBookings
     day_0: !!(document.getElementById('bp-day-0') || {}).checked,
     day_1: !!(document.getElementById('bp-day-1') || {}).checked,
     day_2: !!(document.getElementById('bp-day-2') || {}).checked,
@@ -15908,18 +15908,21 @@ async function bpSaveAvailability() {
     day_6: !!(document.getElementById('bp-day-6') || {}).checked,
     open_time:   openTime,
     close_time:  closeTime,
-    updated_at:  new Date().toISOString()
   };
   try {
-    const existing = await nmSupaQuery(() =>
-      _supa.from('business_availability').select('id').eq('listing_id', window._bpListingId || '').limit(1)
-    );
-    const row = existing && existing.data && existing.data[0];
-    if (row) {
-      await nmSupaQuery(() => _supa.from('business_availability').update(payload).eq('id', row.id));
-    } else {
-      await nmSupaQuery(() => _supa.from('business_availability').insert(payload));
-    }
+    // SECURITY FIX: this used to write directly to Supabase via the public
+    // key, protected only by a 'business_availability' RLS UPDATE policy
+    // that was `USING (true)` — meaning any visitor could overwrite any
+    // business's operating hours, not just their own. Now routed through
+    // a server endpoint that verifies the session token and confirms
+    // listing ownership before writing anything.
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+      body: JSON.stringify({ mode: 'save-availability', ...payload }),
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.reason || 'Save failed');
  if (btn) { btn.textContent = ' Saved!'; setTimeout(() => { btn.textContent = 'Save Hours'; btn.disabled = false; }, 2000); }
   } catch(e) {
     if (btn) { btn.textContent = 'Save Hours'; btn.disabled = false; }
