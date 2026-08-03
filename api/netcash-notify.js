@@ -1,8 +1,8 @@
 // /api/netcash-notify.js
 //
-// Rebuilt to mirror the real, working /api/ozow-initiate.js +
-// /api/ozow-notify.js pattern exactly — no separate payments table,
-// straight REST PATCH to `listings` on confirmed payment.
+// Mirrors the working /api/ozow-initiate.js + /api/ozow-notify.js pattern —
+// straight REST PATCH to `listings` on confirmed payment, no separate
+// payments table.
 //
 // ONE file, two jobs, split by query string:
 //
@@ -24,26 +24,28 @@
 //                           key, bypasses RLS — server only, never sent
 //                           to the browser)
 //
-// ⚠ SECURITY GAP — READ BEFORE GOING LIVE WITH REAL MONEY:
-// Ozow's notify handler verifies a SHA512 hash built from SiteCode +
-// TransactionId + TransactionReference + Amount + Status + your private
-// key, and REJECTS anything that doesn't match — that's what stops
-// anyone from just POSTing a fake "payment succeeded" request to that
-// URL. Netcash's Pay Now eCommerce docs, as far as we've confirmed in
-// this conversation, do NOT show an equivalent hash field on the
-// server-to-server Notify callback. Until that's confirmed one way or
-// another (check the "Notify URL" page in the docs sidebar — the one
-// link we haven't opened yet), this endpoint has no way to cryptographically
-// verify a request genuinely came from Netcash. It's still safe to test
-// with, but don't treat a real payment as "confirmed real" from this
-// alone until we've checked that page together.
+// ✅ SECURITY GAP CLOSED — Transaction Trace verification:
+// Netcash's Pay Now eCommerce docs confirm there is genuinely no hash/
+// signature field on the server-to-server Notify callback (unlike Ozow,
+// which sends a SHA512 hash you can check). So instead of trusting the
+// incoming POST body, this handler takes the `RequestTrace` value from
+// that POST and calls Netcash's own server directly:
 //
-// ALSO UNCONFIRMED — same caution as before: the exact field names
-// Netcash sends TO this notify URL (whether payment was accepted, the
-// final amount, etc.) are a best-guess mapping below, not verified
-// against a live payload yet. First thing this function does is log the
-// raw body — check Vercel logs after one real test transaction and send
-// me that log if anything looks off.
+//   GET https://ws.netcash.co.za/PayNow/TransactionStatus/Check?RequestTrace=<value>
+//
+// Netcash replies with the authoritative, unspoofable transaction data
+// for that trace id. ONLY that verified reply — never the raw POST body
+// — is used to decide whether a payment was actually accepted and for
+// how much. This means someone POSTing a fake "payment succeeded"
+// request to this URL cannot activate a boost: without a real
+// RequestTrace that Netcash itself recognizes, the verification call
+// fails and nothing happens.
+//
+// Field names below are confirmed against the live Netcash docs
+// (Notify, Accept, Decline, Redirect pages + Transaction Trace):
+//   TransactionAccepted, CardHolderIpAddr, RequestTrace, Reference,
+//   Extra1 (=your m4), Extra2 (=your m5), Extra3 (=your m6), Amount,
+//   Method — no longer a guess.
 
 const PLAN_PRICES = {
   starter: 49.99,
@@ -52,6 +54,7 @@ const PLAN_PRICES = {
 };
 
 const DEFAULT_VENDOR_KEY = '24ade73c-98cf-47b3-99be-cc7b867b3080';
+const TRACE_CHECK_URL = 'https://ws.netcash.co.za/PayNow/TransactionStatus/Check';
 
 export default async function handler(req, res) {
   const action = req.query && req.query.action;
@@ -113,10 +116,10 @@ async function handleInit(req, res) {
     p3: `NoaMark ${planKey.charAt(0).toUpperCase() + planKey.slice(1)} Boost`,
     p4: amount.toFixed(2),
     Budget: 'Y',
-    // m4/m5 are Netcash's "Extra" fields — per the docs, any text sent
-    // here is returned once settlement is done. Same role as Ozow's
-    // Optional1/Optional2: this is how the notify handler below knows
-    // which plan and listing this payment was for.
+    // m4/m5 are Netcash's "Extra" fields — confirmed in the docs to be
+    // returned as Extra1/Extra2 once settlement is done. Same role as
+    // Ozow's Optional1/Optional2: this is how the notify handler below
+    // knows which plan and listing this payment was for.
     m4: planKey,
     m5: String(listingId),
   };
@@ -139,17 +142,15 @@ async function handleNotify(req, res) {
   const body = req.body || {};
   console.log('[netcash-notify] raw payload:', JSON.stringify(body));
 
-  // --- Best-guess field mapping — see the security note above. ---
-  const planKey   = body.m4 || body.Extra1 || body.extra1;
-  const listingId = body.m5 || body.Extra2 || body.extra2;
-  const amountPaid = parseFloat(body.p4 || body.Amount || body.amount || '0');
-  const accepted =
-    body.TransactionAccepted === 'true' ||
-    body.TransactionAccepted === true ||
-    body.Accepted === '1' ||
-    body.transactionAccepted === true;
-  const reasonCode = body.Reason || body.reason || body.ReasonCode || null;
-  // -----------------------------------------------------------------
+  // planKey/listingId just tell us WHAT to activate — they aren't the
+  // security-sensitive part, so it's fine to read them straight off the
+  // POST body (Netcash echoes back whatever we originally sent in
+  // m4/m5). The security-sensitive part — WHETHER this payment really
+  // happened and for how much — is decided below using ONLY the
+  // verified Transaction Trace reply, never these raw fields.
+  const planKey   = body.Extra1 || body.m4;
+  const listingId = body.Extra2 || body.m5;
+  const requestTrace = body.RequestTrace;
 
   if (!planKey || !listingId) {
     console.warn('[netcash-notify] Missing plan/listing in payload — cannot process.', body);
@@ -161,16 +162,48 @@ async function handleNotify(req, res) {
     return res.status(200).send('OK');
   }
 
-  const expectedAmount = PLAN_PRICES[planKey];
-  const amountMatches = Math.abs(amountPaid - expectedAmount) < 0.01;
-
-  if (!accepted) {
-    console.log(`[netcash-notify] Not accepted for listing ${listingId}, plan ${planKey}, reason: ${reasonCode} — not activating.`);
+  if (!requestTrace) {
+    console.error('[netcash-notify] No RequestTrace in payload — cannot verify, refusing to activate.', { listingId, planKey });
     return res.status(200).send('OK');
   }
 
+  // --- Ask Netcash directly: did this transaction really happen? ---
+  let verified;
+  try {
+    const traceRes = await fetch(`${TRACE_CHECK_URL}?RequestTrace=${encodeURIComponent(requestTrace)}`);
+    if (!traceRes.ok) {
+      console.error('[netcash-notify] Transaction Trace call returned non-OK status — refusing to activate.', { status: traceRes.status, listingId, planKey });
+      return res.status(200).send('OK');
+    }
+    verified = await traceRes.json();
+  } catch (e) {
+    console.error('[netcash-notify] Transaction Trace call threw an error — refusing to activate.', e);
+    return res.status(200).send('OK');
+  }
+
+  console.log('[netcash-notify] Transaction Trace verified data:', JSON.stringify(verified));
+
+  if (!verified) {
+    console.error('[netcash-notify] Transaction Trace returned no data — refusing to activate.', { listingId, planKey, requestTrace });
+    return res.status(200).send('OK');
+  }
+
+  const accepted =
+    verified.TransactionAccepted === true ||
+    verified.TransactionAccepted === 'true';
+  const amountPaid = parseFloat(verified.Amount || '0');
+  const reasonCode = verified.Reason || null;
+
+  if (!accepted) {
+    console.log(`[netcash-notify] Netcash's own trace says NOT accepted for listing ${listingId}, plan ${planKey}, reason: ${reasonCode} — not activating.`);
+    return res.status(200).send('OK');
+  }
+
+  const expectedAmount = PLAN_PRICES[planKey];
+  const amountMatches = Math.abs(amountPaid - expectedAmount) < 0.01;
+
   if (!amountMatches) {
-    console.warn('[netcash-notify] Amount mismatch — refusing to activate.', { listingId, planKey, amountPaid, expectedAmount });
+    console.warn('[netcash-notify] Verified amount mismatch — refusing to activate.', { listingId, planKey, amountPaid, expectedAmount });
     return res.status(200).send('OK');
   }
 
@@ -203,7 +236,7 @@ async function handleNotify(req, res) {
     if (!updateRes.ok || !updated || updated.length === 0) {
       console.error('[netcash-notify] Supabase update failed or matched no rows.', { listingId, planKey, status: updateRes.status, updated });
     } else {
-      console.log(`[netcash-notify] listing ${listingId} boosted to ${planKey}`);
+      console.log(`[netcash-notify] listing ${listingId} boosted to ${planKey} (verified via Transaction Trace)`);
     }
   } catch (e) {
     console.error('[netcash-notify] Supabase update threw an error.', e);
