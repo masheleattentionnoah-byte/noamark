@@ -54,12 +54,29 @@ const PLAN_PRICES = {
 const DEFAULT_VENDOR_KEY = '24ade73c-98cf-47b3-99be-cc7b867b3080';
 
 export default async function handler(req, res) {
+  const action = req.query && req.query.action;
+
+  // Netcash's Redirect URL sends the customer's browser back with a POST
+  // (not a normal GET link click), carrying the transaction result as
+  // form fields. A static homepage only accepts GET, which is exactly
+  // why a bare https://noamark.com/ Redirect URL gave "HTTP ERROR 405".
+  // This branch exists ONLY to accept that POST and bounce the browser
+  // home with a normal 302 (which becomes a GET) — same DISPLAY-ONLY
+  // principle as the Ozow return handling in index.html. It must NEVER
+  // touch Supabase or grant a boost: the customer's own browser landing
+  // here can be faked by anyone just visiting the URL, so only the real
+  // server-to-server call below (no query string) is trusted for that.
+  if (action === 'redirect') {
+    res.writeHead(302, { Location: 'https://noamark.com/' });
+    return res.end();
+  }
+
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).send('Method not allowed');
   }
 
-  const isInit = req.query && req.query.action === 'init';
+  const isInit = action === 'init';
   if (isInit) {
     return handleInit(req, res);
   }
