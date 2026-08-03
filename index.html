@@ -4117,6 +4117,7 @@
  <li> Appears in search & category results</li>
                 </ul>
                 <button class="bp-btn" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Starter','R49.99/month')">Select Starter</button>
+                <div style="margin-top:8px;text-align:center;"><a href="javascript:void(0)" onclick="bpSelectBoostOzow('Starter','R49.99/month')" style="font-size:10px;color:var(--white-dim);text-decoration:underline;">Pay with Ozow instead</a></div>
               </div>
               <!-- GROWTH -->
               <div style="background:linear-gradient(160deg,rgba(212,175,55,.06),var(--black-3));border:1px solid rgba(212,175,55,.35);padding:28px;text-align:center;position:relative;">
@@ -4131,6 +4132,7 @@
  <li> Above Starter listings</li>
                 </ul>
                 <button class="bp-btn bp-btn-gold" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Growth','R219.99/month')">Select Growth</button>
+                <div style="margin-top:8px;text-align:center;"><a href="javascript:void(0)" onclick="bpSelectBoostOzow('Growth','R219.99/month')" style="font-size:10px;color:var(--white-dim);text-decoration:underline;">Pay with Ozow instead</a></div>
               </div>
               <!-- PRO (Monthly — best value) -->
               <div style="background:linear-gradient(160deg,rgba(212,175,55,.12),var(--black-2));border:2px solid var(--gold);padding:28px;text-align:center;position:relative;">
@@ -4147,9 +4149,10 @@
  <li> Custom monthly marketing ad, designed for you</li>
                 </ul>
  <button class="bp-btn bp-btn-gold" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Pro','R299.99/month')"> Select Pro</button>
+                <div style="margin-top:8px;text-align:center;"><a href="javascript:void(0)" onclick="bpSelectBoostOzow('Pro','R299.99/month')" style="font-size:10px;color:var(--white-dim);text-decoration:underline;">Pay with Ozow instead</a></div>
               </div>
             </div>
-            <p style="font-size:11px;color:var(--white-dim);margin-top:16px;line-height:1.6;">Plans renew monthly. Payments are processed securely via Ozow — you'll be redirected to complete payment after selecting a plan, and it activates automatically.</p>
+            <p style="font-size:11px;color:var(--white-dim);margin-top:16px;line-height:1.6;">Plans renew monthly. Payments are processed securely via Netcash — you'll be redirected to complete payment after selecting a plan, and it activates automatically. Prefer Ozow? Use the link under any plan.</p>
           </div>
         </div>
 
@@ -10056,6 +10059,73 @@ async function nmProcessOzowBoost(planKey, planName, listingId) {
   setTimeout(() => form.submit(), 800);
 }
 
+// ════════════════════════════════════════════════════════════
+// ⑨b PAYMENT GATEWAY — Netcash Pay Now integration (first priority,
+//    sits alongside Ozow above rather than replacing it).
+//    /api/netcash-notify?action=init builds and signs the request
+//    server-side; this just submits the hidden form it returns straight
+//    to Netcash's hosted Pay Now page.
+// ════════════════════════════════════════════════════════════
+async function nmProcessNetcashBoost(planKey, planName, listingId) {
+  if (!currentUser || currentUser.type !== 'business') {
+    bpToast('Please log in as a business to boost.');
+    return;
+  }
+  if (!navigator.onLine) {
+ bpToast(' You are offline. Please reconnect before making a payment.');
+    return;
+  }
+
+  bpToast(' Preparing secure payment...');
+
+  let res, data;
+  try {
+    res = await fetch('/api/netcash-notify?action=init', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        planKey,
+        listingId,
+        email: currentUser.email || '',
+        name: currentUser.name || '',
+      }),
+    });
+    data = await res.json();
+  } catch (e) {
+    console.error('netcash-notify?action=init request failed:', e);
+    bpToast('Could not start payment. Please try again.');
+    return;
+  }
+
+  if (!data || !data.ok) {
+    bpToast((data && data.reason) || 'Payments are not available right now.');
+    return;
+  }
+
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = data.postUrl;
+  form.style.display = 'none';
+
+  Object.entries(data.fields).forEach(([name, value]) => {
+    const inp = document.createElement('input');
+    inp.type  = 'hidden';
+    inp.name  = name;
+    inp.value = value;
+    form.appendChild(inp);
+  });
+
+  // Same pending-flag pattern as Ozow, under its own key so the two
+  // gateways' return-handling never collides.
+  try {
+    sessionStorage.setItem('nm_netcash_pending', JSON.stringify({ planKey, listingId, ts: Date.now() }));
+  } catch (e) { /* sessionStorage unavailable — return message just won't show, non-critical */ }
+
+ bpToast(' Redirecting to secure payment...');
+  document.body.appendChild(form);
+  setTimeout(() => form.submit(), 800);
+}
+
 // Handle the customer's return from Ozow. This is DISPLAY ONLY — it never
 // writes to Supabase. The real activation happens server-side in
 // /api/ozow-notify.js once Ozow confirms the payment directly to your
@@ -10070,12 +10140,21 @@ async function nmProcessOzowBoost(planKey, planName, listingId) {
 // payment", and show a single honest, outcome-agnostic message.
 (function handlePaymentReturn() {
   let pending = null;
+  let gatewayLabel = 'Ozow';
   try { pending = JSON.parse(sessionStorage.getItem('nm_ozow_pending') || 'null'); } catch (e) {}
+  if (!pending) {
+    // Same ambiguous-return situation as Ozow: Netcash's Accept/Decline/
+    // Redirect URLs are all just https://noamark.com/, so we can't tell
+    // success from failure from the URL alone here either.
+    try { pending = JSON.parse(sessionStorage.getItem('nm_netcash_pending') || 'null'); } catch (e) {}
+    gatewayLabel = 'Netcash';
+  }
   if (pending && (Date.now() - pending.ts) < 30 * 60 * 1000) {
     sessionStorage.removeItem('nm_ozow_pending');
+    sessionStorage.removeItem('nm_netcash_pending');
     const _doPaymentReturn = async () => {
       await new Promise(r => setTimeout(r, 1200));
- bpToast(' Thanks for completing that on Ozow. If your payment went through, your boost activates automatically within a minute — refresh shortly to check. If you cancelled or it failed, you were not charged.');
+ bpToast(' Thanks for completing that on ' + gatewayLabel + '. If your payment went through, your boost activates automatically within a minute — refresh shortly to check. If you cancelled or it failed, you were not charged.');
       setTimeout(() => { if (typeof loadListingsFromSupabase === 'function') loadListingsFromSupabase(); }, 4000);
     };
     if (document.readyState === 'loading') {
@@ -13037,13 +13116,29 @@ async function bpSaveAccountDetails() {
   }
 }
 
-// ── BOOST SELECT — live Ozow checkout ──
+// ── BOOST SELECT — Netcash first, Ozow available alongside it ──
 function bpSelectBoost(plan, price) {
   if (!currentUser || currentUser.type !== 'business') {
     bpToast('Please log in as a business owner to purchase a boost.');
     return;
   }
   const planKey = plan.toLowerCase(); // 'Starter'/'Growth'/'Pro' -> 'starter'/'growth'/'pro'
+  const listingId = window._bpListingId;
+  if (!listingId) {
+    bpToast('Could not find your listing. Please refresh and try again.');
+    return;
+  }
+  nmProcessNetcashBoost(planKey, plan, listingId);
+}
+
+// Kept available side by side — the small "Pay with Ozow instead" links
+// under each plan button call this one directly.
+function bpSelectBoostOzow(plan, price) {
+  if (!currentUser || currentUser.type !== 'business') {
+    bpToast('Please log in as a business owner to purchase a boost.');
+    return;
+  }
+  const planKey = plan.toLowerCase();
   const listingId = window._bpListingId;
   if (!listingId) {
     bpToast('Could not find your listing. Please refresh and try again.');
