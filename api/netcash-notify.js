@@ -1,39 +1,49 @@
-// api/netcash-notify.js
+// /api/netcash-notify.js
 //
-// ONE file handling BOTH jobs, to keep the repo file count down:
+// Rebuilt to mirror the real, working /api/ozow-initiate.js +
+// /api/ozow-notify.js pattern exactly — no separate payments table,
+// straight REST PATCH to `listings` on confirmed payment.
 //
-//   1. POST /api/netcash-notify?action=init
-//      → called by your frontend when a customer clicks Upgrade.
-//        Builds the locked Pay Now fields.
+// ONE file, two jobs, split by query string:
 //
-//   2. POST /api/netcash-notify   (no query string)
-//      → called by Netcash itself, server-to-server, after a
-//        transaction settles. This is the exact URL already saved in
-//        your Netcash dashboard (Account profile > Service profiles >
-//        NetConnector > Pay Now > Payment notifications > Notify URL),
-//        so this filename/path must not change.
+//   POST /api/netcash-notify?action=init
+//     → called by the frontend when a customer clicks a boost plan.
+//       Builds the locked, server-signed Pay Now fields.
 //
-// IMPORTANT for the notify half: the incoming field names below
-// (TransactionAccepted, Reference, etc.) are my best-confirmed mapping
-// from the Netcash docs, but not yet confirmed against a real payload
-// from your account. After deploying:
-//   1. Run one test payment (test card 4000000000000002, any future
-//      MM/YY, CVV 123).
-//   2. Check Vercel logs for the line "[netcash-notify] raw payload:".
-//   3. If any field names don't match, send me that log and I'll fix
-//      the mapping in the same reply.
-// A wrong field name here fails silently — Netcash gets its 200 and
-// stops retrying, but the customer's boost never activates.
-
-import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-const DEFAULT_VENDOR_KEY = '24ade73c-98cf-47b3-99be-cc7b867b3080';
+//   POST /api/netcash-notify   (no query string)
+//     → called by Netcash itself, server-to-server, after a
+//       transaction settles. This exact URL is already saved in your
+//       Netcash dashboard (Account profile > Service profiles >
+//       NetConnector > Pay Now > Payment notifications > Notify URL),
+//       so don't rename this file/path.
+//
+// SETUP NEEDED IN VERCEL (already confirmed present in this project):
+//   NETCASH_SERVICE_KEY   — Pay Now service key
+//   SUPABASE_URL          — already set, reused as-is
+//   SUPABASE_SERVICE_KEY  — already set, reused as-is (Supabase secret
+//                           key, bypasses RLS — server only, never sent
+//                           to the browser)
+//
+// ⚠ SECURITY GAP — READ BEFORE GOING LIVE WITH REAL MONEY:
+// Ozow's notify handler verifies a SHA512 hash built from SiteCode +
+// TransactionId + TransactionReference + Amount + Status + your private
+// key, and REJECTS anything that doesn't match — that's what stops
+// anyone from just POSTing a fake "payment succeeded" request to that
+// URL. Netcash's Pay Now eCommerce docs, as far as we've confirmed in
+// this conversation, do NOT show an equivalent hash field on the
+// server-to-server Notify callback. Until that's confirmed one way or
+// another (check the "Notify URL" page in the docs sidebar — the one
+// link we haven't opened yet), this endpoint has no way to cryptographically
+// verify a request genuinely came from Netcash. It's still safe to test
+// with, but don't treat a real payment as "confirmed real" from this
+// alone until we've checked that page together.
+//
+// ALSO UNCONFIRMED — same caution as before: the exact field names
+// Netcash sends TO this notify URL (whether payment was accepted, the
+// final amount, etc.) are a best-guess mapping below, not verified
+// against a live payload yet. First thing this function does is log the
+// raw body — check Vercel logs after one real test transaction and send
+// me that log if anything looks off.
 
 const PLAN_PRICES = {
   starter: 49.99,
@@ -41,13 +51,15 @@ const PLAN_PRICES = {
   pro: 299.99,
 };
 
+const DEFAULT_VENDOR_KEY = '24ade73c-98cf-47b3-99be-cc7b867b3080';
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ ok: false, reason: 'Method not allowed' });
+    res.setHeader('Allow', 'POST');
+    return res.status(405).send('Method not allowed');
   }
 
   const isInit = req.query && req.query.action === 'init';
-
   if (isInit) {
     return handleInit(req, res);
   }
@@ -58,59 +70,49 @@ export default async function handler(req, res) {
 // JOB 1: build the locked Pay Now form fields for the frontend redirect
 // ---------------------------------------------------------------------
 async function handleInit(req, res) {
-  try {
-    // Matches the shape /api/ozow-initiate already accepts, so the two
-    // gateways can sit side by side without diverging conventions.
-    const { planKey, listingId, email, name } = req.body || {};
+  const { planKey, listingId, email, name } = req.body || {};
 
-    if (!planKey || !PLAN_PRICES[planKey]) {
-      return res.status(400).json({ ok: false, reason: 'Invalid or missing plan' });
-    }
-    if (!listingId) {
-      return res.status(400).json({ ok: false, reason: 'Missing listingId' });
-    }
-
-    const amount = PLAN_PRICES[planKey]; // locked server-side, never from the client
-    const reference = `NM-${listingId}-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
-
-    const { error: insertError } = await supabase.from('boost_payments').insert({
-      reference,
-      listing_id: listingId,
-      plan: planKey,
-      amount,
-      status: 'pending',
-      gateway: 'netcash',
-      created_at: new Date().toISOString(),
-    });
-
-    if (insertError) {
-      console.error('[netcash-notify:init] Failed to record pending payment:', insertError);
-      return res.status(500).json({ ok: false, reason: 'Could not create payment record' });
-    }
-
-    const fields = {
-      m1: process.env.NETCASH_SERVICE_KEY,
-      m2: DEFAULT_VENDOR_KEY,
-      p2: reference,
-      p3: `NoaMark ${planKey.charAt(0).toUpperCase() + planKey.slice(1)} Boost`,
-      p4: amount.toFixed(2),
-      Budget: 'Y',
-    };
-
-    if (email) fields.m9 = email;
-    fields.m10 = name || '';
-    fields.m4 = listingId;
-
-    return res.status(200).json({
-      ok: true,
-      reference,
-      postUrl: 'https://paynow.netcash.co.za/site/paynow.aspx',
-      fields,
-    });
-  } catch (err) {
-    console.error('[netcash-notify:init] error:', err);
-    return res.status(500).json({ ok: false, reason: 'Internal error' });
+  if (!planKey || !PLAN_PRICES[planKey]) {
+    return res.status(400).json({ ok: false, reason: 'Unknown or missing planKey' });
   }
+  if (!listingId) {
+    return res.status(400).json({ ok: false, reason: 'Missing listingId' });
+  }
+
+  const serviceKey = process.env.NETCASH_SERVICE_KEY;
+  if (!serviceKey) {
+    console.warn('NETCASH_SERVICE_KEY not set — boost payment not started.');
+    return res.status(200).json({ ok: false, reason: 'Payments not configured yet' });
+  }
+
+  const amount = PLAN_PRICES[planKey];
+  // Same reference style as the Ozow side, for consistency across logs.
+  const reference = 'NM-' + planKey.toUpperCase() + '-' + listingId + '-' + Date.now();
+
+  const fields = {
+    m1: serviceKey,
+    m2: DEFAULT_VENDOR_KEY,
+    p2: reference,
+    p3: `NoaMark ${planKey.charAt(0).toUpperCase() + planKey.slice(1)} Boost`,
+    p4: amount.toFixed(2),
+    Budget: 'Y',
+    // m4/m5 are Netcash's "Extra" fields — per the docs, any text sent
+    // here is returned once settlement is done. Same role as Ozow's
+    // Optional1/Optional2: this is how the notify handler below knows
+    // which plan and listing this payment was for.
+    m4: planKey,
+    m5: String(listingId),
+  };
+
+  if (email) fields.m9 = email;
+  if (name) fields.m10 = name;
+
+  return res.status(200).json({
+    ok: true,
+    postUrl: 'https://paynow.netcash.co.za/site/paynow.aspx',
+    fields,
+    planName: planKey.charAt(0).toUpperCase() + planKey.slice(1) + ' Plan',
+  });
 }
 
 // ---------------------------------------------------------------------
@@ -120,75 +122,75 @@ async function handleNotify(req, res) {
   const body = req.body || {};
   console.log('[netcash-notify] raw payload:', JSON.stringify(body));
 
-  // --- Best-guess field mapping, to be confirmed against a real payload ---
-  const reference = body.Reference || body.reference || body.p2;
-  const amountPaid = parseFloat(body.Amount || body.amount || body.p4 || '0');
+  // --- Best-guess field mapping — see the security note above. ---
+  const planKey   = body.m4 || body.Extra1 || body.extra1;
+  const listingId = body.m5 || body.Extra2 || body.extra2;
+  const amountPaid = parseFloat(body.p4 || body.Amount || body.amount || '0');
   const accepted =
     body.TransactionAccepted === 'true' ||
     body.TransactionAccepted === true ||
     body.Accepted === '1' ||
     body.transactionAccepted === true;
   const reasonCode = body.Reason || body.reason || body.ReasonCode || null;
-  const extra1 = body.Extra1 || body.m4 || null;
-  // -------------------------------------------------------------------
+  // -----------------------------------------------------------------
 
-  if (!reference) {
-    console.error('[netcash-notify] No reference found in payload — cannot process.');
+  if (!planKey || !listingId) {
+    console.warn('[netcash-notify] Missing plan/listing in payload — cannot process.', body);
+    return res.status(200).send('OK');
+  }
+
+  if (!PLAN_PRICES[planKey]) {
+    console.warn('[netcash-notify] Unknown planKey in payload:', planKey);
+    return res.status(200).send('OK');
+  }
+
+  const expectedAmount = PLAN_PRICES[planKey];
+  const amountMatches = Math.abs(amountPaid - expectedAmount) < 0.01;
+
+  if (!accepted) {
+    console.log(`[netcash-notify] Not accepted for listing ${listingId}, plan ${planKey}, reason: ${reasonCode} — not activating.`);
+    return res.status(200).send('OK');
+  }
+
+  if (!amountMatches) {
+    console.warn('[netcash-notify] Amount mismatch — refusing to activate.', { listingId, planKey, amountPaid, expectedAmount });
+    return res.status(200).send('OK');
+  }
+
+  const supaUrl = process.env.SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+
+  if (!supaUrl || !serviceKey) {
+    console.error('SUPABASE_URL / SUPABASE_SERVICE_KEY not set — payment confirmed but boost NOT activated. Fix env vars and manually activate this one:', { listingId, planKey });
     return res.status(200).send('OK');
   }
 
   try {
-    const { data: payment, error: fetchError } = await supabase
-      .from('boost_payments')
-      .select('*')
-      .eq('reference', reference)
-      .single();
+    const updateRes = await fetch(`${supaUrl}/rest/v1/listings?id=eq.${encodeURIComponent(listingId)}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': serviceKey,
+        'Authorization': `Bearer ${serviceKey}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
+      },
+      body: JSON.stringify({
+        boost_tier: planKey,
+        boost_started_at: new Date().toISOString(),
+        status: 'approved',
+      }),
+    });
 
-    if (fetchError || !payment) {
-      console.error('[netcash-notify] No matching payment for reference:', reference);
-      return res.status(200).send('OK');
+    const updated = await updateRes.json().catch(() => null);
+
+    if (!updateRes.ok || !updated || updated.length === 0) {
+      console.error('[netcash-notify] Supabase update failed or matched no rows.', { listingId, planKey, status: updateRes.status, updated });
+    } else {
+      console.log(`[netcash-notify] listing ${listingId} boosted to ${planKey}`);
     }
-
-    if (payment.status === 'paid') {
-      return res.status(200).send('OK');
-    }
-
-    const amountMatches = Math.abs(amountPaid - parseFloat(payment.amount)) < 0.01;
-
-    if (!accepted || !amountMatches) {
-      await supabase
-        .from('boost_payments')
-        .update({
-          status: 'failed',
-          reason: reasonCode || 'Not accepted or amount mismatch',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('reference', reference);
-
-      console.warn('[netcash-notify] Payment not accepted or amount mismatch:', {
-        reference, amountPaid, expected: payment.amount, accepted,
-      });
-      return res.status(200).send('OK');
-    }
-
-    await supabase
-      .from('boost_payments')
-      .update({ status: 'paid', paid_at: new Date().toISOString() })
-      .eq('reference', reference);
-
-    await supabase
-      .from('listings')
-      .update({
-        boost_plan: payment.plan,
-        boost_active: true,
-        boost_activated_at: new Date().toISOString(),
-      })
-      .eq('id', payment.listing_id || extra1);
-
-    console.log('[netcash-notify] Activated boost for listing:', payment.listing_id, payment.plan);
-    return res.status(200).send('OK');
-  } catch (err) {
-    console.error('[netcash-notify] Unexpected error:', err);
-    return res.status(200).send('OK');
+  } catch (e) {
+    console.error('[netcash-notify] Supabase update threw an error.', e);
   }
+
+  return res.status(200).send('OK');
 }
