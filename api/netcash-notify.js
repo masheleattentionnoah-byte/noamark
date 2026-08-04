@@ -252,6 +252,15 @@ async function handleNotify(req, res, { respondAsBrowser = false } = {}) {
       boost_payment_ref: verified.Reference || body.Reference || null,
     };
 
+    // AUTO-VERIFY (Pro plan only): the pricing page lists "Verified badge"
+    // as a Pro-tier feature, so a confirmed Pro payment should grant it
+    // automatically — same rule and same wording as ozow-notify.js.
+    // Deliberately only ever sets this to true here, never false —
+    // Starter/Growth payments don't touch verified at all, so a listing
+    // verified for some other legitimate reason is never silently
+    // un-verified by this webhook.
+    if (planKey === 'pro') patchBody.verified = true;
+
     // Only present when: Credit Card payment + m14=1 requested + Test
     // Mode is false on the account. Storing this now, even though the
     // actual recurring re-charge logic isn't built yet — no sense
