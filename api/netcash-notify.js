@@ -49,31 +49,42 @@ const DEFAULT_VENDOR_KEY = '24ade73c-98cf-47b3-99be-cc7b867b3080';
 export default async function handler(req, res) {
   const action = req.query && req.query.action;
 
-  // Netcash's Redirect URL sends the customer's browser back with a POST
-  // (not a normal GET link click), carrying the transaction result as
-  // form fields. A static homepage only accepts GET, which is exactly
-  // why a bare https://noamark.com/ Redirect URL gave "HTTP ERROR 405".
-  // This branch exists ONLY to accept that POST and bounce the browser
-  // home with a normal 302 (which becomes a GET) — same DISPLAY-ONLY
-  // principle as the Ozow return handling in index.html. It must NEVER
-  // touch Supabase or grant a boost: the customer's own browser landing
-  // here can be faked by anyone just visiting the URL, so only the real
-  // server-to-server call below (no query string) is trusted for that.
+  // ANY GET request here is the customer's browser — Netcash's real
+  // server-to-server Notify call is always POST per the docs, so a GET
+  // can only be a browser (or Netcash's results page following up with
+  // one, which is what the Vercel logs showed happening). Always bounce
+  // home cleanly rather than 405ing, regardless of query string.
+  if (req.method === 'GET') {
+    res.writeHead(302, { Location: 'https://noamark.com/' });
+    return res.end();
+  }
+
+  // Explicit ?action=redirect still works when the query string survives
+  // on a POST (e.g. testing this URL directly).
   if (action === 'redirect') {
     res.writeHead(302, { Location: 'https://noamark.com/' });
     return res.end();
   }
 
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
+    res.setHeader('Allow', 'POST, GET');
     return res.status(405).send('Method not allowed');
   }
 
-  const isInit = action === 'init';
-  if (isInit) {
+  if (action === 'init') {
     return handleInit(req, res);
   }
-  return handleNotify(req, res);
+
+  // Everything else — including the customer's own browser POSTing here
+  // after paying, now that the query string got stripped — runs through
+  // the SAME verified logic. This is still safe: activation only ever
+  // happens after verifyWithNetcash() confirms the payment against
+  // Netcash's own server, regardless of who/what hit this URL. The only
+  // difference is how we respond afterward: a real browser gets bounced
+  // home with a clean redirect; Netcash's actual server-to-server call
+  // gets the plain "OK" text it expects.
+  const looksLikeBrowser = (req.headers['accept'] || '').includes('text/html');
+  await handleNotify(req, res, { respondAsBrowser: looksLikeBrowser });
 }
 
 // ---------------------------------------------------------------------
@@ -165,9 +176,19 @@ async function verifyWithNetcash(requestTrace) {
 // ---------------------------------------------------------------------
 // JOB 2: receive Netcash's server-to-server settlement notification
 // ---------------------------------------------------------------------
-async function handleNotify(req, res) {
+async function handleNotify(req, res, { respondAsBrowser = false } = {}) {
   const body = req.body || {};
   console.log('[netcash-notify] raw payload:', JSON.stringify(body));
+
+  const finish = (status, text) => {
+    if (respondAsBrowser) {
+      // A real customer's browser ended up here — give them a clean
+      // redirect home instead of raw "OK"/error text on screen.
+      res.writeHead(302, { Location: 'https://noamark.com/' });
+      return res.end();
+    }
+    return res.status(status).send(text);
+  };
 
   const requestTrace = body.RequestTrace;
   const verified = await verifyWithNetcash(requestTrace);
@@ -175,7 +196,7 @@ async function handleNotify(req, res) {
 
   if (!verified) {
     console.error('[netcash-notify] Could not verify with Netcash — refusing to activate anything from the raw POST alone.', { requestTrace });
-    return res.status(200).send('OK');
+    return finish(200, 'OK');
   }
 
   // From here on, trust the VERIFIED response, not the original body —
@@ -188,12 +209,12 @@ async function handleNotify(req, res) {
 
   if (!planKey || !listingId) {
     console.warn('[netcash-notify] Missing plan/listing in payload — cannot process.', body);
-    return res.status(200).send('OK');
+    return finish(200, 'OK');
   }
 
   if (!PLAN_PRICES[planKey]) {
     console.warn('[netcash-notify] Unknown planKey in payload:', planKey);
-    return res.status(200).send('OK');
+    return finish(200, 'OK');
   }
 
   const expectedAmount = PLAN_PRICES[planKey];
@@ -201,12 +222,12 @@ async function handleNotify(req, res) {
 
   if (!accepted) {
     console.log(`[netcash-notify] Not accepted for listing ${listingId}, plan ${planKey} — not activating.`);
-    return res.status(200).send('OK');
+    return finish(200, 'OK');
   }
 
   if (!amountMatches) {
     console.warn('[netcash-notify] Amount mismatch — refusing to activate.', { listingId, planKey, amountPaid, expectedAmount });
-    return res.status(200).send('OK');
+    return finish(200, 'OK');
   }
 
   const supaUrl = process.env.SUPABASE_URL;
@@ -214,7 +235,7 @@ async function handleNotify(req, res) {
 
   if (!supaUrl || !serviceKey) {
     console.error('SUPABASE_URL / SUPABASE_SERVICE_KEY not set — payment confirmed but boost NOT activated. Fix env vars and manually activate this one:', { listingId, planKey });
-    return res.status(200).send('OK');
+    return finish(200, 'OK');
   }
 
   try {
@@ -259,5 +280,5 @@ async function handleNotify(req, res) {
     console.error('[netcash-notify] Supabase update threw an error.', e);
   }
 
-  return res.status(200).send('OK');
+  return finish(200, 'OK');
 }
