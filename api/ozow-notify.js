@@ -121,6 +121,15 @@ export default async function handler(req, res) {
         // (status='suspended') by check-trials.js after an unpaid grace
         // period. Harmless no-op for a listing that was already approved.
         status: 'approved',
+        // AUTO-VERIFY (Pro plan only): the pricing page lists "Verified
+        // badge" as a Pro-tier feature, so a confirmed Pro payment should
+        // grant it automatically instead of an admin having to click
+        // "Mark Verified" by hand every time. Deliberately only ever sets
+        // this to true here, never false — Starter/Growth payments just
+        // don't touch the verified column at all, so a listing verified
+        // for some other legitimate reason is never silently un-verified
+        // by this webhook.
+        ...(planKey === 'pro' ? { verified: true } : {}),
       }),
     });
 
