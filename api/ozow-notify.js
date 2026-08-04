@@ -31,6 +31,15 @@
 // CLOSED (reject/ignore) on a bad hash rather than trust anything it
 // can't verify, so a wrong field order blocks legitimate payments from
 // activating rather than letting fake ones through.
+//
+// UPDATED (Aug 2026): now also sets boost_paid_at and boost_payment_ref
+// on activation. These two columns are what the admin Revenue dashboard
+// (index.html, admLoadRevenue) actually checks to count a boost as
+// CONFIRMED revenue vs. one an admin set manually via admSetBoost — this
+// file previously only set boost_tier/boost_started_at, which meant
+// every real Ozow payment was invisible to the Revenue dashboard even
+// though the boost itself activated correctly. Netcash's notify handler
+// (api/netcash-notify.js) already does this; this brings Ozow to parity.
 
 import crypto from 'crypto';
 
@@ -103,6 +112,11 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         boost_tier: planKey,
         boost_started_at: new Date().toISOString(),
+        // Same two columns netcash-notify.js sets — this is what makes
+        // a payment count as CONFIRMED on the admin Revenue dashboard,
+        // as opposed to a tier an admin set manually via admSetBoost.
+        boost_paid_at: new Date().toISOString(),
+        boost_payment_ref: body.TransactionId || body.TransactionReference || null,
         // Restores visibility for a listing that was previously unlisted
         // (status='suspended') by check-trials.js after an unpaid grace
         // period. Harmless no-op for a listing that was already approved.
