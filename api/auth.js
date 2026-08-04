@@ -130,7 +130,11 @@ async function handleLogin(body) {
     if (!sub) return { status: 200, json: { ok: false, reason: 'no_account' } };
     if (sub.email.toLowerCase() !== email.toLowerCase()) return { status: 200, json: { ok: false, reason: 'email_mismatch' } };
     if (!verifyStoredPassword(password, sub.password)) return { status: 200, json: { ok: false, reason: 'bad_password' } };
-    return { status: 200, json: { ok: true, user: { type: 'subscriber', name: sub.name, email: sub.email, plan: sub.plan || 'Free', id: sub.id } } };
+    return { status: 200, json: {
+      ok: true,
+      user: { type: 'subscriber', name: sub.name, email: sub.email, plan: sub.plan || 'Free', id: sub.id },
+      sessionToken: issueSessionToken({ role: 'subscriber', id: sub.id, email: sub.email }),
+    }};
   }
 
   if (role === 'guest') {
