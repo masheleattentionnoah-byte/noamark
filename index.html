@@ -3187,6 +3187,19 @@
             <button class="btn-ghost" id="dash-cpw-btn" style="justify-content:center;padding:12px 20px;font-size:10px;" onclick="nmChangePassword('dash-cpw-current','dash-cpw-new','dash-cpw-confirm','dash-cpw-error','dash-cpw-success','dash-cpw-btn')">Update Password</button>
           </div>
         </div>
+        <div class="dash-card" style="margin-top:2px;border-color:rgba(220,38,38,.3);">
+          <div class="dash-card-title" style="color:#f87171;">Danger Zone</div>
+          <div style="font-size:12px;color:var(--white-dim);line-height:1.7;margin-bottom:14px;">Permanently delete your account. This cannot be undone.</div>
+          <div class="auth-error" id="dash-del-error"></div>
+          <div class="auth-success" id="dash-del-success"></div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="position:relative;">
+              <input type="password" id="dash-del-pw" placeholder="Enter your password to confirm" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 40px 10px 12px;font-size:12px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+ <button type="button" onclick="nmTogglePwVisibility('dash-del-pw', this)" aria-label="Show password" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:14px;line-height:1;padding:4px;color:var(--white-dim);"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;flex-shrink:0;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+            <button class="btn-ghost" id="dash-del-btn" style="justify-content:center;padding:12px 20px;font-size:10px;background:rgba(220,38,38,.15);color:#f87171;border:1px solid rgba(220,38,38,.4);" onclick="nmDeleteOwnAccount('dash-del-pw','dash-del-error','dash-del-success','dash-del-btn', nmSubToken)">Delete My Account Permanently</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -4332,6 +4345,22 @@
             <div style="display:flex;gap:24px;flex-wrap:wrap;">
  <a href="mailto:support@noamark.com" style="color:var(--gold-dim);font-size:13px;font-weight:600;text-decoration:none;"> support@noamark.com</a>
  <a href="tel:+27634189749" style="color:var(--gold-dim);font-size:13px;font-weight:600;text-decoration:none;"> +27 63 418 9749</a>
+            </div>
+          </div>
+          <div class="bp-card" style="border-color:rgba(220,38,38,.3);">
+            <div class="bp-card-title" style="color:#f87171;">Danger Zone</div>
+            <div style="font-size:12px;color:var(--white-dim);line-height:1.7;margin-bottom:16px;">Permanently delete your business account, your listing, and everything linked to it (enquiries, bookings, reviews, notifications). This cannot be undone.</div>
+            <div class="auth-error" id="bp-del-error"></div>
+            <div class="auth-success" id="bp-del-success"></div>
+            <div style="display:flex;flex-direction:column;gap:12px;max-width:420px;">
+              <div>
+                <label style="font-size:11px;color:var(--white-dim);display:block;margin-bottom:6px;">Enter your password to confirm</label>
+                <div style="position:relative;">
+                  <input type="password" id="bp-del-pw" placeholder="Your password" style="width:100%;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:11px 40px 11px 14px;font-size:13px;font-family:var(--font-body);outline:none;box-sizing:border-box;">
+ <button type="button" onclick="nmTogglePwVisibility('bp-del-pw', this)" aria-label="Show password" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:15px;line-height:1;padding:4px;color:var(--white-dim);"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;flex-shrink:0;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                </div>
+              </div>
+              <button class="bp-btn" id="bp-del-btn" style="justify-content:center;background:rgba(220,38,38,.15);color:#f87171;border:1px solid rgba(220,38,38,.4);" onclick="nmDeleteOwnAccount('bp-del-pw','bp-del-error','bp-del-success','bp-del-btn', nmBizToken)">Delete My Account Permanently</button>
             </div>
           </div>
         </div>
@@ -9990,6 +10019,40 @@ async function nmChangePassword(curId, newId, confId, errId, sucId, btnId) {
   }
 }
 
+// Self-service account deletion — for a business or subscriber deleting
+// THEIR OWN account. Requires re-entering the current password as a
+// second factor (the session token alone isn't enough for something this
+// permanent) and routes through /api/moderate (mode: delete-own-account),
+// which re-verifies the password server-side and, for a business account,
+// deletes that business's own listing and all its related data too.
+async function nmDeleteOwnAccount(pwId, errId, sucId, btnId, token) {
+  const pass = (document.getElementById(pwId) || {}).value || '';
+  if (!pass) { showAuthError(errId, 'Please enter your password to confirm.'); return; }
+  if (!token) { showAuthError(errId, 'Your session has expired — please log out, log back in, then try again.'); return; }
+  if (!confirm('This will permanently delete your account and everything linked to it. This cannot be undone. Continue?')) return;
+
+  const btn = document.getElementById(btnId);
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Deleting...';
+
+  try {
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ mode: 'delete-own-account', password: pass }),
+    });
+    const result = await res.json();
+    if (!result.ok) { showAuthError(errId, result.reason || 'Could not delete your account.'); btn.disabled = false; btn.textContent = originalText; return; }
+
+    showAuthSuccess(sucId, 'Account deleted. Logging you out...');
+    setTimeout(() => { handleLogout(); showPage('home'); }, 1200);
+  } catch(e) {
+    console.error('Delete account error:', e);
+    showAuthError(errId, 'Something went wrong: ' + (e && e.message ? e.message : 'please try again.'));
+    btn.disabled = false; btn.textContent = originalText;
+  }
+}
+
 // ════════════════════════════════════════════════════════════
 // ⑨  PAYMENT GATEWAY — Ozow integration
 //    The private key never touches the browser: /api/ozow-initiate.js
@@ -10327,6 +10390,10 @@ const ADMIN_EMAIL = 'supportnoamark@gmail.com';
 let nmAdminToken = null;
 let nmBizToken = null;
 try { nmBizToken = sessionStorage.getItem('nm_biz_token') || null; } catch(e) {}
+// Same idea as nmBizToken, for subscriber (Learner) logins — needed so a
+// subscriber can prove who they are to endpoints like self-delete-account.
+let nmSubToken = null;
+try { nmSubToken = sessionStorage.getItem('nm_sub_token') || null; } catch(e) {}
 function nmGetAdminToken() {
   if (nmAdminToken) return nmAdminToken;
   try { return sessionStorage.getItem('nm_admin_token') || null; } catch(e) { return null; }
@@ -10499,7 +10566,32 @@ function showAuthSuccess(id, msg) {
   el.textContent = msg;
   el.style.display = 'block';
 }
-function validateEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+// Strict, professional email validation. The old regex only checked for
+// "something@something.something", which let obvious typos through —
+// e.g. name@gmail.com.com — since it never looked past the first dot.
+// This version validates proper local-part/domain characters, rejects
+// consecutive dots, and specifically catches a repeated TLD/suffix
+// (the exact "gmail.com.com" case), which is a mistake the old regex
+// couldn't see at all.
+function validateEmail(e){
+  if (typeof e !== 'string') return false;
+  const email = e.trim();
+  if (email.length > 254) return false;
+
+  const re = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
+  if (!re.test(email)) return false;
+  if (email.includes('..')) return false;
+
+  const domain = email.split('@')[1].toLowerCase();
+  const labels = domain.split('.');
+
+  // Catches "typed the ending twice" typos: name@gmail.com.com
+  if (labels.length >= 2 && labels[labels.length - 1] === labels[labels.length - 2]) return false;
+  // Catches a repeated two-part suffix: name@company.co.za.co.za
+  if (labels.length >= 4 && labels.slice(-2).join('.') === labels.slice(-4, -2).join('.')) return false;
+
+  return true;
+}
 function generateId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
 // ──────────────────────────────────────────────────
@@ -10844,6 +10936,8 @@ async function handleSubLogin() {
     }
 
     nmClearLockout('sub-login', email);
+    nmSubToken = result.sessionToken || null;
+    try { sessionStorage.setItem('nm_sub_token', nmSubToken || ''); } catch(e) {}
     loginAs(result.user);
     showAuthSuccess('sub-login-success', '\u2713 Welcome back, '+result.user.name+'!');
     setTimeout(closeAuth, 900);
@@ -11302,6 +11396,11 @@ function handleLogout() {
   if(chatFab) chatFab.style.display = '';
   currentUser = null;
   clearSession();
+  // Clear the per-role session tokens too, not just currentUser — otherwise
+  // a stale nmBizToken/nmSubToken would still authenticate server calls
+  // (like self-delete) as the previous account after logout.
+  nmBizToken = null; nmSubToken = null;
+  try { sessionStorage.removeItem('nm_biz_token'); sessionStorage.removeItem('nm_sub_token'); } catch(e) {}
   document.getElementById('nav-auth-area').style.display = 'flex';
   document.getElementById('nav-user-pill').style.display = 'none';
   document.getElementById('nav-dd-listings').style.display = 'none';
@@ -13659,8 +13758,8 @@ bpLoad();
           <div class="adm-card-title">All Users</div>
           <div style="overflow-x:auto;">
             <table class="adm-table">
-              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th></tr></thead>
-              <tbody id="adm-users-tbody"><tr><td colspan="4" class="adm-empty">Loading...</td></tr></tbody>
+              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th><th>Action</th></tr></thead>
+              <tbody id="adm-users-tbody"><tr><td colspan="5" class="adm-empty">Loading...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -14938,6 +15037,36 @@ async function admDeleteListing(id, btn) {
   }
 }
 
+// Permanently deletes a user account (business/subscriber/guest) from the
+// admin Users tab — for clearing out test accounts. Routed through
+// /api/moderate (mode: delete-user), which is admin-token-gated and, for
+// a business account, deletes that business's own listing(s) and all
+// their related data first, so nothing is left orphaned.
+async function admDeleteUser(id, name, btn) {
+  if (!confirm(`Permanently delete the account "${name}"? If this is a business account, its listing and all related enquiries/bookings/reviews will be deleted too. This cannot be undone.`)) return;
+
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Deleting...'; btn.style.opacity = '.6';
+  try {
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'delete-user', userId: id }),
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.reason || 'Delete failed');
+
+    const row = document.getElementById('adm-user-row-' + id) || btn.closest('tr');
+    if (row) { row.style.opacity = '0'; row.style.transition = 'opacity .3s'; setTimeout(() => row.remove(), 300); }
+    setTimeout(() => { admLoadUsers(); admLoadOverview(); loadListingsFromSupabase(true); }, 350);
+    bpToast('Account deleted permanently.');
+  } catch (e) {
+    console.error('Delete user error:', e);
+    btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
+    alert('Delete failed: ' + (e.message || 'please try again, or check Vercel logs.'));
+  }
+}
+
 async function admLoadRevenue() {
   try {
     const { data } = await nmSupaQuery(() => _supa.from('listings').select('*').eq('status','approved'));
@@ -14998,7 +15127,10 @@ async function admLoadUsers() {
   try {
     // SECURITY FIX: explicitly exclude 'password' — this only counts users
     // by role for the dashboard stat cards, never needs the hash.
-    const { data } = await nmSupaQuery(() => _supa.from('users').select('id,name,role,created_at').order('created_at',{ascending:false}));
+    // (email added — the table below has always rendered u.email, but it
+    // was never actually selected here, so that column has been silently
+    // blank until now.)
+    const { data } = await nmSupaQuery(() => _supa.from('users').select('id,name,email,role,created_at').order('created_at',{ascending:false}));
     const users = data || [];
     const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
     set('adm-users-biz', users.filter(u => u.role === 'business').length);
@@ -15008,8 +15140,8 @@ async function admLoadUsers() {
     const tbody = document.getElementById('adm-users-tbody');
     if(tbody) {
       tbody.innerHTML = users.length === 0
-        ? '<tr><td colspan="4" class="adm-empty">No users yet.</td></tr>'
-        : users.map(u => `<tr><td style="font-weight:600;color:#fff;">${nmSafe(u.name||', ')}</td><td style="font-size:11px;">${nmSafe(u.email||', ')}</td><td>${nmSafe(u.role||', ')}</td><td style="font-size:11px;color:#6b7280;">${u.created_at?new Date(u.created_at).toLocaleDateString('en-ZA'):', '}</td></tr>`).join('');
+        ? '<tr><td colspan="5" class="adm-empty">No users yet.</td></tr>'
+        : users.map(u => `<tr id="adm-user-row-${nmSafe(u.id)}"><td style="font-weight:600;color:#fff;">${nmSafe(u.name||', ')}</td><td style="font-size:11px;">${nmSafe(u.email||', ')}</td><td>${nmSafe(u.role||', ')}</td><td style="font-size:11px;color:#6b7280;">${u.created_at?new Date(u.created_at).toLocaleDateString('en-ZA'):', '}</td><td><button class="adm-btn adm-btn-reject" style="background:rgba(220,38,38,.15);color:#f87171;border:1px solid rgba(220,38,38,.3);font-size:11px;" onclick="admDeleteUser('${nmSafe(u.id)}','${nmSafe((u.name||'this account').replace(/'/g,"\\'"))}',this)">Delete</button></td></tr>`).join('');
     }
   } catch(e) { console.warn('Users load failed', e); }
 }
