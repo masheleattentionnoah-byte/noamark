@@ -6544,7 +6544,25 @@ function showMktView(view, pushHistory){
   // Push history only when triggered by a real user action (not during popstate restoration)
   if(pushHistory) {
     const urls = { main:'#marketplace', profile:'#marketplace/profile', boost:'#marketplace/boost', add:'#marketplace/edit', admin:'#marketplace/portal' };
-    if(view in urls) history.pushState({ nmPage: 'marketplace', nmView: view }, '', urls[view]);
+    if(view in urls) {
+      // BUG THIS FIXES: switching between marketplace's own sub-views —
+      // My Portal, Boost Plans, Add Listing, the listing grid — always
+      // pushed a brand new history entry, even when already somewhere
+      // inside the marketplace section. Hop between a few of those (very
+      // easy to do while testing/browsing) and the back button has to
+      // unwind through every single switch before it actually leaves —
+      // exactly the "goes back through every page I went through"
+      // complaint. Same principle already applied to showPage() for
+      // sibling top-level pages and admGoPage() for admin tabs: only the
+      // FIRST entry into a section pushes a new stop; switching between
+      // its own sub-views afterward replaces that stop instead of
+      // stacking a new one. showBizProfile() still pushes its own entry
+      // for viewing a specific business (so one back-press from a
+      // profile still returns to the list, per nmBackToMarketplace) —
+      // this only covers the OTHER sub-view switches.
+      const alreadyInMarketplace = history.state && history.state.nmPage === 'marketplace';
+      history[alreadyInMarketplace ? 'replaceState' : 'pushState']({ nmPage: 'marketplace', nmView: view }, '', urls[view]);
+    }
   }
 }
 
@@ -13215,8 +13233,38 @@ async function bpSaveAccountDetails() {
   }
 }
 
+// Before sending a business to actually pay for a plan, check whether
+// they already have a DIFFERENT active, CONFIRMED-PAID plan running.
+// Doesn't block the upgrade/downgrade — that should stay self-service and
+// automatic — just makes sure they know exactly what paying now will do,
+// since a new payment immediately overwrites the current tier (this
+// system only ever tracks ONE active tier per listing, so there's no
+// way to end up "double-subscribed"; the real risk is a business paying
+// again without realizing their current plan's remaining days aren't
+// carried over).
+async function bpConfirmActivePlanChange(planKey, listingId) {
+  try {
+    const { data } = await nmSupaQuery(() => _supa.from('listings').select('boost_tier,boost_paid_at').eq('id', listingId).limit(1));
+    const current = data && data[0];
+    const currentTier = current && current.boost_tier;
+    const currentPaid = current && current.boost_paid_at;
+    if (currentTier && currentTier !== 'none' && currentPaid && currentTier !== planKey) {
+      const label = t => t.charAt(0).toUpperCase() + t.slice(1);
+      return confirm(
+        `You're currently on the ${label(currentTier)} plan.\n\n` +
+        `Paying for ${label(planKey)} now will switch you to it immediately and start a fresh 30-day cycle from today. ` +
+        `Any time remaining on your current ${label(currentTier)} plan is not refunded or carried over.\n\n` +
+        `Continue to payment for ${label(planKey)}?`
+      );
+    }
+  } catch (e) {
+    console.warn('Could not check current plan before checkout — proceeding anyway.', e);
+  }
+  return true;
+}
+
 // ── BOOST SELECT — Netcash first, Ozow available alongside it ──
-function bpSelectBoost(plan, price) {
+async function bpSelectBoost(plan, price) {
   if (!currentUser || currentUser.type !== 'business') {
     bpToast('Please log in as a business owner to purchase a boost.');
     return;
@@ -13227,12 +13275,13 @@ function bpSelectBoost(plan, price) {
     bpToast('Could not find your listing. Please refresh and try again.');
     return;
   }
+  if (!(await bpConfirmActivePlanChange(planKey, listingId))) return;
   nmProcessNetcashBoost(planKey, plan, listingId);
 }
 
 // Kept available side by side — the small "Pay with Ozow instead" links
 // under each plan button call this one directly.
-function bpSelectBoostOzow(plan, price) {
+async function bpSelectBoostOzow(plan, price) {
   if (!currentUser || currentUser.type !== 'business') {
     bpToast('Please log in as a business owner to purchase a boost.');
     return;
@@ -13243,6 +13292,7 @@ function bpSelectBoostOzow(plan, price) {
     bpToast('Could not find your listing. Please refresh and try again.');
     return;
   }
+  if (!(await bpConfirmActivePlanChange(planKey, listingId))) return;
   nmProcessOzowBoost(planKey, plan, listingId);
 }
 
