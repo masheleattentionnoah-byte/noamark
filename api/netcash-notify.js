@@ -243,6 +243,13 @@ async function handleNotify(req, res, { respondAsBrowser = false } = {}) {
       boost_tier: planKey,
       boost_started_at: new Date().toISOString(),
       status: 'approved',
+      // These two columns exist specifically to distinguish a REAL,
+      // webhook-confirmed payment from a boost tier an admin set manually
+      // (admSetBoost in index.html deliberately does NOT set these).
+      // The admin Revenue dashboard should sum confirmed revenue using
+      // boost_paid_at IS NOT NULL, not boost_tier alone.
+      boost_paid_at: new Date().toISOString(),
+      boost_payment_ref: verified.Reference || body.Reference || null,
     };
 
     // Only present when: Credit Card payment + m14=1 requested + Test
