@@ -37,6 +37,22 @@ function verifySessionToken(token) {
   } catch (e) { return null; }
 }
 
+// Same pbkdf2 verification as auth.js — duplicated here rather than
+// imported, matching how verifySessionToken above is already duplicated
+// across the split serverless files (see the top-of-file note on why
+// this project is split the way it is).
+function pbkdf2Hex(password, saltHex) {
+  const salt = Buffer.from(saltHex, 'hex');
+  return crypto.pbkdf2Sync(password, salt, 100000, 32, 'sha256').toString('hex');
+}
+function verifyStoredPassword(password, storedStr) {
+  if (!storedStr || !storedStr.includes(':')) return storedStr === password;
+  try {
+    const [saltHex] = storedStr.split(':');
+    return (saltHex + ':' + pbkdf2Hex(password, saltHex)) === storedStr;
+  } catch (e) { return false; }
+}
+
 async function supaFetch(path, opts = {}) {
   const base = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_KEY;
@@ -79,6 +95,95 @@ async function handleDeleteListing(claims, body) {
     return { status: 200, json: { ok: true } };
   } catch (e) {
     console.error('moderate/delete-listing error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: delete-user (admin only) ──
+// Deletes a business/subscriber/guest account. A business account owns
+// listings, so those are removed first — via the exact same cascade as
+// handleDeleteListing (enquiries/bookings/notifications/reviews, then the
+// listing) — so nothing is left orphaned in Supabase after the user row
+// is gone.
+async function handleDeleteUser(claims, body) {
+  if (claims.role !== 'admin') {
+    return { status: 401, json: { ok: false, reason: 'Admin login required.' } };
+  }
+  const { userId } = body;
+  if (!userId) return { status: 400, json: { ok: false, reason: 'Missing userId' } };
+
+  try {
+    const userRes = await supaFetch(`users?id=eq.${encodeURIComponent(userId)}&select=id,role,email&limit=1`);
+    const userRows = await userRes.json();
+    const user = userRows[0];
+    if (!user) return { status: 404, json: { ok: false, reason: 'User not found.' } };
+
+    if (user.role === 'admin') {
+      return { status: 400, json: { ok: false, reason: 'The admin account cannot be deleted here.' } };
+    }
+
+    if (user.role === 'business' && user.email) {
+      const listingsRes = await supaFetch(`listings?or=(email.ilike.${encodeURIComponent(user.email)},owner_email.ilike.${encodeURIComponent(user.email)})&select=id`);
+      const listings = await listingsRes.json();
+      for (const l of listings) {
+        const result = await handleDeleteListing(claims, { listingId: l.id });
+        if (!result.json.ok) throw new Error(`Failed deleting listing ${l.id}: ${result.json.reason}`);
+      }
+    }
+
+    const delRes = await supaFetch(`users?id=eq.${encodeURIComponent(userId)}`, { method: 'DELETE', prefer: 'return=minimal' });
+    if (!delRes.ok) throw new Error(await delRes.text());
+
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/delete-user error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: delete-own-account (business or subscriber, deleting THEMSELVES) ──
+// The session token alone proves who's asking, but re-checking the
+// account's own password here is a deliberate second factor — it stops
+// a permanent, irreversible delete from firing off an unlocked device or
+// a stray click on a stale page. Reuses handleDeleteListing's cascade for
+// a business account's own listings, same as delete-user above — the
+// only difference is WHO is allowed to trigger it and that no separate
+// admin session is required.
+async function handleDeleteOwnAccount(claims, body) {
+  if (claims.role !== 'business' && claims.role !== 'subscriber') {
+    return { status: 401, json: { ok: false, reason: 'Please log in again.' } };
+  }
+  const { password } = body;
+  if (!password) return { status: 400, json: { ok: false, reason: 'Please enter your password to confirm.' } };
+
+  try {
+    const userRes = await supaFetch(`users?id=eq.${encodeURIComponent(claims.id)}&select=id,role,email,password&limit=1`);
+    const userRows = await userRes.json();
+    const user = userRows[0];
+    if (!user || user.role !== claims.role) return { status: 401, json: { ok: false, reason: 'Please log in again.' } };
+
+    if (!verifyStoredPassword(password, user.password)) {
+      return { status: 200, json: { ok: false, reason: 'Incorrect password.' } };
+    }
+
+    if (user.role === 'business' && user.email) {
+      const listingsRes = await supaFetch(`listings?or=(email.ilike.${encodeURIComponent(user.email)},owner_email.ilike.${encodeURIComponent(user.email)})&select=id`);
+      const listings = await listingsRes.json();
+      for (const l of listings) {
+        // Reuses the admin-gated cascade delete — safe here because we've
+        // already verified this caller owns the account whose listings
+        // these are, via password + the listing's own email match above.
+        const result = await handleDeleteListing({ role: 'admin' }, { listingId: l.id });
+        if (!result.json.ok) throw new Error(`Failed deleting listing ${l.id}: ${result.json.reason}`);
+      }
+    }
+
+    const delRes = await supaFetch(`users?id=eq.${encodeURIComponent(claims.id)}`, { method: 'DELETE', prefer: 'return=minimal' });
+    if (!delRes.ok) throw new Error(await delRes.text());
+
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/delete-own-account error:', e.message);
     return { status: 500, json: { ok: false, reason: e.message } };
   }
 }
@@ -513,6 +618,8 @@ export default async function handler(req, res) {
   try {
     let result;
     if (mode === 'delete-listing') result = await handleDeleteListing(claims, body);
+    else if (mode === 'delete-user') result = await handleDeleteUser(claims, body);
+    else if (mode === 'delete-own-account') result = await handleDeleteOwnAccount(claims, body);
     else if (mode === 'delete-review') result = await handleDeleteReview(claims, body);
     else if (mode === 'list-enquiries') result = await handleListEnquiries(claims, body);
     else if (mode === 'reply-enquiry') result = await handleReplyEnquiry(claims, body);
