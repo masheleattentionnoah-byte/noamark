@@ -14496,6 +14496,18 @@ async function admLoadApprovals() {
       const ph   = nmSafe(l.phone||'—');
       const em   = nmSafe(l.email||'—');
       const bt   = nmSafe(l.boost_tier||'free');
+      // For an ACTIVE but UNPAID tier (manual grant / agreement — no
+      // boost_paid_at), show a days-left estimate instead of just the
+      // plan name, so it reads as a countdown to review rather than a
+      // real subscribed plan. Uses the same 30-day window math as
+      // nmComputeSubStatus. Confirmed paid tiers just show the plan name.
+      let btEst = '';
+      if (l.boost_tier && l.boost_tier !== 'none' && !l.boost_paid_at && l.boost_started_at) {
+        const daysLeft = Math.ceil((new Date(l.boost_started_at).getTime() + 30*24*60*60*1000 - Date.now()) / (24*60*60*1000));
+        btEst = daysLeft > 0
+          ? ` <span style="color:#f4c430;font-size:10px;">(~${daysLeft}d left, manual)</span>`
+          : ` <span style="color:rgba(255,255,255,.4);font-size:10px;">(expiring, manual)</span>`;
+      }
  if(type === 'pending') return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${own}</td><td>${tp}</td><td>${ar}, ${ci}</td><td>${ph}</td><td style="font-size:11px;">${em}</td><td>${bt}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')"> Review</button><br><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)"> Approve</button><button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)"> Reject</button></td></tr>`;
       if(type === 'approved') {
         const vBadge = l.verified ? '<span style="color:#22C55E;font-weight:700;">Verified</span>' : '<span style="color:rgba(255,255,255,.4);">Not verified</span>';
@@ -14508,10 +14520,14 @@ async function admLoadApprovals() {
           <option value="growth" ${l.boost_tier==='growth'?'selected':''}>Growth</option>
           <option value="pro" ${l.boost_tier==='pro'?'selected':''}>Pro</option>
         </select><button class="adm-btn" style="background:rgba(212,175,55,.15);color:#d4af37;border:1px solid rgba(212,175,55,.3);" onclick="admSetBoost('${id}',this)">Set</button>`;
- return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${bt}</td><td>${own}</td><td>${vBadge}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')"> View</button><button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">Remove</button><br>${vBtn}<br><div style="margin-top:4px;">${boostSelect}</div></td></tr>`;
+ return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${bt}${btEst}</td><td>${own}</td><td>${vBadge}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')"> View</button><button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">Remove</button><br>${vBtn}<br><div style="margin-top:4px;">${boostSelect}</div></td></tr>`;
       }
       if(type === 'suspended') {
-        return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${own}</td><td><button class="adm-btn adm-btn-approve" onclick="admReactivateSuspended('${id}',this)" style="margin-bottom:4px;" title="Grants one free month so they don't get re-suspended tomorrow"> Reactivate (1 free month)</button><br><button class="adm-btn adm-btn-reject" onclick="admDeleteListing('${id}',this)" style="background:rgba(220,38,38,.2);color:#f87171;border-color:rgba(220,38,38,.4);">Delete Permanently</button></td></tr>`;
+        const graceRow = `<div style="margin-bottom:4px;display:flex;gap:4px;align-items:center;">
+          <input id="adm-grace-days-${id}" type="number" min="1" max="30" value="3" style="width:44px;background:#111;color:#fff;border:1px solid rgba(255,255,255,.2);font-size:11px;padding:4px 6px;border-radius:4px;" title="Number of grace days to grant">
+          <button class="adm-btn adm-btn-approve" onclick="admGrantGrace('${id}',this)" title="Grants exactly this many days of visibility, per an agreement with the business — not a real payment, so it won't count as confirmed revenue"> Grant Grace</button>
+        </div>`;
+        return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${own}</td><td>${graceRow}<button class="adm-btn adm-btn-reject" onclick="admDeleteListing('${id}',this)" style="background:rgba(220,38,38,.2);color:#f87171;border-color:rgba(220,38,38,.4);">Delete Permanently</button></td></tr>`;
       }
       return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${own}</td><td><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)" style="margin-bottom:4px;">Re-approve</button><br><button class="adm-btn adm-btn-reject" onclick="admDeleteListing('${id}',this)" style="background:rgba(220,38,38,.2);color:#f87171;border-color:rgba(220,38,38,.4);">Delete Permanently</button></td></tr>`;
     };
@@ -14548,6 +14564,17 @@ async function admToggleVerified(id, currentlyVerified, btn) {
 // boost_started_at when the tier is actually changing (none -> paid, or
 // switching tiers) so that re-saving the same tier doesn't reset the
 // results-tracking clock. Setting back to "none" clears the start date.
+//
+// ANTI-CORRUPTION RULE: an admin must never be able to directly swap a
+// listing straight from one active tier to another (e.g. Starter ->
+// Growth) in one click — that's the exact one-click "quietly upgrade a
+// friend's paid plan" move this blocks. To change plans, cancel first
+// (set to None, allowed below), THEN set the new tier as a separate
+// action. Granting a tier FROM None is still allowed — that's the
+// legitimate manual path for a first-time agreement or a customer whose
+// recurring payment failed but who has arranged to pay later — and it
+// never sets boost_paid_at, so admLoadRevenue still excludes it from
+// confirmed revenue.
 async function admSetBoost(id, btn) {
   const sel = document.getElementById('adm-boost-sel-' + id);
   if (!sel) return;
@@ -14556,23 +14583,41 @@ async function admSetBoost(id, btn) {
   const oldTier = current.boost_tier || 'none';
   if (newTier === oldTier) { return; } // nothing to do, avoid resetting the tracking clock
 
-  // Safety check: this listing currently has an active boost. Since we
-  // can't always tell from here whether it was paid for (Ozow) or paid
-  // for and tokenized (Netcash) or just set manually before, force an
-  // explicit confirmation naming exactly what's being changed rather
-  // than silently overwriting a customer's paid plan with one click.
-  // This does NOT process any refund — it only changes the tier flag.
-  if (oldTier !== 'none') {
-    const label = t => t.charAt(0).toUpperCase() + t.slice(1);
+  const label = t => t.charAt(0).toUpperCase() + t.slice(1);
+
+  if (oldTier !== 'none' && newTier !== 'none') {
+    // Blocked: direct swap between two active tiers. Reset the dropdown
+    // so it doesn't look like a change was queued, and stop here.
+    alert(
+      `This listing has an active ${label(oldTier)} boost, which the business may have paid for.\n\n` +
+      `Direct plan swaps are disabled to prevent unauthorized changes. To move it to ${label(newTier)}: ` +
+      `first set this to "None" (cancel) and save, then come back and set it to ${label(newTier)} as a separate step.`
+    );
+    sel.value = oldTier;
+    return;
+  }
+
+  if (oldTier !== 'none' && newTier === 'none') {
+    // Cancelling an active boost — still requires explicit confirmation
+    // since it may be a real paid plan. Does NOT process any refund.
     const startedText = current.boost_started_at
       ? ` (started ${new Date(current.boost_started_at).toLocaleDateString('en-ZA')})`
       : '';
     const confirmed = confirm(
       `This listing currently has an active ${label(oldTier)} boost${startedText}, which the business may have paid for.\n\n` +
-      `Change it to ${label(newTier)}?\n\n` +
-      `This does NOT process a refund or cancel any subscription — it only changes what shows as active. If the customer paid for ${label(oldTier)} and didn't ask for a change, cancel this and check with them first.`
+      `Cancel it (set to None)?\n\n` +
+      `This does NOT process a refund — it only changes what shows as active. If the customer is still paying for ${label(oldTier)}, check with them first.`
     );
-    if (!confirmed) return;
+    if (!confirmed) { sel.value = oldTier; return; }
+  }
+
+  if (oldTier === 'none' && newTier !== 'none') {
+    // Manual grant from scratch — the legitimate "agreement" path.
+    const confirmed = confirm(
+      `Manually grant ${label(newTier)} to this listing?\n\n` +
+      `This is an unpaid manual grant (e.g. a first-time or payment-arrangement agreement) — it will NOT count as confirmed revenue on the Revenue dashboard.`
+    );
+    if (!confirmed) { sel.value = oldTier; return; }
   }
 
   const originalText = btn.textContent;
@@ -14599,30 +14644,44 @@ async function admSetBoost(id, btn) {
   }
 }
 
-// Manually reactivates a suspended (unpaid trial/plan expired) listing.
-// Deliberately does more than just flipping status back to 'approved' —
-// that alone would restore visibility today but leave their trial/grace
-// clock still in the past, so nmComputeSubStatus() would immediately see
-// them as 'expired' again and check-trials.js would re-suspend them on
-// its very next run tomorrow. Granting a comp Starter month via
-// boost_tier + boost_started_at gives them real active time, using the
-// same paid-tier logic path that already works correctly everywhere else.
-async function admReactivateSuspended(id, btn) {
+// Manually reactivates a suspended (unpaid trial/plan expired) listing for
+// an EXACT number of grace days chosen by the admin, per an agreement with
+// the business (e.g. "give me 3 days, I'll pay Friday") — not a real
+// payment, so this must never set boost_paid_at (that column is what the
+// Revenue dashboard uses to count CONFIRMED revenue; see admLoadRevenue).
+//
+// Reuses the existing 30-day paid-tier window in nmComputeSubStatus
+// (activeUntil = boost_started_at + 30 days) instead of adding a new
+// column: backdating boost_started_at so that 30-day window ends exactly
+// `days` from now. This means no changes are needed to check-trials.js —
+// it will automatically re-suspend the listing right on schedule once the
+// granted days (plus the normal 3-day grace) run out, same as any other
+// expired plan.
+async function admGrantGrace(id, btn) {
+  const input = document.getElementById('adm-grace-days-' + id);
+  let days = parseInt(input && input.value, 10);
+  if (!Number.isFinite(days)) days = 3;
+  days = Math.max(1, Math.min(30, days));
+
   const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
   try {
+    const DAY = 24 * 60 * 60 * 1000;
+    const backdatedStart = new Date(Date.now() - (30 - days) * DAY).toISOString();
     const { error } = await nmSupaQuery(() => _supa.from('listings').update({
       status: 'approved',
       boost_tier: 'starter',
-      boost_started_at: new Date().toISOString(),
+      boost_started_at: backdatedStart,
+      // Deliberately NOT setting boost_paid_at — this is an unpaid
+      // agreement grant, not a real payment.
     }).eq('id', id));
     if(error) throw error;
-    btn.textContent = ' Done!'; btn.style.background = '#dcfce7'; btn.style.opacity = '1';
+    btn.textContent = ` Granted ${days}d`; btn.style.background = '#dcfce7'; btn.style.opacity = '1';
     setTimeout(()=>{ admLoadApprovals(); admLoadOverview(); loadListingsFromSupabase(true); }, 800);
   } catch(e) {
-    console.error('Reactivate error:', e);
+    console.error('Grant grace error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
-    alert('Error reactivating. Check your Supabase connection and try again.');
+    alert('Error granting grace period. Check your Supabase connection and try again.');
   }
 }
 
