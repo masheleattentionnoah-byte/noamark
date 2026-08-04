@@ -14609,7 +14609,16 @@ async function admLoadApprovals() {
       }
  if(type === 'pending') return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${own}</td><td>${tp}</td><td>${ar}, ${ci}</td><td>${ph}</td><td style="font-size:11px;">${em}</td><td>${bt}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')"> Review</button><br><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)"> Approve</button><button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)"> Reject</button></td></tr>`;
       if(type === 'approved') {
-        const vBadge = l.verified ? '<span style="color:#22C55E;font-weight:700;">Verified</span>' : '<span style="color:rgba(255,255,255,.4);">Not verified</span>';
+        // Verified is now auto-granted by ozow-notify.js/netcash-notify.js
+        // on a confirmed Pro payment (see boost_paid_at + boost_tier==='pro'
+        // below) — label it as "Auto · Pro" so it's clear at a glance this
+        // one doesn't need admin attention, versus a manual override.
+        const autoVerified = l.verified && l.boost_tier === 'pro' && !!l.boost_paid_at;
+        const vBadge = l.verified
+          ? (autoVerified
+              ? '<span style="color:#22C55E;font-weight:700;">Verified <span style="color:rgba(255,255,255,.4);font-weight:400;font-size:10px;">(Auto · Pro)</span></span>'
+              : '<span style="color:#22C55E;font-weight:700;">Verified <span style="color:rgba(255,255,255,.4);font-weight:400;font-size:10px;">(Manual)</span></span>')
+          : '<span style="color:rgba(255,255,255,.4);">Not verified</span>';
         const vBtn = l.verified
           ? `<button class="adm-btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.15);" onclick="admToggleVerified('${id}',true,this)">Remove Verified</button>`
           : `<button class="adm-btn" style="background:rgba(34,197,94,.15);color:#22C55E;border:1px solid rgba(34,197,94,.3);" onclick="admToggleVerified('${id}',false,this)">Mark Verified</button>`;
@@ -14712,9 +14721,12 @@ async function admSetBoost(id, btn) {
 
   if (oldTier === 'none' && newTier !== 'none') {
     // Manual grant from scratch — the legitimate "agreement" path.
+    const verifiedNote = newTier === 'pro'
+      ? ' Pro normally auto-grants the Verified badge on a real payment — a manual grant will NOT, so mark it verified separately below if that was agreed too.'
+      : '';
     const confirmed = confirm(
       `Manually grant ${label(newTier)} to this listing?\n\n` +
-      `This is an unpaid manual grant (e.g. a first-time or payment-arrangement agreement) — it will NOT count as confirmed revenue on the Revenue dashboard.`
+      `This is an unpaid manual grant (e.g. a first-time or payment-arrangement agreement) — it will NOT count as confirmed revenue on the Revenue dashboard.${verifiedNote}`
     );
     if (!confirmed) { sel.value = oldTier; return; }
   }
