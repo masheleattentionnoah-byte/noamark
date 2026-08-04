@@ -14556,6 +14556,25 @@ async function admSetBoost(id, btn) {
   const oldTier = current.boost_tier || 'none';
   if (newTier === oldTier) { return; } // nothing to do, avoid resetting the tracking clock
 
+  // Safety check: this listing currently has an active boost. Since we
+  // can't always tell from here whether it was paid for (Ozow) or paid
+  // for and tokenized (Netcash) or just set manually before, force an
+  // explicit confirmation naming exactly what's being changed rather
+  // than silently overwriting a customer's paid plan with one click.
+  // This does NOT process any refund — it only changes the tier flag.
+  if (oldTier !== 'none') {
+    const label = t => t.charAt(0).toUpperCase() + t.slice(1);
+    const startedText = current.boost_started_at
+      ? ` (started ${new Date(current.boost_started_at).toLocaleDateString('en-ZA')})`
+      : '';
+    const confirmed = confirm(
+      `This listing currently has an active ${label(oldTier)} boost${startedText}, which the business may have paid for.\n\n` +
+      `Change it to ${label(newTier)}?\n\n` +
+      `This does NOT process a refund or cancel any subscription — it only changes what shows as active. If the customer paid for ${label(oldTier)} and didn't ask for a change, cancel this and check with them first.`
+    );
+    if (!confirmed) return;
+  }
+
   const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
   try {
@@ -14869,7 +14888,20 @@ async function admLoadRevenue() {
     const dom = boosted.filter(l => l.boost_tier === 'dominance');
     const growth = boosted.filter(l => l.boost_tier === 'growth');
     const starter = boosted.filter(l => l.boost_tier === 'starter');
-    const estRevenue = 0; // Revenue only counts once payment is confirmed via ITN callback
+
+    // Monthly prices — must match PLAN_PRICES in api/netcash-notify.js
+    // and PLAN_PRICES in api/ozow-initiate.js.
+    const monthlyPrice = {pro:299.99, growth:219.99, starter:49.99, dominance:199.99};
+
+    // Only count as CONFIRMED revenue if boost_paid_at is set — that
+    // column is only ever written by a verified payment webhook
+    // (netcash-notify.js after checking Netcash's own server; Ozow's
+    // notify handler would need the same fields added to count here
+    // too). A boost_tier set manually via admSetBoost below deliberately
+    // does NOT set boost_paid_at, so it won't inflate this number.
+    const confirmedPaid = boosted.filter(l => l.boost_paid_at);
+    const estRevenue = confirmedPaid.reduce((sum, l) => sum + (monthlyPrice[l.boost_tier] || 0), 0);
+    const unconfirmedCount = boosted.length - confirmedPaid.length;
 
     const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
     set('adm-rev-boosted', boosted.length);
@@ -14877,14 +14909,28 @@ async function admLoadRevenue() {
     set('adm-rev-dom', dom.length);
     set('adm-rev-growth', growth.length);
     set('adm-rev-starter', starter.length);
-    set('adm-rev-total', 'R0.00');
+    set('adm-rev-total', 'R' + estRevenue.toFixed(2));
+
+    const subEl = document.querySelector('#adm-page-revenue .adm-stat:last-child .adm-stat-sub');
+    if (subEl) {
+      if (confirmedPaid.length === 0) {
+        subEl.textContent = 'No payments confirmed yet';
+        subEl.style.color = 'var(--danger)';
+      } else if (unconfirmedCount > 0) {
+        subEl.textContent = `From ${confirmedPaid.length} confirmed payment(s) · ${unconfirmedCount} boost(s) set manually, not counted`;
+        subEl.style.color = 'var(--white-dim)';
+      } else {
+        subEl.textContent = `From ${confirmedPaid.length} confirmed payment(s)`;
+        subEl.style.color = 'var(--white-dim)';
+      }
+    }
 
     const tbody = document.getElementById('adm-revenue-tbody');
     if(tbody) {
       const prices = {pro:'R299.99/30d',dominance:'R199.99/14d (legacy)',growth:'R219.99/14d',starter:'R49.99/3d'};
       tbody.innerHTML = boosted.length === 0
         ? '<tr><td colspan="5" class="adm-empty">No paid boosts yet.</td></tr>'
-        : boosted.map(l => `<tr><td style="font-weight:600;color:#fff;">${nmSafe(l.name||', ')}</td><td>${nmSafe(l.owner||', ')}</td><td>${nmSafe(l.area||', ')}</td><td>${nmSafe(l.boost_tier||', ')}</td><td style="color:#d4af37;font-weight:600;">${prices[l.boost_tier]||', '}</td></tr>`).join('');
+        : boosted.map(l => `<tr><td style="font-weight:600;color:#fff;">${nmSafe(l.name||', ')}</td><td>${nmSafe(l.owner||', ')}</td><td>${nmSafe(l.area||', ')}</td><td>${nmSafe(l.boost_tier||', ')}${l.boost_paid_at ? ' <span style="color:#22C55E;font-size:10px;">✓ paid</span>' : ' <span style="color:rgba(255,255,255,.4);font-size:10px;">manual</span>'}</td><td style="color:#d4af37;font-weight:600;">${prices[l.boost_tier]||', '}</td></tr>`).join('');
     }
   } catch(e) { console.warn('Revenue load failed', e); }
 }
