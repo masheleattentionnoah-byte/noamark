@@ -5104,6 +5104,14 @@ function showPage(id, cb){
     showPage('marketplace', () => setTimeout(() => showMktView('admin'), 100));
     return;
   }
+  // Same idea for admin — an admin account should never land on the public
+  // home page or the subscriber dashboard, whether that's from a stray
+  // leftover dropdown item (see applyRoleNav), an old bookmark, or anything
+  // else. Send them straight back to the real admin panel instead.
+  if (currentUser && currentUser.type === 'admin' && (id === 'home' || id === 'dashboard')) {
+    showAdminDashboard();
+    return;
+  }
   document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
   // The line above also clears any leftover inline style.display:none that
   // showAdminDashboard() sets directly on every .page element. Without this,
@@ -5445,6 +5453,20 @@ window.addEventListener('popstate', function(e) {
             setTimeout(() => showMktView('admin', false), 100);
             return;
           }
+          // BUG THIS FIXES: this whole branch renders pages by directly
+          // toggling .page elements — it does NOT go through showPage(),
+          // so it never runs showPage's own #page-admin-hiding line. Since
+          // #page-admin isn't part of the normal .page system (it's shown/
+          // hidden with its own inline style — see showPage's comment on
+          // this), an admin landing here via back/forward navigation saw
+          // the home page rendered UNDERNEATH the admin panel's still-
+          // visible fixed bottom nav bar. Same fix as the business case
+          // just above: redirect straight back to the real admin panel.
+          if (_sessionRole === 'admin') {
+            history.pushState({ nmPage: 'admin', nmView: 'main' }, '', '#admin');
+            showAdminDashboard();
+            return;
+          }
           // Re-push home so pressing back again never exits the app.
           if(window.location.hash === '#home' || window.location.hash === '') {
             history.replaceState({ nmPage: 'home', nmView: 'main' }, '', '#home');
@@ -5461,6 +5483,14 @@ window.addEventListener('popstate', function(e) {
       history.pushState({ nmPage: 'marketplace', nmView: 'admin' }, '', '#marketplace/portal');
       showPage('marketplace');
       setTimeout(() => showMktView('admin', false), 100);
+      return;
+    }
+    // Same bug, same fix as the branch above — this path also renders
+    // directly instead of going through showPage(), so #page-admin never
+    // gets hidden without this explicit check.
+    if (_sessionRole === 'admin') {
+      history.pushState({ nmPage: 'admin', nmView: 'main' }, '', '#admin');
+      showAdminDashboard();
       return;
     }
     // pushState (not replaceState) so home sits ON TOP of the unknown entry.
@@ -11199,6 +11229,22 @@ function applyRoleNav(user) {
       const el = document.getElementById('nav-item-'+item);
       if(el) el.style.display = 'none';
     });
+    // BUG THIS FIXES: this branch returns before the generic dropdown-item
+    // reset below ever runs. If a business/subscriber account was tested in
+    // the same browser tab earlier (very easy to do — many test accounts),
+    // "My Dashboard" / "My Listings" / "Upgrade Plan" could stay switched on
+    // from that earlier login and silently leak into the admin's dropdown,
+    // even though none of them are meant to exist for admin at all. Tapping
+    // one sends an admin account into a page built for a different role
+    // entirely. Explicitly clear all three here so admin's dropdown can
+    // never inherit a leftover state from whatever role was logged in
+    // before it.
+    const ddDashboard = document.getElementById('nav-dd-dashboard');
+    const ddListings  = document.getElementById('nav-dd-listings');
+    const ddUpgrade    = document.getElementById('nav-dd-upgrade');
+    if(ddDashboard) ddDashboard.style.display = 'none';
+    if(ddListings)  ddListings.style.display  = 'none';
+    if(ddUpgrade)   ddUpgrade.style.display   = 'none';
     const navCta = document.querySelector('.nav-cta');
  if(navCta) { navCta.textContent = ' Admin Panel'; navCta.onclick = ()=>showAdminDashboard(); navCta.style.display = ''; }
     return;
@@ -11449,7 +11495,12 @@ function handleLogout() {
 // ──────────────────────────────────────────────────
 function handleDashboard() {
   if(!currentUser) { openAuth('subscriber'); return; }
-  if(currentUser.type==='business') {
+  if(currentUser.type==='admin') {
+    // BUG THIS FIXES: admin was never handled here at all, so it fell
+    // through to the final "else" below — built for subscribers/Learners —
+    // which is what actually sent an admin account to the wrong page.
+    showAdminDashboard();
+  } else if(currentUser.type==='business') {
     showPage('marketplace',()=>setTimeout(()=>showMktView('admin'),200));
   } else if(currentUser.type==='guest') {
     // Explorer: take them to marketplace (their "home" is discovering businesses)
@@ -14669,9 +14720,15 @@ async function admLoadApprovals() {
               ? '<span style="color:#22C55E;font-weight:700;">Verified <span style="color:rgba(255,255,255,.4);font-weight:400;font-size:10px;">(Auto · Pro)</span></span>'
               : '<span style="color:#22C55E;font-weight:700;">Verified <span style="color:rgba(255,255,255,.4);font-weight:400;font-size:10px;">(Manual)</span></span>')
           : '<span style="color:rgba(255,255,255,.4);">Not verified</span>';
+        // "Mark Verified" (manually GRANTING the badge) has been removed on
+        // purpose — verified must now ONLY ever become true via a confirmed
+        // Pro payment (see ozow-notify.js / netcash-notify.js). "Remove
+        // Verified" stays available, since there's currently no automatic
+        // un-verify when a Pro plan lapses without renewal — an admin can
+        // still correct that one case, but can never grant it for free.
         const vBtn = l.verified
           ? `<button class="adm-btn" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.15);" onclick="admToggleVerified('${id}',true,this)">Remove Verified</button>`
-          : `<button class="adm-btn" style="background:rgba(34,197,94,.15);color:#22C55E;border:1px solid rgba(34,197,94,.3);" onclick="admToggleVerified('${id}',false,this)">Mark Verified</button>`;
+          : `<span style="font-size:10px;color:rgba(255,255,255,.3);display:inline-block;padding:6px 0;">Auto-grants on Pro payment</span>`;
         const boostSelect = `<select id="adm-boost-sel-${id}" style="background:#111;color:#fff;border:1px solid rgba(255,255,255,.2);font-size:11px;padding:4px 6px;border-radius:4px;margin-right:4px;">
           <option value="none" ${!l.boost_tier||l.boost_tier==='none'?'selected':''}>None</option>
           <option value="starter" ${l.boost_tier==='starter'?'selected':''}>Starter</option>
@@ -14772,7 +14829,7 @@ async function admSetBoost(id, btn) {
   if (oldTier === 'none' && newTier !== 'none') {
     // Manual grant from scratch — the legitimate "agreement" path.
     const verifiedNote = newTier === 'pro'
-      ? ' Pro normally auto-grants the Verified badge on a real payment — a manual grant will NOT, so mark it verified separately below if that was agreed too.'
+      ? ' Pro normally auto-grants the Verified badge on a real payment — a manual grant will NOT (there is no manual way to grant it anymore, on purpose).'
       : '';
     const confirmed = confirm(
       `Manually grant ${label(newTier)} to this listing?\n\n` +
