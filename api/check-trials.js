@@ -109,7 +109,7 @@ export default async function handler(req, res) {
   // Only approved, currently-listed businesses are subject to trial/grace —
   // pending/rejected listings were never live so they don't need this.
   const listRes = await fetch(
-    `${supaUrl}/rest/v1/listings?status=eq.approved&select=id,name,email,owner_email,boost_tier,boost_started_at,created_at,trial_notice_sent`,
+    `${supaUrl}/rest/v1/listings?status=eq.approved&select=id,name,email,owner_email,boost_tier,boost_started_at,created_at,trial_notice_sent,verified`,
     { headers }
   );
   if (!listRes.ok) {
@@ -119,7 +119,7 @@ export default async function handler(req, res) {
   }
   const listings = await listRes.json();
 
-  const summary = { checked: listings.length, warned: 0, graceStarted: 0, suspended: 0, errors: 0 };
+  const summary = { checked: listings.length, warned: 0, graceStarted: 0, suspended: 0, unverified: 0, errors: 0 };
 
   for (const listing of listings) {
     try {
@@ -157,10 +157,23 @@ export default async function handler(req, res) {
         // but keep the row (and all its data) intact so paying later restores
         // it instantly instead of forcing the business to redo their entire
         // listing from scratch.
+        const suspendPatch = { status: 'suspended' };
+        // AUTO-UNVERIFY: verified is only ever auto-granted for a CONFIRMED
+        // Pro payment (see ozow-notify.js / netcash-notify.js) — there is no
+        // manual way to grant it anymore, on purpose. So if a Pro listing's
+        // plan has fully lapsed (grace period over too, this IS that point)
+        // without renewal, the badge lapses with it. Scoped to
+        // boost_tier === 'pro' specifically so this never touches a
+        // verified status granted for any other legitimate reason (e.g. an
+        // older manual verification from before that button was removed).
+        if (listing.boost_tier === 'pro' && listing.verified) {
+          suspendPatch.verified = false;
+          summary.unverified++;
+        }
         const suspendRes = await fetch(`${supaUrl}/rest/v1/listings?id=eq.${listing.id}`, {
           method: 'PATCH',
           headers,
-          body: JSON.stringify({ status: 'suspended' }),
+          body: JSON.stringify(suspendPatch),
         });
         if (!suspendRes.ok) throw new Error('Suspend failed: ' + (await suspendRes.text()));
         summary.suspended++;
