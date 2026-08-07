@@ -8103,46 +8103,23 @@ async function submitBusiness(){
   const isEditMode = !!listingId;
   try {
     if(listingId) {
-      // UPDATE existing listing — try with owner_email, fall back without it
-      let updateErr;
-      ({ error: updateErr } = await nmSupaQuery(() =>
-        _supa.from('listings').update({ ...listingPayload, owner_email: ownerEmailVal }).eq('id', listingId)
-      ));
-      if (updateErr && updateErr.message && updateErr.message.includes('owner_email')) {
-        // Column doesn't exist yet — retry without it
-        ({ error: updateErr } = await nmSupaQuery(() =>
-          _supa.from('listings').update(listingPayload).eq('id', listingId)
-        ));
-      }
-      if (updateErr && updateErr.message && (updateErr.message.includes('latitude') || updateErr.message.includes('longitude'))) {
-        // latitude/longitude columns don't exist yet (SQL migration not run) —
-        // retry without coordinates so the listing still saves.
-        const { latitude, longitude, ...payloadNoCoords } = { ...listingPayload, owner_email: ownerEmailVal };
-        ({ error: updateErr } = await nmSupaQuery(() =>
-          _supa.from('listings').update(payloadNoCoords).eq('id', listingId)
-        ));
-      }
-      if (updateErr && updateErr.message && updateErr.message.includes('location_confirmed')) {
-        // location_confirmed column doesn't exist yet (SQL migration not run) —
-        // retry without it so the listing still saves.
-        const { location_confirmed, ...payloadNoConfirmed } = { ...listingPayload, owner_email: ownerEmailVal };
-        ({ error: updateErr } = await nmSupaQuery(() =>
-          _supa.from('listings').update(payloadNoConfirmed).eq('id', listingId)
-        ));
-      }
-      if (updateErr && updateErr.message && updateErr.message.includes('logo_url')) {
-        // logo_url column doesn't exist yet — retry without it so the listing still saves.
-        const { logo_url, ...payloadNoLogo } = listingPayload;
-        ({ error: updateErr } = await nmSupaQuery(() =>
-          _supa.from('listings').update(payloadNoLogo).eq('id', listingId)
-        ));
-      }
-      if (updateErr && updateErr.message && updateErr.message.includes('website')) {
-        // website column doesn't exist yet — retry without it so the listing still saves.
-        const { website, ...payloadNoWebsite } = listingPayload;
-        ({ error: updateErr } = await nmSupaQuery(() =>
-          _supa.from('listings').update(payloadNoWebsite).eq('id', listingId)
-        ));
+      // UPDATE existing listing — routed through moderate.js rather than a
+      // direct Supabase write. The server verifies THIS business actually
+      // owns this listing and strips any sensitive field (boost_tier,
+      // verified, status, payment fields) even if somehow present in the
+      // payload — a business editing their own profile should never be
+      // able to touch those, whether by mistake or by a forged request.
+      let updateErr = null;
+      if (!nmBizToken) {
+        updateErr = new Error('Your session has expired — please log out, log back in, then try saving again.');
+      } else {
+        const res = await fetch('/api/moderate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+          body: JSON.stringify({ mode: 'update-own-listing', listingId, updates: listingPayload }),
+        });
+        const result = await res.json().catch(() => ({ ok: false, reason: 'Server error.' }));
+        if (!result.ok) updateErr = new Error(result.reason || 'Failed to save listing.');
       }
       if (updateErr) throw updateErr;
     } else {
@@ -8396,8 +8373,13 @@ function adminReviewListing(id) {
   rejectBtn.disabled = false;
   approveBtn.onclick = async () => {
     approveBtn.disabled = true; approveBtn.textContent = '⏳ Approving...';
-    const { error } = await nmSupaQuery(() => _supa.from('listings').update({ status: 'approved' }).eq('id', l.id));
-    if (!error) {
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-set-status', listingId: l.id, status: 'approved' }),
+    });
+    const result = await res.json().catch(() => ({ ok: false }));
+    if (result.ok) {
       modal.style.display = 'none';
       admLoadApprovals();
       admLoadOverview();
@@ -8405,20 +8387,25 @@ function adminReviewListing(id) {
     } else {
       approveBtn.disabled = false;
  approveBtn.textContent = ' Approve Listing';
-      alert('Error approving. Try again.');
+      alert('Error approving: ' + (result.reason || 'please try again.'));
     }
   };
   rejectBtn.onclick = async () => {
     rejectBtn.disabled = true; rejectBtn.textContent = '⏳ Rejecting...';
-    const { error } = await nmSupaQuery(() => _supa.from('listings').update({ status: 'rejected' }).eq('id', l.id));
-    if (!error) {
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-set-status', listingId: l.id, status: 'rejected' }),
+    });
+    const result = await res.json().catch(() => ({ ok: false }));
+    if (result.ok) {
       modal.style.display = 'none';
       admLoadApprovals();
       admLoadOverview();
     } else {
       rejectBtn.disabled = false;
  rejectBtn.textContent = ' Reject Listing';
-      alert('Error rejecting. Try again.');
+      alert('Error rejecting: ' + (result.reason || 'please try again.'));
     }
   };
 
@@ -8433,8 +8420,13 @@ async function adminAction(btn, action, listingId) {
 
   try {
     const newStatus = action === 'approve' ? 'approved' : 'rejected';
-    const { error } = await nmSupaQuery(() => _supa.from('listings').update({ status: newStatus }).eq('id', listingId));
-    if(error) throw error;
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-set-status', listingId, status: newStatus }),
+    });
+    const result = await res.json();
+    if(!result.ok) throw new Error(result.reason || 'Failed to update status.');
 
     row.style.opacity = '.4';
     row.style.transition = 'opacity .5s';
@@ -13251,7 +13243,15 @@ async function bpSaveAccountDetails() {
     if (window._bpMyListingId) {
       const listingPayload = { name: newName, owner: newOwner, email: newEmail };
       if (newLogoUrl) listingPayload.logo_url = newLogoUrl;
-      try { await nmSupaQuery(() => _supa.from('listings').update(listingPayload).eq('id', window._bpMyListingId)); }
+      try {
+        const res = await fetch('/api/moderate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+          body: JSON.stringify({ mode: 'update-own-listing', listingId: window._bpMyListingId, updates: listingPayload }),
+        });
+        const result = await res.json().catch(() => ({ ok: false }));
+        if (!result.ok) console.warn('Listing sync failed (account details still saved):', result.reason);
+      }
       catch(e) { console.warn('Listing sync failed (account details still saved):', e); }
     }
 
@@ -14765,13 +14765,21 @@ async function admToggleVerified(id, currentlyVerified, btn) {
   const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
   try {
-    const { error } = await nmSupaQuery(() => _supa.from('listings').update({verified: !currentlyVerified}).eq('id', id));
-    if(error) throw error;
+    // Routed through moderate.js rather than a direct Supabase write — the
+    // server enforces remove-only there too, not just the missing "Mark
+    // Verified" button in this UI.
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-remove-verified', listingId: id }),
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.reason || 'Failed to update verified status.');
     setTimeout(()=>{ admLoadApprovals(); loadListingsFromSupabase(true); }, 400);
   } catch(e) {
     console.error('Verify toggle error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
-    alert('Error updating verified status. Make sure the "verified" column exists on your listings table.');
+    alert('Error updating verified status: ' + (e.message || 'please try again.'));
   }
 }
 
@@ -14841,24 +14849,23 @@ async function admSetBoost(id, btn) {
   const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
   try {
-    const update = { boost_tier: newTier === 'none' ? null : newTier };
-    if (newTier === 'none') {
-      update.boost_started_at = null;
-    } else {
-      update.boost_started_at = new Date().toISOString();
-    }
-    const { error } = await nmSupaQuery(() => _supa.from('listings').update(update).eq('id', id));
-    if (error) throw error;
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-set-boost', listingId: id, newTier }),
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.reason || 'Failed to set boost.');
     if (window._pendingListingsMap && window._pendingListingsMap[id]) {
-      window._pendingListingsMap[id].boost_tier = update.boost_tier;
-      window._pendingListingsMap[id].boost_started_at = update.boost_started_at;
+      window._pendingListingsMap[id].boost_tier = newTier === 'none' ? null : newTier;
     }
     btn.textContent = ' Done!'; btn.style.opacity = '1';
     setTimeout(() => { admLoadApprovals(); loadListingsFromSupabase(true); }, 700);
   } catch(e) {
     console.error('Set boost error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
-    alert('Error setting boost. Make sure the "boost_started_at" column exists on your listings table (run the migration SQL if not).');
+    sel.value = oldTier;
+    alert('Error setting boost: ' + (e.message || 'please try again.'));
   }
 }
 
@@ -14884,22 +14891,19 @@ async function admGrantGrace(id, btn) {
   const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
   try {
-    const DAY = 24 * 60 * 60 * 1000;
-    const backdatedStart = new Date(Date.now() - (30 - days) * DAY).toISOString();
-    const { error } = await nmSupaQuery(() => _supa.from('listings').update({
-      status: 'approved',
-      boost_tier: 'starter',
-      boost_started_at: backdatedStart,
-      // Deliberately NOT setting boost_paid_at — this is an unpaid
-      // agreement grant, not a real payment.
-    }).eq('id', id));
-    if(error) throw error;
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-grant-grace', listingId: id, days }),
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.reason || 'Failed to grant grace period.');
     btn.textContent = ` Granted ${days}d`; btn.style.background = '#dcfce7'; btn.style.opacity = '1';
     setTimeout(()=>{ admLoadApprovals(); admLoadOverview(); loadListingsFromSupabase(true); }, 800);
   } catch(e) {
     console.error('Grant grace error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
-    alert('Error granting grace period. Check your Supabase connection and try again.');
+    alert('Error granting grace period: ' + (e.message || 'please try again.'));
   }
 }
 
@@ -14907,15 +14911,20 @@ async function admApproveListing(id, btn) {
   const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
   try {
-    const { error } = await nmSupaQuery(() => _supa.from('listings').update({status:'approved'}).eq('id', id));
-    if(error) throw error;
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-set-status', listingId: id, status: 'approved' }),
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.reason || 'Failed to approve.');
     // Show success feedback
  btn.textContent = ' Done!'; btn.style.background = '#dcfce7'; btn.style.opacity = '1';
     setTimeout(()=>{ admLoadApprovals(); admLoadOverview(); loadListingsFromSupabase(true); }, 800);
   } catch(e) {
     console.error('Approve error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
-    alert('Error approving. Check your Supabase connection and try again.');
+    alert('Error approving: ' + (e.message || 'please try again.'));
   }
 }
 
@@ -14923,14 +14932,19 @@ async function admRejectListing(id, btn) {
   const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
   try {
-    const { error } = await nmSupaQuery(() => _supa.from('listings').update({status:'rejected'}).eq('id', id));
-    if(error) throw error;
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-set-status', listingId: id, status: 'rejected' }),
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.reason || 'Failed to reject.');
  btn.textContent = ' Done!'; btn.style.background = '#fee2e2'; btn.style.opacity = '1';
     setTimeout(()=>{ admLoadApprovals(); admLoadOverview(); loadListingsFromSupabase(true); }, 800);
   } catch(e) {
     console.error('Reject error:', e);
     btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
-    alert('Error rejecting. Check your Supabase connection and try again.');
+    alert('Error rejecting: ' + (e.message || 'please try again.'));
   }
 }
 
