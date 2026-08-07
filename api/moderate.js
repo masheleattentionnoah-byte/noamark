@@ -188,6 +188,200 @@ async function handleDeleteOwnAccount(claims, body) {
   }
 }
 
+// ── mode: admin-set-status (admin only) ──
+// Approve / reject / suspend a listing. Replaces the direct client-side
+// `_supa.from('listings').update({status: ...})` calls, which only worked
+// because the listings table's RLS UPDATE policy was wide open to anyone —
+// not just admin.
+async function handleAdminSetStatus(claims, body) {
+  if (claims.role !== 'admin') {
+    return { status: 401, json: { ok: false, reason: 'Admin login required.' } };
+  }
+  const { listingId, status } = body;
+  const allowed = ['approved', 'rejected', 'suspended'];
+  if (!listingId || !allowed.includes(status)) {
+    return { status: 400, json: { ok: false, reason: 'Missing or invalid listingId/status.' } };
+  }
+  try {
+    const res = await supaFetch(`listings?id=eq.${encodeURIComponent(listingId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/admin-set-status error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: admin-remove-verified (admin only, REMOVE ONLY) ──
+// There is deliberately no "grant" counterpart to this — verified can only
+// ever be set to true by a confirmed Pro payment (ozow-notify.js /
+// netcash-notify.js), never by an admin action. This mode exists purely to
+// correct a mistake or handle a lapsed Pro plan that check-trials.js hasn't
+// caught yet. The server enforces the remove-only rule itself here — it
+// does not just trust that the admin panel's UI happens to only offer a
+// "Remove Verified" button.
+async function handleAdminRemoveVerified(claims, body) {
+  if (claims.role !== 'admin') {
+    return { status: 401, json: { ok: false, reason: 'Admin login required.' } };
+  }
+  const { listingId } = body;
+  if (!listingId) return { status: 400, json: { ok: false, reason: 'Missing listingId' } };
+  try {
+    const res = await supaFetch(`listings?id=eq.${encodeURIComponent(listingId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ verified: false }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/admin-remove-verified error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: admin-set-boost (admin only) ──
+// This is the server-side twin of admSetBoost() in index.html — the exact
+// same anti-corruption rule (an admin can never directly swap a listing
+// from one active PAID tier to another; must cancel to None first, as a
+// separate step) is re-implemented and enforced HERE, not just trusted
+// from the browser. The client-side version is still useful for a fast,
+// friendly error message, but it was never real security — anyone calling
+// this endpoint directly with a forged request hits the same rule.
+async function handleAdminSetBoost(claims, body) {
+  if (claims.role !== 'admin') {
+    return { status: 401, json: { ok: false, reason: 'Admin login required.' } };
+  }
+  const { listingId, newTier } = body;
+  const validTiers = ['none', 'starter', 'growth', 'pro'];
+  if (!listingId || !validTiers.includes(newTier)) {
+    return { status: 400, json: { ok: false, reason: 'Missing or invalid listingId/newTier.' } };
+  }
+  try {
+    const curRes = await supaFetch(`listings?id=eq.${encodeURIComponent(listingId)}&select=boost_tier&limit=1`);
+    const curRows = await curRes.json();
+    const current = curRows[0];
+    if (!current) return { status: 404, json: { ok: false, reason: 'Listing not found.' } };
+    const oldTier = current.boost_tier || 'none';
+
+    if (oldTier === newTier) return { status: 200, json: { ok: true } }; // no-op
+
+    if (oldTier !== 'none' && newTier !== 'none') {
+      // Blocked: direct swap between two active tiers — same rule as the
+      // client-side confirm dialog, enforced here so it can't be bypassed.
+      return { status: 400, json: { ok: false, reason: `This listing has an active ${oldTier} boost. Set it to "none" first, then set ${newTier} as a separate step.` } };
+    }
+
+    const patch = { boost_tier: newTier };
+    if (newTier === 'none') {
+      patch.boost_started_at = null;
+    } else {
+      // Granting FROM none — the legitimate manual "agreement" path.
+      // Deliberately does NOT set boost_paid_at (that column is what marks
+      // a REAL payment) and deliberately does NOT touch verified — Pro's
+      // verified badge only ever comes from a confirmed payment webhook.
+      patch.boost_started_at = new Date().toISOString();
+    }
+
+    const res = await supaFetch(`listings?id=eq.${encodeURIComponent(listingId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/admin-set-boost error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: admin-grant-grace (admin only) ──
+// Server-side twin of admGrantGrace() in index.html. Same trick — backdate
+// boost_started_at so the existing 30-day window ends exactly N days from
+// now — reused here rather than duplicated with different logic, so this
+// endpoint and check-trials.js stay in agreement about how a listing's
+// active window is computed.
+async function handleAdminGrantGrace(claims, body) {
+  if (claims.role !== 'admin') {
+    return { status: 401, json: { ok: false, reason: 'Admin login required.' } };
+  }
+  const { listingId } = body;
+  let { days } = body;
+  if (!listingId) return { status: 400, json: { ok: false, reason: 'Missing listingId' } };
+  days = parseInt(days, 10);
+  if (!Number.isFinite(days)) days = 3;
+  days = Math.max(1, Math.min(30, days));
+
+  try {
+    const DAY = 24 * 60 * 60 * 1000;
+    const backdatedStart = new Date(Date.now() - (30 - days) * DAY).toISOString();
+    const res = await supaFetch(`listings?id=eq.${encodeURIComponent(listingId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: 'approved',
+        boost_tier: 'starter',
+        boost_started_at: backdatedStart,
+        // Deliberately NOT setting boost_paid_at — unpaid agreement grant.
+      }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/admin-grant-grace error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: update-own-listing (business owner editing THEIR OWN listing) ──
+// Profile fields only (name, description, contact info, hours, photos,
+// etc.) — deliberately strips out every sensitive field a business should
+// never be able to set on themselves, even by accident: boost/verification/
+// approval status, payment record fields, and the id itself. This is the
+// real fix for the listings table's wide-open UPDATE policy — once the
+// frontend is switched to call this instead of writing to Supabase
+// directly, that policy can be removed rather than just left open "because
+// the app needs it."
+const OWN_LISTING_BLOCKED_FIELDS = [
+  'id', 'status', 'verified', 'boost_tier', 'boost_started_at',
+  'boost_paid_at', 'boost_payment_ref', 'boost_card_token',
+  'boost_card_masked', 'boost_card_expiry', 'created_at', 'trial_notice_sent',
+];
+async function handleUpdateOwnListing(claims, body) {
+  if (claims.role !== 'business') {
+    return { status: 401, json: { ok: false, reason: 'Please log in as a business owner.' } };
+  }
+  const { listingId, updates } = body;
+  if (!listingId || !updates || typeof updates !== 'object') {
+    return { status: 400, json: { ok: false, reason: 'Missing listingId or updates.' } };
+  }
+  const owns = await businessOwnsListing(claims, listingId);
+  if (!owns) {
+    return { status: 403, json: { ok: false, reason: 'You can only edit your own listing.' } };
+  }
+
+  const cleanUpdates = {};
+  for (const key of Object.keys(updates)) {
+    if (!OWN_LISTING_BLOCKED_FIELDS.includes(key)) cleanUpdates[key] = updates[key];
+  }
+  if (Object.keys(cleanUpdates).length === 0) {
+    return { status: 400, json: { ok: false, reason: 'No editable fields in that update.' } };
+  }
+
+  try {
+    const res = await supaFetch(`listings?id=eq.${encodeURIComponent(listingId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(cleanUpdates),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/update-own-listing error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
 // ── shared helper: does this business (or admin) own the given listing? ──
 // PERFORMANCE NOTE: these two lookups don't depend on each other — who the
 // token belongs to, and who the listing belongs to — so they run in
@@ -621,6 +815,11 @@ export default async function handler(req, res) {
     else if (mode === 'delete-user') result = await handleDeleteUser(claims, body);
     else if (mode === 'delete-own-account') result = await handleDeleteOwnAccount(claims, body);
     else if (mode === 'delete-review') result = await handleDeleteReview(claims, body);
+    else if (mode === 'admin-set-status') result = await handleAdminSetStatus(claims, body);
+    else if (mode === 'admin-remove-verified') result = await handleAdminRemoveVerified(claims, body);
+    else if (mode === 'admin-set-boost') result = await handleAdminSetBoost(claims, body);
+    else if (mode === 'admin-grant-grace') result = await handleAdminGrantGrace(claims, body);
+    else if (mode === 'update-own-listing') result = await handleUpdateOwnListing(claims, body);
     else if (mode === 'list-enquiries') result = await handleListEnquiries(claims, body);
     else if (mode === 'reply-enquiry') result = await handleReplyEnquiry(claims, body);
     else if (mode === 'delete-enquiry') result = await handleDeleteEnquiry(claims, body);
