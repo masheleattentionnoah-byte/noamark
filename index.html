@@ -8185,7 +8185,15 @@ async function submitBusiness(){
   if (owner && currentUser && currentUser.type === 'business') {
     currentUser.owner = owner;
     saveSession(currentUser);
-    try { await saveUserToSupabase({ name: currentUser.name, email: currentUser.email, owner: owner, role: 'business' }); }
+    try {
+      if (nmBizToken) {
+        await fetch('/api/moderate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+          body: JSON.stringify({ mode: 'update-own-profile', updates: { owner } }),
+        });
+      }
+    }
     catch(e) { console.warn('Owner name sync failed', e); }
   }
   // Clear editing mode
@@ -9310,7 +9318,7 @@ async function handleActivateAccountSignup(subId, email, plan) {
 
   btn.disabled = true; btn.textContent = 'Activating…';
   try {
-    await saveUserToSupabase({ name, email, password: pass, role: 'subscriber', plan: 'Free' });
+    await saveUserToSupabase({ name, email, password: pass, role: 'subscriber', plan: 'Free' }, { allowUpdateExisting: false });
     const lookup = await nmSupaQuery(() => _supa.from('users').select('id,joinedAt,created_at').ilike('email', email).limit(1));
     const savedUser = lookup && lookup.data && lookup.data[0];
     trackUser('subscriber', name, email);
@@ -10286,7 +10294,8 @@ async function loadNMUsers() {
   } catch(e){ console.warn('Supabase load failed, using local cache', e); }
 }
 
-async function saveUserToSupabase(user) {
+async function saveUserToSupabase(user, options = {}) {
+  const { allowUpdateExisting = true } = options;
   // Never store plain-text password — hash it first before saving
   const safeUser = Object.assign({}, user);
   if (safeUser.password && safeUser.password.indexOf(':') === -1) {
@@ -10309,6 +10318,21 @@ async function saveUserToSupabase(user) {
   const existingRow = existCheck && existCheck.data && existCheck.data[0];
   let result;
   if (existingRow) {
+    // BUG THIS FIXES: this branch used to update the existing row
+    // unconditionally, no matter who was calling it. A per-role duplicate
+    // check on the signup form (e.g. "is this email already a business?")
+    // does NOT catch a DIFFERENT role already using that email — so
+    // someone could sign up as a business with an email that already
+    // belongs to a subscriber account, land here, and this would have
+    // silently overwritten that subscriber's password and role with
+    // whatever the signup form just submitted. Real account takeover,
+    // through the normal signup form, no bypass needed. Signup call sites
+    // now pass allowUpdateExisting:false so this hard-rejects instead.
+    if (!allowUpdateExisting) {
+      const err = new Error('An account with this email already exists. Please log in instead.');
+      err.code = 'ACCOUNT_EXISTS';
+      throw err;
+    }
     result = await nmSupaQuery(() => _supa.from('users').update(payload).eq('id', existingRow.id));
   } else {
     if (!payload.id) payload.id = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16));
@@ -10783,7 +10807,7 @@ async function handleBizSignup() {
   // and login from another device will fail the password check.
   showAuthError('biz-signup-error', 'Creating your account…');
   try {
-    await saveUserToSupabase({ name, owner, email, password:pass, role:'business' });
+    await saveUserToSupabase({ name, owner, email, password:pass, role:'business' }, { allowUpdateExisting: false });
   } catch(e) {
     console.error('Signup save error:', e);
  showAuthError('biz-signup-error', ' Could not save your account: ' + (e.message || 'Unknown error'));
@@ -10924,9 +10948,9 @@ async function handleSubSignup() {
   // causing login from another device to fail the password check.
   showAuthError('sub-signup-error', 'Creating your account…');
   try {
-    await saveUserToSupabase({ name, email, password:pass, role:'subscriber' });
+    await saveUserToSupabase({ name, email, password:pass, role:'subscriber' }, { allowUpdateExisting: false });
   } catch(e) {
- showAuthError('sub-signup-error', ' Could not save your account. Please check your connection and try again.');
+ showAuthError('sub-signup-error', ' ' + (e.message || 'Could not save your account. Please check your connection and try again.'));
     NM_USERS.subscribers = NM_USERS.subscribers.filter(s => s.email.toLowerCase() !== email.toLowerCase());
     return;
   }
@@ -11019,9 +11043,9 @@ async function handleGuestSignup() {
   const guest = { name, location, password:pass, id:guestId, visitedAt: new Date().toISOString() };
   NM_USERS.guests.push(guest);
   try {
-    await saveUserToSupabase({ name, email: name+'_explorer@noamark.local', password:pass, role:'guest' });
+    await saveUserToSupabase({ name, email: name+'_explorer@noamark.local', password:pass, role:'guest' }, { allowUpdateExisting: false });
   } catch(e) {
- showAuthError('guest-error', ' Could not save your account. Please check your connection and try again.');
+ showAuthError('guest-error', ' ' + (e.message || 'Could not save your account. Please check your connection and try again.'));
     NM_USERS.guests = NM_USERS.guests.filter(g => g.id !== guestId);
     return;
   }
@@ -13135,7 +13159,15 @@ async function bpRenderSettings() {
       ownerName = myListing.owner.trim();
       currentUser.owner = ownerName;
       saveSession(currentUser);
-      try { await saveUserToSupabase({ name: currentUser.name, email: currentUser.email, owner: ownerName, role: 'business' }); }
+      try {
+        if (nmBizToken) {
+          await fetch('/api/moderate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+            body: JSON.stringify({ mode: 'update-own-profile', updates: { owner: ownerName } }),
+          });
+        }
+      }
       catch(e) { console.warn('Owner name repair failed', e); }
     }
   }
@@ -13225,17 +13257,17 @@ async function bpSaveAccountDetails() {
     // nothing, and INSERT A DUPLICATE ROW instead of updating the real one.
     // So here we look the row up by the OLD email first, then update that
     // exact row directly by id — safe regardless of whether the email changed.
-    const existing = await nmSupaQuery(() => _supa.from('users').select('id').ilike('email', oldEmail).limit(1));
-    const existingRow = existing && existing.data && existing.data[0];
     const userPayload = { name: newName, owner: newOwner, email: newEmail };
-    if (existingRow) {
-      const upd = await nmSupaQuery(() => _supa.from('users').update(userPayload).eq('id', existingRow.id));
-      if (upd && upd.error) throw new Error(upd.error.message || 'Failed to update account');
-    } else {
-      // No row found under the old email (shouldn't normally happen for a
-      // logged-in user) — fall back to the general save path.
-      await saveUserToSupabase({ ...currentUser, ...userPayload, role: 'business' });
+    if (!nmBizToken) {
+      throw new Error('Your session has expired — please log out, log back in, then try saving again.');
     }
+    const profRes = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+      body: JSON.stringify({ mode: 'update-own-profile', updates: userPayload }),
+    });
+    const profResult = await profRes.json().catch(() => ({ ok: false, reason: 'Server error.' }));
+    if (!profResult.ok) throw new Error(profResult.reason || 'Failed to update account');
 
     // Keep the linked marketplace listing in sync — it has its own copies
     // of name/owner/email/logo that customers see, and getMyListing() uses
@@ -14310,8 +14342,13 @@ async function admFixAccountRole(id, newRole, btn) {
   const original = btn.textContent;
   btn.disabled = true; btn.textContent = '...';
   try {
-    const { error } = await nmSupaQuery(() => _supa.from('users').update({ role: newRole }).eq('id', id));
-    if(error) throw error;
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-set-role', userId: id, role: newRole }),
+    });
+    const result = await res.json();
+    if(!result.ok) throw new Error(result.reason || 'Failed to update role.');
  btn.textContent = ' Fixed!';
     setTimeout(() => admLookupAccount(), 700);
   } catch(e) {
@@ -14405,7 +14442,7 @@ async function admCreateBusinessLogin(listingId, btn) {
     await saveUserToSupabase({
       name: listing.name, owner: listing.owner || listing.name, email,
       password: tempPassword, role: 'business', plan: 'Business'
-    });
+    }, { allowUpdateExisting: false });
 
     const emailResult = await nmSendEmail(
       email,
@@ -15030,8 +15067,13 @@ async function admMarkPaid(id, btn) {
         _supa.from('users').select('id').eq('role','subscriber').ilike('email', sub.email).limit(1)
       );
       if(existingUser && existingUser.length) {
-        const { error: upErr } = await nmSupaQuery(() => _supa.from('users').update({ plan: sub.plan }).eq('id', existingUser[0].id));
-        if(upErr) throw upErr;
+        const planRes = await fetch('/api/moderate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+          body: JSON.stringify({ mode: 'admin-set-plan', userId: existingUser[0].id, plan: sub.plan }),
+        });
+        const planResult = await planRes.json();
+        if(!planResult.ok) throw new Error(planResult.reason || 'Failed to update plan.');
         accountFound = true;
       }
     }
@@ -15094,7 +15136,11 @@ async function admUndoPaid(id, btn) {
         _supa.from('users').select('id').eq('role','subscriber').ilike('email', sub.email).limit(1)
       );
       if(existingUser && existingUser.length) {
-        await nmSupaQuery(() => _supa.from('users').update({ plan: 'Free' }).eq('id', existingUser[0].id));
+        await fetch('/api/moderate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+          body: JSON.stringify({ mode: 'admin-set-plan', userId: existingUser[0].id, plan: 'Free' }),
+        }).catch(e => console.warn('Plan revert failed:', e));
       }
     }
     setTimeout(()=>{ admLoadOverview(); }, 400);
