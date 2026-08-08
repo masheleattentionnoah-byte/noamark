@@ -382,6 +382,97 @@ async function handleUpdateOwnListing(claims, body) {
   }
 }
 
+// ── mode: update-own-profile (business or subscriber, own account only) ──
+// Name/owner/email only — never password (that already has its own
+// server-verified path via mode:'change-password' in auth.js) and never
+// role/plan (admin-only, see below). Looks the caller's row up by their
+// OWN token id, not by an email the client sends, so there's no way to
+// point this at a different account.
+const OWN_PROFILE_ALLOWED_FIELDS = ['name', 'owner', 'email'];
+async function handleUpdateOwnProfile(claims, body) {
+  if (claims.role !== 'business' && claims.role !== 'subscriber') {
+    return { status: 401, json: { ok: false, reason: 'Please log in again.' } };
+  }
+  const { updates } = body;
+  if (!updates || typeof updates !== 'object') {
+    return { status: 400, json: { ok: false, reason: 'Missing updates.' } };
+  }
+  const cleanUpdates = {};
+  for (const key of Object.keys(updates)) {
+    if (OWN_PROFILE_ALLOWED_FIELDS.includes(key)) cleanUpdates[key] = updates[key];
+  }
+  if (Object.keys(cleanUpdates).length === 0) {
+    return { status: 400, json: { ok: false, reason: 'No editable fields in that update.' } };
+  }
+  // If the email is changing, make sure no OTHER account already has it —
+  // same check the client used to do, now enforced server-side too.
+  if (cleanUpdates.email) {
+    const clashRes = await supaFetch(`users?email=ilike.${encodeURIComponent(cleanUpdates.email)}&select=id&limit=1`);
+    const clashRows = await clashRes.json();
+    if (clashRows[0] && String(clashRows[0].id) !== String(claims.id)) {
+      return { status: 200, json: { ok: false, reason: 'That email is already used by another account.' } };
+    }
+  }
+  try {
+    const res = await supaFetch(`users?id=eq.${encodeURIComponent(claims.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(cleanUpdates),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/update-own-profile error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: admin-set-role (admin only) ──
+async function handleAdminSetRole(claims, body) {
+  if (claims.role !== 'admin') {
+    return { status: 401, json: { ok: false, reason: 'Admin login required.' } };
+  }
+  const { userId, role } = body;
+  const validRoles = ['business', 'subscriber', 'guest'];
+  if (!userId || !validRoles.includes(role)) {
+    return { status: 400, json: { ok: false, reason: 'Missing or invalid userId/role.' } };
+  }
+  try {
+    const res = await supaFetch(`users?id=eq.${encodeURIComponent(userId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/admin-set-role error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: admin-set-plan (admin only) ──
+// Used when approving/actioning a subscription_requests row — sets the
+// subscriber's plan directly.
+async function handleAdminSetPlan(claims, body) {
+  if (claims.role !== 'admin') {
+    return { status: 401, json: { ok: false, reason: 'Admin login required.' } };
+  }
+  const { userId, plan } = body;
+  if (!userId || typeof plan !== 'string' || !plan) {
+    return { status: 400, json: { ok: false, reason: 'Missing userId or plan.' } };
+  }
+  try {
+    const res = await supaFetch(`users?id=eq.${encodeURIComponent(userId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ plan }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/admin-set-plan error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
 // ── shared helper: does this business (or admin) own the given listing? ──
 // PERFORMANCE NOTE: these two lookups don't depend on each other — who the
 // token belongs to, and who the listing belongs to — so they run in
@@ -820,6 +911,9 @@ export default async function handler(req, res) {
     else if (mode === 'admin-set-boost') result = await handleAdminSetBoost(claims, body);
     else if (mode === 'admin-grant-grace') result = await handleAdminGrantGrace(claims, body);
     else if (mode === 'update-own-listing') result = await handleUpdateOwnListing(claims, body);
+    else if (mode === 'update-own-profile') result = await handleUpdateOwnProfile(claims, body);
+    else if (mode === 'admin-set-role') result = await handleAdminSetRole(claims, body);
+    else if (mode === 'admin-set-plan') result = await handleAdminSetPlan(claims, body);
     else if (mode === 'list-enquiries') result = await handleListEnquiries(claims, body);
     else if (mode === 'reply-enquiry') result = await handleReplyEnquiry(claims, body);
     else if (mode === 'delete-enquiry') result = await handleDeleteEnquiry(claims, body);
