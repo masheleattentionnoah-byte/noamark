@@ -5218,6 +5218,33 @@ window.addEventListener('popstate', function(e) {
     } catch(e) { return null; }
   };
   const _sessionRole = (currentUser && currentUser.type) || _getSessionRole();
+
+  // Shared safety net for every overlay-closing branch below (mobile nav,
+  // gate overlay, activate overlay, biz-gate modal, auth modal, booking
+  // modal, chat, lightbox, admin review modal). Each of those closes its
+  // own overlay and then just re-confirms whatever state was already
+  // underneath it — but if that underlying state is a stale pre-login
+  // 'home' entry (e.g. the business browsed the public site before ever
+  // logging in), it would get silently confirmed with no business check
+  // at all, since every one of those branches returns before PRIORITY 0's
+  // guard further up, or the id==='home' guard further down, ever run.
+  // This was the actual cause of the back button intermittently showing
+  // the homepage to a logged-in business — it only happened when one of
+  // those 9 overlays was open at the exact moment back was pressed.
+  function nmConfirmStateOrGuardBusiness(fallbackState, url) {
+    const targetState = e.state || fallbackState;
+    if (_sessionRole === 'business') {
+      const isPortal = (targetState.nmPage === 'marketplace' && targetState.nmView === 'admin') || targetState.nmBizPreview === true;
+      if (!isPortal) {
+        history.pushState({ nmPage: 'marketplace', nmView: 'admin' }, '', '#marketplace/portal');
+        showPage('marketplace');
+        setTimeout(() => showMktView('admin', false), 100);
+        return;
+      }
+    }
+    history.replaceState(targetState, '', url || window.location.href);
+  }
+
   if (_sessionRole === 'business' && !_overlayOpen) {
     const state = e.state || {};
     // nmBizPreview: business owner previewing their OWN listing (opened via
@@ -5266,19 +5293,19 @@ window.addEventListener('popstate', function(e) {
   if(gateOverlay && gateOverlay.classList.contains('active')) {
     closeGate();
     // replaceState, not pushState — see booking-modal note below for why.
-    history.replaceState(e.state || { nmPage: 'marketplace', nmView: 'main' }, '', window.location.href);
+    nmConfirmStateOrGuardBusiness({ nmPage: 'marketplace', nmView: 'main' }, window.location.href);
     return;
   }
   const activateOverlay = document.getElementById('activate-overlay');
   if(activateOverlay && activateOverlay.classList.contains('active')) {
     closeActivateOverlay();
-    history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
+    nmConfirmStateOrGuardBusiness({ nmPage: 'home', nmView: 'main' }, window.location.pathname + '#home');
     return;
   }
   const bizGateModal = document.getElementById('biz-gate-modal');
   if(bizGateModal) {
     closeBusinessGate();
-    history.replaceState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
+    nmConfirmStateOrGuardBusiness({ nmPage: 'home', nmView: 'main' }, window.location.href);
     return;
   }
 
@@ -5291,14 +5318,14 @@ window.addEventListener('popstate', function(e) {
     const forgotScreen = document.getElementById('auth-forgot-screen');
     if(forgotScreen && forgotScreen.style.display === 'block') {
       hideForgotPassword();
-      history.replaceState({ nmPage: 'auth', nmView: 'modal' }, '', window.location.href);
+      nmConfirmStateOrGuardBusiness({ nmPage: 'auth', nmView: 'modal' }, window.location.href);
       return;
     }
     if(!authRequired) {
       closeAuth();
     }
     // Re-confirm state so we stay here (replaceState — see booking-modal note)
-    history.replaceState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
+    nmConfirmStateOrGuardBusiness({ nmPage: 'home', nmView: 'main' }, window.location.href);
     return;
   }
 
@@ -5314,14 +5341,14 @@ window.addEventListener('popstate', function(e) {
   const bookingModal = document.getElementById('booking-modal');
   if(bookingModal && bookingModal.style.display === 'flex') {
     closeBookingModal();
-    history.replaceState(e.state || { nmPage: 'marketplace', nmView: 'profile' }, '', window.location.href);
+    nmConfirmStateOrGuardBusiness({ nmPage: 'marketplace', nmView: 'profile' }, window.location.href);
     return;
   }
 
   // PRIORITY 2: AI chatbot open → close it, stay on page
   if(typeof chatOpen !== 'undefined' && chatOpen) {
     toggleChat();
-    history.replaceState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
+    nmConfirmStateOrGuardBusiness({ nmPage: 'home', nmView: 'main' }, window.location.href);
     return;
   }
 
@@ -5333,9 +5360,9 @@ window.addEventListener('popstate', function(e) {
   if(lb && lb.classList.contains('open')) {
     nmLbClose();
     const lbBizId = (e.state && e.state.nmBizId) || window._currentProfileBizId || null;
-    history.replaceState(
+    nmConfirmStateOrGuardBusiness(
       { nmPage: 'marketplace', nmView: 'profile', nmBizId: lbBizId },
-      '', lbBizId ? '#marketplace/profile/' + lbBizId : '#marketplace/profile'
+      lbBizId ? '#marketplace/profile/' + lbBizId : '#marketplace/profile'
     );
     return;
   }
@@ -5344,7 +5371,7 @@ window.addEventListener('popstate', function(e) {
   const arm = document.getElementById('admin-review-modal');
   if(arm && (arm.style.display === 'flex' || arm.style.display === 'block')) {
     arm.style.display = 'none';
-    history.replaceState(e.state || { nmPage: 'home', nmView: 'main' }, '', window.location.href);
+    nmConfirmStateOrGuardBusiness({ nmPage: 'home', nmView: 'main' }, window.location.href);
     return;
   }
 
@@ -10654,6 +10681,24 @@ function validateEmail(e){
   // Catches a repeated two-part suffix: name@company.co.za.co.za
   if (labels.length >= 4 && labels.slice(-2).join('.') === labels.slice(-4, -2).join('.')) return false;
 
+  // Catches a real country-code suffix with something tacked on after it —
+  // e.g. name@company.co.za.com. ".co.za" is already a complete ending on
+  // its own (the same way ".com" is) — nothing legitimate ever continues
+  // past it. This is different from the repeated-suffix check above:
+  // "za" and "com" aren't the same label, so that check couldn't catch it.
+  const COMPOUND_SUFFIXES = [
+    'co.za','org.za','net.za','gov.za','ac.za','web.za','school.za',
+    'co.uk','org.uk','ac.uk','me.uk',
+    'co.nz','org.nz','net.nz',
+    'com.au','net.au','org.au','edu.au',
+    'co.in','co.jp','co.ke','co.zw','co.bw',
+    'com.br','com.mx','com.ar',
+  ];
+  for (const suffix of COMPOUND_SUFFIXES) {
+    if (domain.endsWith('.' + suffix) || domain === suffix) continue; // correctly at the end — fine
+    if (domain.includes(suffix + '.')) return false; // suffix appears but something follows it — typo
+  }
+
   return true;
 }
 function generateId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
@@ -13346,6 +13391,30 @@ async function bpConfirmActivePlanChange(planKey, listingId) {
   return true;
 }
 
+// Before letting a business pay for a plan, make sure their listing is
+// actually eligible. A listing that's still 'pending' (never approved) or
+// 'rejected' shouldn't be paid for yet — there's nothing live to boost.
+// Deliberately still ALLOWS 'suspended' through — paying is the intended
+// way a suspended (previously-approved, lapsed) listing gets reactivated,
+// so blocking that status here would break that flow.
+async function bpCheckListingPayable(listingId) {
+  try {
+    const { data } = await nmSupaQuery(() => _supa.from('listings').select('status').eq('id', listingId).limit(1));
+    const status = data && data[0] && data[0].status;
+    if (status === 'pending') {
+      bpToast("Your listing hasn't been approved yet — no need to pay before then. We'll email you the moment it's approved, then you can choose a plan.");
+      return false;
+    }
+    if (status === 'rejected') {
+      bpToast('Your listing was not approved, so a plan can\'t be purchased yet. Check your Business Portal for details or contact support.');
+      return false;
+    }
+  } catch (e) {
+    console.warn('Could not check listing status before checkout — proceeding anyway.', e);
+  }
+  return true;
+}
+
 // ── BOOST SELECT — Netcash first, Ozow available alongside it ──
 async function bpSelectBoost(plan, price) {
   if (!currentUser || currentUser.type !== 'business') {
@@ -13358,6 +13427,7 @@ async function bpSelectBoost(plan, price) {
     bpToast('Could not find your listing. Please refresh and try again.');
     return;
   }
+  if (!(await bpCheckListingPayable(listingId))) return;
   if (!(await bpConfirmActivePlanChange(planKey, listingId))) return;
   nmProcessNetcashBoost(planKey, plan, listingId);
 }
@@ -13375,6 +13445,7 @@ async function bpSelectBoostOzow(plan, price) {
     bpToast('Could not find your listing. Please refresh and try again.');
     return;
   }
+  if (!(await bpCheckListingPayable(listingId))) return;
   if (!(await bpConfirmActivePlanChange(planKey, listingId))) return;
   nmProcessOzowBoost(planKey, plan, listingId);
 }
