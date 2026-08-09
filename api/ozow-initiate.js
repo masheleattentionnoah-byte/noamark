@@ -112,16 +112,23 @@ export default async function handler(req, res) {
   const successUrl = siteOrigin + '/';
   const notifyUrl  = siteOrigin.replace(/\/$/, '') + '/api/ozow-notify';
 
-  // Field order below matches a confirmed-working real integration against
-  // pay.ozow.com (SiteCode, CountryCode, CurrencyCode, Amount,
-  // TransactionReference, BankReference, Optional1-5, Customer, CancelUrl,
-  // ErrorUrl, SuccessUrl, NotifyUrl, IsTest). Two earlier attempts at this
-  // order were wrong: Customer needs to come AFTER the Optionals not
-  // before, and the URL order is Cancel/Error/Success/Notify, not
-  // Notify/Success/Error/Cancel. This order is NOT arbitrary — Ozow just
-  // silently produces a non-matching hash if it's wrong, with no error
-  // message pointing at the cause.
-  const rawFields = {
+  // Field order below is confirmed directly against Ozow's own published
+  // "Post variables" table (ozow.com/integrations, Step 1): SiteCode,
+  // CountryCode, CurrencyCode, Amount, TransactionReference, BankReference,
+  // Optional1-5, Customer, CancelUrl, ErrorUrl, SuccessUrl, NotifyUrl,
+  // IsTest — 17 fixed fields in that exact order, always.
+  //
+  // IMPORTANT: earlier versions of this file DROPPED blank Optional/Customer
+  // fields entirely (not even sending them as empty strings), on a guess
+  // that Ozow's hash only covers whatever was actually posted. That guess
+  // is very likely what was causing "Payment unsuccessful — An error has
+  // occurred" on Ozow's own page (request reaching Ozow, but hash not
+  // matching). Ozow's table is a FIXED 17-field structure — every
+  // reference implementation that documents the literal hash string
+  // (e.g. Ozow's own Flutter SDKs) always includes Optional1-5 and
+  // Customer, blank or not. So now: always send and hash all 17 fields,
+  // using '' for anything not provided. Never omit a field.
+  const fields = {
     SiteCode: siteCode,
     CountryCode: 'ZA',
     CurrencyCode: 'ZAR',
@@ -140,17 +147,6 @@ export default async function handler(req, res) {
     NotifyUrl: notifyUrl,
     IsTest: isTest ? 'true' : 'false',
   };
-
-  // Blank optional/customer fields must be dropped entirely — not sent as
-  // empty strings — to match how Ozow's own algorithm builds the hash on
-  // their end. Required fields (amount, references, URLs, IsTest) are
-  // never blank so they're unaffected by this filter.
-  const fields = {};
-  for (const [key, value] of Object.entries(rawFields)) {
-    if (value !== '' && value !== null && value !== undefined) {
-      fields[key] = value;
-    }
-  }
 
   const hashCheck = buildHash(Object.values(fields), privateKey);
 
