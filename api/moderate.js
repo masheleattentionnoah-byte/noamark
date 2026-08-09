@@ -250,6 +250,33 @@ async function handleAdminRemoveVerified(claims, body) {
 // from the browser. The client-side version is still useful for a fast,
 // friendly error message, but it was never real security — anyone calling
 // this endpoint directly with a forged request hits the same rule.
+// ── shared helper: cancel a listing's Netcash subscription, if it has one ──
+// Used by handleAdminSetBoost (cancelling to 'none'), handleCancelOwnBoost
+// (business self-cancel), and handleAdminConfirmCancellation (below) — one
+// place, so all three cancellation paths behave identically rather than
+// three copies that could quietly drift apart over time.
+async function cancelNetcashSubscriptionIfAny(listing) {
+  if (!(listing.boost_paid_at && listing.boost_payment_ref && listing.boost_payment_ref.startsWith('NM-'))) {
+    return null; // not a real Netcash subscription — nothing to cancel
+  }
+  try {
+    const cancelRes = await fetch('https://noamark.com/api/netcash-notify?action=cancel-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p2Reference: listing.boost_payment_ref, boostStartedAt: listing.boost_started_at, planKey: listing.boost_tier }),
+    });
+    const cancelResult = await cancelRes.json().catch(() => ({ ok: false }));
+    if (!cancelResult.ok) {
+      console.error('cancelNetcashSubscriptionIfAny: cancel did not confirm success for', listing.id, cancelResult);
+      return 'Cancelled here, but stopping the recurring Netcash billing did not confirm success — please verify in your Netcash dashboard that this subscription is actually deactivated.';
+    }
+    return null;
+  } catch (e) {
+    console.error('cancelNetcashSubscriptionIfAny: threw:', e.message);
+    return 'Cancelled here, but could not reach Netcash to stop the recurring billing — please verify in your Netcash dashboard that this subscription is actually deactivated.';
+  }
+}
+
 async function handleAdminSetBoost(claims, body) {
   if (claims.role !== 'admin') {
     return { status: 401, json: { ok: false, reason: 'Admin login required.' } };
@@ -260,7 +287,7 @@ async function handleAdminSetBoost(claims, body) {
     return { status: 400, json: { ok: false, reason: 'Missing or invalid listingId/newTier.' } };
   }
   try {
-    const curRes = await supaFetch(`listings?id=eq.${encodeURIComponent(listingId)}&select=boost_tier&limit=1`);
+    const curRes = await supaFetch(`listings?id=eq.${encodeURIComponent(listingId)}&select=boost_tier,boost_paid_at,boost_payment_ref,boost_started_at&limit=1`);
     const curRows = await curRes.json();
     const current = curRows[0];
     if (!current) return { status: 404, json: { ok: false, reason: 'Listing not found.' } };
@@ -273,6 +300,14 @@ async function handleAdminSetBoost(claims, body) {
       // client-side confirm dialog, enforced here so it can't be bypassed.
       return { status: 400, json: { ok: false, reason: `This listing has an active ${oldTier} boost. Set it to "none" first, then set ${newTier} as a separate step.` } };
     }
+
+    // Cancelling a REAL Netcash-billed subscription (not a manual/unpaid
+    // grant, and not an Ozow payment — Netcash references always start
+    // with "NM-", see netcash-notify.js) needs to stop the actual
+    // recurring billing too, not just our own database record. Without
+    // this, Netcash keeps auto-charging the business's card every month
+    // even after the boost is cancelled here.
+    const netcashCancelWarning = newTier === 'none' ? await cancelNetcashSubscriptionIfAny({ ...current, id: listingId }) : null;
 
     const patch = { boost_tier: newTier };
     if (newTier === 'none') {
@@ -290,7 +325,7 @@ async function handleAdminSetBoost(claims, body) {
       body: JSON.stringify(patch),
     });
     if (!res.ok) throw new Error(await res.text());
-    return { status: 200, json: { ok: true } };
+    return { status: 200, json: { ok: true, warning: netcashCancelWarning } };
   } catch (e) {
     console.error('moderate/admin-set-boost error:', e.message);
     return { status: 500, json: { ok: false, reason: e.message } };
@@ -378,6 +413,171 @@ async function handleUpdateOwnListing(claims, body) {
     return { status: 200, json: { ok: true } };
   } catch (e) {
     console.error('moderate/update-own-listing error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: cancel-own-boost (business, their own listing only) ──
+// Self-service "Cancel My Plan" — sets boost_tier back to none AND, if
+// this was a real Netcash-billed subscription, stops the actual recurring
+// billing too (same cancellation call as the admin path in
+// handleAdminSetBoost, just triggered by the business themselves rather
+// than requiring an admin to do it on their behalf).
+async function handleCancelOwnBoost(claims, body) {
+  if (claims.role !== 'business') {
+    return { status: 401, json: { ok: false, reason: 'Please log in as a business owner.' } };
+  }
+  const { listingId } = body;
+  if (!listingId) return { status: 400, json: { ok: false, reason: 'Missing listingId' } };
+  const owns = await businessOwnsListing(claims, listingId);
+  if (!owns) {
+    return { status: 403, json: { ok: false, reason: 'You can only cancel your own plan.' } };
+  }
+
+  try {
+    const curRes = await supaFetch(`listings?id=eq.${encodeURIComponent(listingId)}&select=boost_tier,boost_paid_at,boost_payment_ref,boost_started_at&limit=1`);
+    const curRows = await curRes.json();
+    const current = curRows[0];
+    if (!current || !current.boost_tier || current.boost_tier === 'none') {
+      return { status: 200, json: { ok: false, reason: 'No active plan to cancel.' } };
+    }
+
+    let netcashCancelWarning = await cancelNetcashSubscriptionIfAny({ ...current, id: listingId });
+
+    const res = await supaFetch(`listings?id=eq.${encodeURIComponent(listingId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ boost_tier: 'none', boost_started_at: null }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return { status: 200, json: { ok: true, warning: netcashCancelWarning } };
+  } catch (e) {
+    console.error('moderate/cancel-own-boost error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── shared helper: quick admin email alert (same Resend pattern as check-trials.js) ──
+async function emailAdmin(subject, message) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM || 'NoaMark <onboarding@resend.dev>';
+  const to = process.env.ADMIN_EMAIL;
+  if (!apiKey || !to) { console.warn('emailAdmin: RESEND_API_KEY or ADMIN_EMAIL not set — skipping alert email.'); return; }
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from, to: [to], subject,
+        html: `<div style="font-family:sans-serif;font-size:15px;color:#111;line-height:1.5;"><p>${message.replace(/\n/g, '<br>')}</p></div>`,
+      }),
+    });
+  } catch (e) {
+    console.error('emailAdmin: send failed', e.message);
+  }
+}
+
+// ── mode: request-cancellation (business, own listing only) ──
+// Does NOT suspend anything by itself — just flags the listing and alerts
+// the admin by email. Suspension only happens once an admin confirms it
+// (see admin-confirm-cancellation below), on purpose: a cancellation tied
+// to a refund request needs a human conversation and a manual Netcash
+// action either way, so there's no benefit to going dark before that.
+async function handleRequestCancellation(claims, body) {
+  if (claims.role !== 'business') {
+    return { status: 401, json: { ok: false, reason: 'Please log in as a business owner.' } };
+  }
+  const { listingId, reason } = body;
+  if (!listingId) return { status: 400, json: { ok: false, reason: 'Missing listingId' } };
+  const owns = await businessOwnsListing(claims, listingId);
+  if (!owns) {
+    return { status: 403, json: { ok: false, reason: 'You can only request cancellation for your own listing.' } };
+  }
+
+  try {
+    const listRes = await supaFetch(`listings?id=eq.${encodeURIComponent(listingId)}&select=name,boost_tier&limit=1`);
+    const listRows = await listRes.json();
+    const listing = listRows[0];
+
+    const res = await supaFetch(`listings?id=eq.${encodeURIComponent(listingId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        cancellation_requested: true,
+        cancellation_requested_at: new Date().toISOString(),
+        cancellation_reason: (reason || '').slice(0, 1000) || null,
+      }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+
+    await emailAdmin(
+      `Cancellation requested: ${listing ? listing.name : listingId}`,
+      `${listing ? listing.name : 'A business'} (${listing ? listing.boost_tier || 'no plan' : ''}) has requested cancellation${reason ? ' and refund' : ''}.\n\n` +
+      (reason ? `Reason given: ${reason}\n\n` : '') +
+      `Review and confirm in your admin panel — Businesses tab — before this listing is suspended. Confirming stops any future billing but does NOT process a refund; that's still a manual step in your Netcash dashboard.`
+    );
+
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/request-cancellation error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: admin-confirm-cancellation (admin only) ──
+// Suspends the listing (soft — nothing deleted, same as check-trials.js's
+// own suspend path) and, if it was on a real Netcash subscription, stops
+// that too, reusing the exact same helper as every other cancel path.
+async function handleAdminConfirmCancellation(claims, body) {
+  if (claims.role !== 'admin') {
+    return { status: 401, json: { ok: false, reason: 'Admin login required.' } };
+  }
+  const { listingId } = body;
+  if (!listingId) return { status: 400, json: { ok: false, reason: 'Missing listingId' } };
+
+  try {
+    const curRes = await supaFetch(`listings?id=eq.${encodeURIComponent(listingId)}&select=boost_tier,boost_paid_at,boost_payment_ref,boost_started_at&limit=1`);
+    const curRows = await curRes.json();
+    const current = curRows[0];
+    if (!current) return { status: 404, json: { ok: false, reason: 'Listing not found.' } };
+
+    const netcashCancelWarning = current.boost_tier && current.boost_tier !== 'none'
+      ? await cancelNetcashSubscriptionIfAny({ ...current, id: listingId })
+      : null;
+
+    const res = await supaFetch(`listings?id=eq.${encodeURIComponent(listingId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: 'suspended',
+        boost_tier: 'none',
+        boost_started_at: null,
+        cancellation_requested: false,
+      }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return { status: 200, json: { ok: true, warning: netcashCancelWarning } };
+  } catch (e) {
+    console.error('moderate/admin-confirm-cancellation error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: admin-dismiss-cancellation (admin only) ──
+// Clears the request without touching the listing — for when the admin
+// resolves it another way (talked to the business, they changed their mind).
+async function handleAdminDismissCancellation(claims, body) {
+  if (claims.role !== 'admin') {
+    return { status: 401, json: { ok: false, reason: 'Admin login required.' } };
+  }
+  const { listingId } = body;
+  if (!listingId) return { status: 400, json: { ok: false, reason: 'Missing listingId' } };
+  try {
+    const res = await supaFetch(`listings?id=eq.${encodeURIComponent(listingId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ cancellation_requested: false }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/admin-dismiss-cancellation error:', e.message);
     return { status: 500, json: { ok: false, reason: e.message } };
   }
 }
@@ -911,6 +1111,10 @@ export default async function handler(req, res) {
     else if (mode === 'admin-set-boost') result = await handleAdminSetBoost(claims, body);
     else if (mode === 'admin-grant-grace') result = await handleAdminGrantGrace(claims, body);
     else if (mode === 'update-own-listing') result = await handleUpdateOwnListing(claims, body);
+    else if (mode === 'cancel-own-boost') result = await handleCancelOwnBoost(claims, body);
+    else if (mode === 'request-cancellation') result = await handleRequestCancellation(claims, body);
+    else if (mode === 'admin-confirm-cancellation') result = await handleAdminConfirmCancellation(claims, body);
+    else if (mode === 'admin-dismiss-cancellation') result = await handleAdminDismissCancellation(claims, body);
     else if (mode === 'update-own-profile') result = await handleUpdateOwnProfile(claims, body);
     else if (mode === 'admin-set-role') result = await handleAdminSetRole(claims, body);
     else if (mode === 'admin-set-plan') result = await handleAdminSetPlan(claims, body);
