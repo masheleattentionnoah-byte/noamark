@@ -4095,6 +4095,15 @@
                 <div style="font-size:12px;color:var(--white-dim);" id="bp-boost-current-sub">No boost active, your listing appears in standard order</div>
               </div>
  <button class="bp-btn bp-btn-gold" onclick="bpGetBoostAdvice()"> Which boost is right for me?</button>
+              <button class="bp-btn" id="bp-cancel-boost-btn" style="display:none;background:rgba(220,38,38,.1);color:#f87171;border:1px solid rgba(220,38,38,.3);" onclick="bpCancelMyBoost(this)">Cancel My Plan</button>
+            </div>
+            <div id="bp-cancellation-pending-banner" style="display:none;margin-top:16px;padding:12px 16px;background:rgba(212,175,55,.1);border:1px solid rgba(212,175,55,.3);font-size:12px;color:var(--gold-dim);">
+              You've requested cancellation &amp; refund — the NoaMark team will review this shortly.
+            </div>
+            <div id="bp-cancellation-request-area" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border-soft);">
+              <div style="font-size:12px;color:var(--white-dim);margin-bottom:10px;">Want to stop your plan AND ask for a refund? This goes to the NoaMark team for review rather than taking effect immediately.</div>
+              <textarea id="bp-cancellation-reason" placeholder="Optional: tell us why (helps us process your refund faster)" style="width:100%;min-height:60px;background:var(--black-3);border:1px solid var(--border-soft);color:var(--white);padding:10px 12px;font-size:12px;font-family:var(--font-body);outline:none;box-sizing:border-box;margin-bottom:10px;"></textarea>
+              <button class="bp-btn" id="bp-request-cancellation-btn" style="background:rgba(220,38,38,.1);color:#f87171;border:1px solid rgba(220,38,38,.3);" onclick="bpRequestCancellation(this)">Request Cancellation &amp; Refund</button>
             </div>
             <div id="bp-boost-advice-out" style="display:none;margin-top:16px;">
               <div class="bp-ai-box" id="bp-boost-advice-text"></div>
@@ -12641,6 +12650,17 @@ function populateBizDashboard() {
     if(banBoostSub) banBoostSub.textContent = myListing.boost !== 'none' ? 'Active' : 'No boost';
     document.getElementById('bp-boost-current-val').textContent = boostLabel;
     document.getElementById('bp-boost-current-sub').textContent = myListing.boost !== 'none' ? 'Your boost is currently active' : 'No boost, your listing appears in standard order';
+    const cancelBtn = document.getElementById('bp-cancel-boost-btn');
+    if (cancelBtn) cancelBtn.style.display = myListing.boost !== 'none' ? 'inline-flex' : 'none';
+    const pendingBanner = document.getElementById('bp-cancellation-pending-banner');
+    const requestArea = document.getElementById('bp-cancellation-request-area');
+    if (myListing.cancellation_requested) {
+      if (pendingBanner) pendingBanner.style.display = 'block';
+      if (requestArea) requestArea.style.display = 'none';
+    } else {
+      if (pendingBanner) pendingBanner.style.display = 'none';
+      if (requestArea) requestArea.style.display = myListing.boost !== 'none' ? 'block' : 'none';
+    }
   }
   bpRenderEnquiries();
   bpRenderReviews();
@@ -13450,6 +13470,67 @@ async function bpSelectBoostOzow(plan, price) {
   nmProcessOzowBoost(planKey, plan, listingId);
 }
 
+// Self-service plan cancellation — if this was a real Netcash-billed
+// subscription, this also stops the actual recurring card billing, not
+// just the local boost status (see cancel-own-boost in moderate.js).
+async function bpCancelMyBoost(btn) {
+  if (!currentUser || currentUser.type !== 'business') return;
+  const listingId = window._bpListingId;
+  if (!listingId) { bpToast('Could not find your listing. Please refresh and try again.'); return; }
+  if (!nmBizToken) { bpToast('Your session has expired — please log out, log back in, then try again.'); return; }
+  if (!confirm('Cancel your current plan? Your listing stays live, but loses its boost placement. If you paid by card, this also stops future automatic charges.')) return;
+
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Cancelling...';
+  try {
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+      body: JSON.stringify({ mode: 'cancel-own-boost', listingId }),
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.reason || 'Failed to cancel your plan.');
+    if (result.warning) alert(result.warning);
+    bpToast('Plan cancelled.');
+    setTimeout(() => { bpLoad(); }, 600);
+  } catch(e) {
+    console.error('Cancel boost error:', e);
+    btn.disabled = false; btn.textContent = originalText;
+    alert('Error cancelling your plan: ' + (e.message || 'please try again, or contact support.'));
+  }
+}
+
+// Requests cancellation + refund — unlike bpCancelMyBoost, this does NOT
+// take effect immediately. It flags the listing and emails the admin;
+// the plan keeps running until an admin reviews and confirms it.
+async function bpRequestCancellation(btn) {
+  if (!currentUser || currentUser.type !== 'business') return;
+  const listingId = window._bpListingId;
+  if (!listingId) { bpToast('Could not find your listing. Please refresh and try again.'); return; }
+  if (!nmBizToken) { bpToast('Your session has expired — please log out, log back in, then try again.'); return; }
+  const reasonEl = document.getElementById('bp-cancellation-reason');
+  const reason = reasonEl ? reasonEl.value.trim() : '';
+  if (!confirm('Request cancellation and refund? The NoaMark team will review this — your plan stays active until then. This does not cancel your plan by itself; use "Cancel My Plan" above if you just want billing to stop right away.')) return;
+
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Submitting...';
+  try {
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+      body: JSON.stringify({ mode: 'request-cancellation', listingId, reason }),
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.reason || 'Failed to submit request.');
+    bpToast('Request submitted — the NoaMark team will be in touch.');
+    setTimeout(() => { bpLoad(); }, 600);
+  } catch(e) {
+    console.error('Request cancellation error:', e);
+    btn.disabled = false; btn.textContent = originalText;
+    alert('Error submitting your request: ' + (e.message || 'please try again, or contact support directly.'));
+  }
+}
+
 
 // ── TOAST ──
 function bpToast(msg) {
@@ -13722,7 +13803,7 @@ bpLoad();
       <nav style="flex:1;display:contents;">
         <div class="adm-nav-sec">Main</div>
         <div class="adm-nav-item active" onclick="admGoPage('overview')"><span class="adm-nav-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;flex-shrink:0;"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span class="adm-nav-label">Overview</span></div>
-        <div class="adm-nav-item" onclick="admGoPage('approvals')"><span class="adm-nav-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;flex-shrink:0;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></span><span class="adm-nav-label">Businesses</span><span class="adm-nav-badge" id="adm-pending-badge" style="display:none;">0</span></div>
+        <div class="adm-nav-item" onclick="admGoPage('approvals')"><span class="adm-nav-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;flex-shrink:0;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></span><span class="adm-nav-label">Businesses</span><span class="adm-nav-badge" id="adm-pending-badge" style="display:none;">0</span><span class="adm-nav-badge" id="adm-cancel-badge" style="display:none;background:#dc2626;">0</span></div>
         <div class="adm-nav-item" onclick="admGoPage('revenue')"><span class="adm-nav-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;flex-shrink:0;"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span><span class="adm-nav-label">Revenue</span></div>
         <div class="adm-nav-sec">Platform</div>
         <div class="adm-nav-item" onclick="admGoPage('users')"><span class="adm-nav-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;flex-shrink:0;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="adm-nav-label">Users</span></div>
@@ -14788,6 +14869,9 @@ async function admLoadApprovals() {
     if(badge) { badge.textContent = pending.length; badge.style.display = pending.length > 0 ? 'inline' : 'none'; }
     const cl = document.getElementById('adm-pending-count-label');
     if(cl) cl.textContent = pending.length;
+    const cancelRequests = all.filter(l => l.cancellation_requested);
+    const cancelBadge = document.getElementById('adm-cancel-badge');
+    if(cancelBadge) { cancelBadge.textContent = cancelRequests.length; cancelBadge.style.display = cancelRequests.length > 0 ? 'inline' : 'none'; }
 
     // Build global map so adminReviewListing() can find listings by ID
     window._pendingListingsMap = window._pendingListingsMap || {};
@@ -14843,7 +14927,15 @@ async function admLoadApprovals() {
           <option value="growth" ${l.boost_tier==='growth'?'selected':''}>Growth</option>
           <option value="pro" ${l.boost_tier==='pro'?'selected':''}>Pro</option>
         </select><button class="adm-btn" style="background:rgba(212,175,55,.15);color:#d4af37;border:1px solid rgba(212,175,55,.3);" onclick="admSetBoost('${id}',this)">Set</button>`;
- return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${bt}${btEst}</td><td>${own}</td><td>${vBadge}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')"> View</button><button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">Remove</button><br>${vBtn}<br><div style="margin-top:4px;">${boostSelect}</div></td></tr>`;
+        const cancelRow = l.cancellation_requested
+          ? `<div style="margin-top:6px;padding:8px;background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.3);font-size:10px;">
+              <div style="color:#f87171;font-weight:700;margin-bottom:4px;"> Cancellation requested${l.cancellation_requested_at ? ' · ' + new Date(l.cancellation_requested_at).toLocaleDateString('en-ZA') : ''}</div>
+              ${l.cancellation_reason ? `<div style="color:rgba(255,255,255,.6);margin-bottom:6px;">"${nmSafe(l.cancellation_reason)}"</div>` : ''}
+              <button class="adm-btn adm-btn-reject" style="font-size:10px;" onclick="admConfirmCancellation('${id}',this)">Confirm (Suspend)</button>
+              <button class="adm-btn" style="font-size:10px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.15);" onclick="admDismissCancellation('${id}',this)">Dismiss</button>
+            </div>`
+          : '';
+ return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${bt}${btEst}</td><td>${own}</td><td>${vBadge}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')"> View</button><button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">Remove</button><br>${vBtn}<br><div style="margin-top:4px;">${boostSelect}</div>${cancelRow}</td></tr>`;
       }
       if(type === 'suspended') {
         const graceRow = `<div style="margin-bottom:4px;display:flex;gap:4px;align-items:center;">
@@ -14867,6 +14959,46 @@ async function admLoadApprovals() {
       if(el) el.innerHTML = data.length === 0 ? `<tr><td colspan="${cols}" class="adm-empty">No ${type} listings.</td></tr>` : data.map(l => renderRow(l, type)).join('');
     });
   } catch(e) { console.warn('Approvals load failed', e); }
+}
+
+async function admConfirmCancellation(id, btn) {
+  if (!confirm('Confirm this cancellation? The listing will be suspended (not deleted) and any real Netcash subscription will be stopped. This does NOT process a refund — that still needs to be done manually in your Netcash dashboard.')) return;
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
+  try {
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-confirm-cancellation', listingId: id }),
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.reason || 'Failed to confirm cancellation.');
+    if (result.warning) alert(result.warning);
+    setTimeout(()=>{ admLoadApprovals(); admLoadOverview(); loadListingsFromSupabase(true); }, 400);
+  } catch(e) {
+    console.error('Confirm cancellation error:', e);
+    btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
+    alert('Error confirming cancellation: ' + (e.message || 'please try again.'));
+  }
+}
+
+async function admDismissCancellation(id, btn) {
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
+  try {
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-dismiss-cancellation', listingId: id }),
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.reason || 'Failed to dismiss.');
+    setTimeout(()=>{ admLoadApprovals(); }, 300);
+  } catch(e) {
+    console.error('Dismiss cancellation error:', e);
+    btn.disabled = false; btn.textContent = originalText; btn.style.opacity = '1';
+    alert('Error dismissing: ' + (e.message || 'please try again.'));
+  }
 }
 
 async function admToggleVerified(id, currentlyVerified, btn) {
@@ -14968,6 +15100,7 @@ async function admSetBoost(id, btn) {
       window._pendingListingsMap[id].boost_tier = newTier === 'none' ? null : newTier;
     }
     btn.textContent = ' Done!'; btn.style.opacity = '1';
+    if (result.warning) alert(result.warning);
     setTimeout(() => { admLoadApprovals(); loadListingsFromSupabase(true); }, 700);
   } catch(e) {
     console.error('Set boost error:', e);
