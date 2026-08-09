@@ -673,6 +673,132 @@ async function handleAdminSetPlan(claims, body) {
   }
 }
 
+// ── mode: reply-to-review (business, own listing's reviews only) ──
+// Only ever sets the 'reply' field — never touches rating/text/author,
+// so even a compromised token here can't tamper with the review itself.
+async function handleReplyToReview(claims, body) {
+  if (claims.role !== 'business') {
+    return { status: 401, json: { ok: false, reason: 'Please log in as a business owner.' } };
+  }
+  const { reviewId, reply } = body;
+  if (!reviewId || typeof reply !== 'string' || !reply.trim()) {
+    return { status: 400, json: { ok: false, reason: 'Missing reviewId or reply text.' } };
+  }
+  try {
+    const revRes = await supaFetch(`reviews?id=eq.${encodeURIComponent(reviewId)}&select=listing_id&limit=1`);
+    const revRows = await revRes.json();
+    const review = revRows[0];
+    if (!review) return { status: 404, json: { ok: false, reason: 'Review not found.' } };
+
+    const owns = await businessOwnsListing(claims, review.listing_id);
+    if (!owns) {
+      return { status: 403, json: { ok: false, reason: 'You can only reply to reviews on your own listing.' } };
+    }
+
+    const res = await supaFetch(`reviews?id=eq.${encodeURIComponent(reviewId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reply: reply.trim().slice(0, 2000) }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/reply-to-review error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: admin-add-video (admin only) ──
+async function handleAdminAddVideo(claims, body) {
+  if (claims.role !== 'admin') {
+    return { status: 401, json: { ok: false, reason: 'Admin login required.' } };
+  }
+  const { title, youtubeId, tier, description } = body;
+  if (!title || !youtubeId) {
+    return { status: 400, json: { ok: false, reason: 'Missing title or youtubeId.' } };
+  }
+  try {
+    const res = await supaFetch('videos', {
+      method: 'POST',
+      body: JSON.stringify({
+        title, youtube_id: youtubeId, tier: tier || null,
+        description: description || null, created_at: new Date().toISOString(),
+      }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/admin-add-video error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: admin-delete-video (admin only) ──
+async function handleAdminDeleteVideo(claims, body) {
+  if (claims.role !== 'admin') {
+    return { status: 401, json: { ok: false, reason: 'Admin login required.' } };
+  }
+  const { videoId } = body;
+  if (!videoId) return { status: 400, json: { ok: false, reason: 'Missing videoId' } };
+  try {
+    const res = await supaFetch(`videos?id=eq.${encodeURIComponent(videoId)}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(await res.text());
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/admin-delete-video error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: admin-update-subscription-request (admin only) ──
+// Covers approve/reject/mark-paid/mark-unpaid/reset-to-pending — all of
+// them are just a status or payment_status change, so one mode with a
+// whitelist of allowed fields covers every case cleanly.
+const SUB_REQUEST_ALLOWED_FIELDS = ['status', 'payment_status'];
+async function handleAdminUpdateSubscriptionRequest(claims, body) {
+  if (claims.role !== 'admin') {
+    return { status: 401, json: { ok: false, reason: 'Admin login required.' } };
+  }
+  const { requestId, updates } = body;
+  if (!requestId || !updates || typeof updates !== 'object') {
+    return { status: 400, json: { ok: false, reason: 'Missing requestId or updates.' } };
+  }
+  const cleanUpdates = {};
+  for (const key of Object.keys(updates)) {
+    if (SUB_REQUEST_ALLOWED_FIELDS.includes(key)) cleanUpdates[key] = updates[key];
+  }
+  if (Object.keys(cleanUpdates).length === 0) {
+    return { status: 400, json: { ok: false, reason: 'No editable fields in that update.' } };
+  }
+  try {
+    const res = await supaFetch(`subscription_requests?id=eq.${encodeURIComponent(requestId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(cleanUpdates),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/admin-update-subscription-request error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
+// ── mode: admin-delete-subscription-request (admin only) ──
+async function handleAdminDeleteSubscriptionRequest(claims, body) {
+  if (claims.role !== 'admin') {
+    return { status: 401, json: { ok: false, reason: 'Admin login required.' } };
+  }
+  const { requestId } = body;
+  if (!requestId) return { status: 400, json: { ok: false, reason: 'Missing requestId' } };
+  try {
+    const res = await supaFetch(`subscription_requests?id=eq.${encodeURIComponent(requestId)}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(await res.text());
+    return { status: 200, json: { ok: true } };
+  } catch (e) {
+    console.error('moderate/admin-delete-subscription-request error:', e.message);
+    return { status: 500, json: { ok: false, reason: e.message } };
+  }
+}
+
 // ── shared helper: does this business (or admin) own the given listing? ──
 // PERFORMANCE NOTE: these two lookups don't depend on each other — who the
 // token belongs to, and who the listing belongs to — so they run in
@@ -1115,6 +1241,11 @@ export default async function handler(req, res) {
     else if (mode === 'request-cancellation') result = await handleRequestCancellation(claims, body);
     else if (mode === 'admin-confirm-cancellation') result = await handleAdminConfirmCancellation(claims, body);
     else if (mode === 'admin-dismiss-cancellation') result = await handleAdminDismissCancellation(claims, body);
+    else if (mode === 'reply-to-review') result = await handleReplyToReview(claims, body);
+    else if (mode === 'admin-add-video') result = await handleAdminAddVideo(claims, body);
+    else if (mode === 'admin-delete-video') result = await handleAdminDeleteVideo(claims, body);
+    else if (mode === 'admin-update-subscription-request') result = await handleAdminUpdateSubscriptionRequest(claims, body);
+    else if (mode === 'admin-delete-subscription-request') result = await handleAdminDeleteSubscriptionRequest(claims, body);
     else if (mode === 'update-own-profile') result = await handleUpdateOwnProfile(claims, body);
     else if (mode === 'admin-set-role') result = await handleAdminSetRole(claims, body);
     else if (mode === 'admin-set-plan') result = await handleAdminSetPlan(claims, body);
