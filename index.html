@@ -13011,7 +13011,13 @@ async function bpPostReviewReply(id) {
   bpSave(); bpRenderReviews(); bpToast('Reply posted!');
   // Persist to Supabase so it shows on the public profile
   try {
-    await nmSupaQuery(() => _supa.from('reviews').update({ reply: text }).eq('id', id));
+    if (nmBizToken) {
+      await fetch('/api/moderate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmBizToken },
+        body: JSON.stringify({ mode: 'reply-to-review', reviewId: id, reply: text }),
+      });
+    }
   } catch(e) { console.warn('Reply sync to Supabase failed', e); }
 }
 async function bpDeleteReview(id) {
@@ -15196,8 +15202,13 @@ async function admApproveSub(id, btn) {
   const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
   try {
-    const { error } = await nmSupaQuery(() => _supa.from('subscription_requests').update({status:'approved'}).eq('id', id));
-    if(error) throw error;
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-update-subscription-request', requestId: id, updates: { status: 'approved' } }),
+    });
+    const result = await res.json();
+    if(!result.ok) throw new Error(result.reason || 'Failed to approve.');
 
     // Send the payment-instructions SMS + email. Best-effort — if either
     // fails, the approval itself has still gone through, so we don't roll it back.
@@ -15237,8 +15248,13 @@ async function admRejectSub(id, btn) {
   const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
   try {
-    const { error } = await nmSupaQuery(() => _supa.from('subscription_requests').update({status:'rejected'}).eq('id', id));
-    if(error) throw error;
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-update-subscription-request', requestId: id, updates: { status: 'rejected' } }),
+    });
+    const result = await res.json();
+    if(!result.ok) throw new Error(result.reason || 'Failed to reject.');
  btn.textContent = ' Done!'; btn.style.background = '#fee2e2'; btn.style.opacity = '1';
     setTimeout(()=>{ admLoadOverview(); }, 800);
   } catch(e) {
@@ -15259,8 +15275,13 @@ async function admMarkPaid(id, btn) {
     const sub = window._pendingSubsMap && window._pendingSubsMap[id];
     if(!sub) throw new Error('Could not find this request, please refresh and try again.');
 
-    const { error } = await nmSupaQuery(() => _supa.from('subscription_requests').update({payment_status:'paid'}).eq('id', id));
-    if(error) throw error;
+    const subReqRes = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-update-subscription-request', requestId: id, updates: { payment_status: 'paid' } }),
+    });
+    const subReqResult = await subReqRes.json();
+    if(!subReqResult.ok) throw new Error(subReqResult.reason || 'Failed to mark as paid.');
 
     // Try to find their existing account by email and upgrade its plan.
     // If they haven't created an account yet (this form doesn't require
@@ -15313,8 +15334,13 @@ async function admUnapproveSub(id, btn) {
   const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
   try {
-    const { error } = await nmSupaQuery(() => _supa.from('subscription_requests').update({status:'pending'}).eq('id', id));
-    if(error) throw error;
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-update-subscription-request', requestId: id, updates: { status: 'pending' } }),
+    });
+    const result = await res.json();
+    if(!result.ok) throw new Error(result.reason || 'Failed to un-approve.');
     setTimeout(()=>{ admLoadOverview(); }, 400);
   } catch(e) {
     console.error('Un-approve error:', e);
@@ -15332,8 +15358,13 @@ async function admUndoPaid(id, btn) {
   btn.disabled = true; btn.textContent = '...'; btn.style.opacity = '.6';
   try {
     const sub = window._pendingSubsMap && window._pendingSubsMap[id];
-    const { error } = await nmSupaQuery(() => _supa.from('subscription_requests').update({payment_status:'unpaid'}).eq('id', id));
-    if(error) throw error;
+    const subReqRes = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-update-subscription-request', requestId: id, updates: { payment_status: 'unpaid' } }),
+    });
+    const subReqResult = await subReqRes.json();
+    if(!subReqResult.ok) throw new Error(subReqResult.reason || 'Failed to undo payment.');
 
     if(sub && sub.email) {
       const { data: existingUser } = await nmSupaQuery(() =>
@@ -15364,17 +15395,13 @@ async function admDeleteSub(id, btn) {
   const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = '⏳'; btn.style.opacity = '.6';
   try {
-    // .select() after delete() makes Supabase return the rows it actually
-    // deleted. Without this, a delete blocked by a Row Level Security (RLS)
-    // policy still comes back with error:null (RLS filters rows silently,
-    // it doesn't throw) — so checking only `error` reports false success
-    // even when nothing was removed. Checking the returned array is the
-    // only reliable way to know the delete really happened.
-    const { data, error } = await nmSupaQuery(() => _supa.from('subscription_requests').delete().eq('id', id).select());
-    if(error) throw error;
-    if(!data || data.length === 0) {
-      throw new Error('No row was deleted, this is likely a Supabase Row Level Security (RLS) policy blocking DELETE on subscription_requests for this account.');
-    }
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-delete-subscription-request', requestId: id }),
+    });
+    const result = await res.json();
+    if(!result.ok) throw new Error(result.reason || 'Delete failed.');
     const row = btn.closest('tr');
     if(row) { row.style.opacity = '0'; row.style.transition = 'opacity .3s'; setTimeout(()=>row.remove(), 300); }
     setTimeout(()=>{ admLoadOverview(); }, 350);
@@ -15636,10 +15663,13 @@ async function admAddVideo() {
   if (btn) { btn.textContent = 'Adding…'; btn.disabled = true; }
 
   try {
-    const { error } = await nmSupaQuery(() =>
-      _supa.from('videos').insert({ title, youtube_id: youtubeId, tier, description: desc, created_at: new Date().toISOString() })
-    );
-    if (error) throw error;
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-add-video', title, youtubeId, tier, description: desc }),
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.reason || 'Failed to add video.');
     document.getElementById('adm-vid-title').value = '';
     document.getElementById('adm-vid-url').value = '';
     document.getElementById('adm-vid-desc').value = '';
@@ -15655,10 +15685,15 @@ async function admAddVideo() {
 async function admDeleteVideo(id) {
   if (!confirm('Delete this video? This cannot be undone.')) return;
   try {
-    const { error } = await nmSupaQuery(() => _supa.from('videos').delete().eq('id', id));
-    if (error) throw error;
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nmAdminToken },
+      body: JSON.stringify({ mode: 'admin-delete-video', videoId: id }),
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.reason || 'Failed to delete video.');
     admLoadVideos();
-  } catch(e) { alert('Error deleting video.'); }
+  } catch(e) { alert('Error deleting video: ' + (e.message || 'please try again.')); }
 }
 
 function loadVideosPage(videos) {
