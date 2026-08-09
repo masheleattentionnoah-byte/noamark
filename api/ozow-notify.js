@@ -20,17 +20,27 @@
 //                            exactly why it must only ever live here on
 //                            the server, never in the browser.
 //
-// IMPORTANT — ask me to double check this with you once real transactions
-// start flowing: Ozow's docs for the exact field order used in their
-// response/notification hash aren't fully public without a merchant
-// login, so this uses the order confirmed by Ozow's own integration
-// examples (SiteCode, TransactionId, TransactionReference, Amount,
-// Status + your private key). If real notifications start arriving and
-// the hash never matches, that field order is the first thing to check
-// against your Ozow merchant admin docs — this code is written to FAIL
-// CLOSED (reject/ignore) on a bad hash rather than trust anything it
-// can't verify, so a wrong field order blocks legitimate payments from
-// activating rather than letting fake ones through.
+// UPDATED (Aug 2026): verifyHash now covers the FULL 13-field notification
+// hash, confirmed directly against Ozow's own published docs
+// (ozow.com/integrations, Step 2 "Notification Response Post variables"):
+// SiteCode, TransactionId, TransactionReference, Amount, Status, Optional1,
+// Optional2, Optional3, Optional4, Optional5, CurrencyCode, IsTest,
+// StatusMessage + private key, lowercased, SHA512.
+//
+// Previously this only hashed the first 5 fields (SiteCode through
+// Status). That was a guess made before Ozow's field order was confirmed,
+// and it meant the hash could basically never match a real Ozow
+// notification — so every genuine payment confirmation would have been
+// silently ignored by the fail-closed check below (logged as a mismatch,
+// acked with 200, boost never activated). This is very likely the actual
+// reason nothing has activated end-to-end yet — fixing this matters at
+// least as much as anything on the initiate side.
+//
+// Still written to FAIL CLOSED on a bad hash — reject/ignore rather than
+// trust anything that doesn't verify — so a stale field order blocks
+// legitimate payments from activating rather than letting fake ones
+// through. If this ever needs re-checking, compare again against
+// ozow.com/integrations Step 2.
 //
 // UPDATED (Aug 2026): now also sets boost_paid_at and boost_payment_ref
 // on activation. These two columns are what the admin Revenue dashboard
@@ -50,6 +60,14 @@ function verifyHash(body, privateKey) {
     body.TransactionReference,
     body.Amount,
     body.Status,
+    body.Optional1 ?? '',
+    body.Optional2 ?? '',
+    body.Optional3 ?? '',
+    body.Optional4 ?? '',
+    body.Optional5 ?? '',
+    body.CurrencyCode ?? '',
+    body.IsTest ?? '',
+    body.StatusMessage ?? '',
   ].join('') + privateKey;
   const expected = crypto.createHash('sha512').update(raw.toLowerCase()).digest('hex');
   return expected.toLowerCase() === String(body.Hash || '').toLowerCase();
