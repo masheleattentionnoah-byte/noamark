@@ -11922,7 +11922,9 @@ function _bpAiRateCheck() {
 /**
  * Single choke point for every AI call in the business portal.
  * - Enforces the client-side cooldown/rate limit above.
- * - Sends a userId so the server can enforce per-user token caps + audit logging.
+ * - Sends the real session token (if the account has one) so the server
+ *   can verify identity itself and enforce per-user token caps + audit
+ *   logging against a real account, not a client-claimed string.
  * - Times out slow requests instead of hanging forever.
  * - Streams tokens into onChunk as they arrive (if the backend streams SSE),
  *   falling back cleanly to a single update if it doesn't.
@@ -11938,15 +11940,23 @@ async function bpCallAI(messages, { maxTokens = 200, onChunk = null, timeoutMs =
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    // Send whichever real session token this account actually has — the
+    // server verifies it itself now (see claude.js) rather than trusting
+    // a userId string the client could set to anything. Guests have no
+    // token, which is fine: they fall back to IP-only rate limiting on
+    // the server, same as before.
+    const authToken = nmBizToken || nmSubToken || '';
     const r = await fetch(BP_API, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authToken ? { 'Authorization': 'Bearer ' + authToken } : {}),
+      },
       signal: controller.signal,
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: maxTokens,
         stream: true,
-        userId: currentUser?.id || currentUser?.email || 'anon',
         messages
       })
     });
@@ -13061,7 +13071,7 @@ Reviews: ${revs.length}${avg?' (avg '+avg+'/5)':''}
 Give numbered tips (1–3). Be direct. Each tip max 2 sentences. Focus on what's missing or weak.`;
   try {
     await bpCallAI([{role:'user',content:prompt}], { maxTokens:300, onChunk: txt => {
-      el.innerHTML = `<div class="bp-ai-box">${txt.replace(/\n/g,'<br>')}</div>`;
+      el.innerHTML = `<div class="bp-ai-box">${nmEscapeHtml(txt).replace(/\n/g,'<br>')}</div>`;
     }});
   } catch(e) { el.innerHTML = `<div class="bp-empty"> ${e.message || 'Could not reach AI. Check your internet connection.'}</div>`; }
 }
@@ -13102,7 +13112,7 @@ async function bpGetPerfAnalysis() {
 ${currentUser.name} | ${myListing?.cat||'unlisted'} | ${myListing?.area||'SA'} | Boost: ${myListing?.boost||'none'} | Enquiries: ${bpData.enquiries.length} | Reviews: ${revs.length} | Avg: ${avg||'none'}`;
   try {
     await bpCallAI([{role:'user',content:prompt}], { maxTokens:200, onChunk: txt => {
-      el.innerHTML = `<div class="bp-ai-box">${txt.replace(/\n/g,'<br>')}</div>`;
+      el.innerHTML = `<div class="bp-ai-box">${nmEscapeHtml(txt).replace(/\n/g,'<br>')}</div>`;
     }});
   } catch(e) { el.innerHTML = `<div>${e.message || 'Error. Try again.'}</div>`; }
 }
@@ -13148,6 +13158,10 @@ function getRoleSystemPrompt() {
   return `You are a helpful guide for NoaMark, a South African township business platform. You are speaking with a guest visitor named "${currentUser?.name||'the visitor'}". Help them find businesses and navigate the marketplace. Do NOT suggest plans, listings, or sign-up options. Keep responses under 120 words.`;
 }
 
+function nmEscapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 async function bpAskAI() {
   const q = document.getElementById('bp-ask-prompt').value.trim();
   if(!q) { bpToast('Enter a question first.'); return; }
@@ -13165,7 +13179,13 @@ async function bpAskAI() {
   const messages = [systemMsg, assistantAck, ...bpChatHistory];
 
   try {
-    const reply = await bpCallAI(messages, { maxTokens:400, onChunk: txt => { textEl.innerHTML = txt.replace(/\n/g,'<br>'); } });
+    // BUG THIS FIXES: this used to write the AI's raw output straight into
+    // innerHTML. The AI can never take a real action (checked every call
+    // site — none of them execute anything it says), but if a prompt
+    // injection ever got it to emit actual HTML/script markup, innerHTML
+    // would have run it in the browser. Escaping first means whatever the
+    // model outputs can only ever render as plain text, never as markup.
+    const reply = await bpCallAI(messages, { maxTokens:400, onChunk: txt => { textEl.innerHTML = nmEscapeHtml(txt).replace(/\n/g,'<br>'); } });
     bpChatHistory.push({ role: 'assistant', content: reply || 'Could not load.' });
     document.getElementById('bp-ask-prompt').value = '';
   } catch(e) {
