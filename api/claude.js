@@ -9,9 +9,20 @@
 // Nothing about the AI provider is changing here; only the safety layer
 // around it.
 //
+// SECURITY FIX (Aug 2026): rate limiting previously trusted a `userId`
+// the CLIENT sent in the request body — nothing verified it belonged to
+// the caller. Anyone could rotate a fake userId on every request to dodge
+// the per-user cap entirely (the per-IP cap was the only real backstop).
+// This version verifies the SAME signed session token used everywhere
+// else in the app (auth.js/moderate.js) — a real logged-in business or
+// subscriber now gets rate-limited against their actual account, which
+// can't be spoofed without the signing secret. Anyone without a valid
+// token (guests, or a forged/expired one) falls back to IP-only limiting
+// instead of being trusted on their word.
+//
 // Adds on top of the previous version:
-//   1. Rate limiting     — per user AND per IP, via Supabase.
-//   2. Daily token caps  — per user, rolling 24h, via Supabase.
+//   1. Rate limiting     — per verified user AND per IP, via Supabase.
+//   2. Daily token caps  — per verified user, rolling 24h, via Supabase.
 //   3. Token streaming   — re-emits Gemini's stream as a simple
 //                          { text: "..." } SSE format so the client
 //                          doesn't need to know which provider is behind it.
@@ -21,19 +32,40 @@
 //
 // ── Setup ──
 // Environment variables already set (unchanged): GEMINI_API_KEY (or Gemini_API_Key)
-// New environment variables needed:
-//   SUPABASE_URL          - same project the rest of the app already uses
-//   SUPABASE_SERVICE_KEY  - Supabase SERVICE ROLE key (server-only — do not
-//                           reuse the public anon key, do not expose to client)
+// Environment variables needed (same ones auth.js/moderate.js already use):
+//   SUPABASE_URL           - same project the rest of the app already uses
+//   SUPABASE_SERVICE_KEY   - Supabase SERVICE ROLE key (server-only — do not
+//                            reuse the public anon key, do not expose to client)
+//   ADMIN_SESSION_SECRET    - same secret auth.js signs session tokens with
 //
 // Database: run api/ai_usage_log.sql once in the Supabase SQL editor before deploying.
 
+import crypto from 'crypto';
+
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;     // 1 minute
-const USER_RATE_LIMIT = 6;                  // max AI calls per user per minute
+const USER_RATE_LIMIT = 6;                  // max AI calls per verified user per minute
 const IP_RATE_LIMIT = 20;                   // looser cap per IP — covers guests/shared devices
-const DAILY_TOKEN_CAP = 40000;              // max total tokens per user per rolling 24h
+const DAILY_TOKEN_CAP = 40000;              // max total tokens per verified user per rolling 24h
 const MAX_OUTPUT_TOKENS_CEILING = 1000;     // hard ceiling regardless of what the client requests
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'; // unchanged default
+
+// Same verification as auth.js/moderate.js — duplicated here rather than
+// imported, matching how this project is already split across separate
+// serverless files (see the top-of-file note in moderate.js on why).
+function verifySessionToken(token) {
+  if (!token || typeof token !== 'string' || !token.includes('.')) return null;
+  const secret = process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD || '';
+  const [payload, sig] = token.split('.');
+  const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  const sigBuf = Buffer.from(sig || '', 'hex');
+  const expBuf = Buffer.from(expected, 'hex');
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return null;
+  try {
+    const claims = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    if (Date.now() >= claims.exp) return null;
+    return claims;
+  } catch (e) { return null; }
+}
 
 async function supaFetch(path, opts = {}) {
   const base = process.env.SUPABASE_URL;
@@ -50,17 +82,31 @@ async function supaFetch(path, opts = {}) {
   });
 }
 
-async function checkLimits(userId, ip) {
+async function checkLimits(trustedKey, isVerifiedUser, ip) {
   const since1min = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
   try {
-    const userRecentRes = await supaFetch(
-      `ai_usage_log?user_id=eq.${encodeURIComponent(userId)}&created_at=gte.${since1min}&select=id`
-    );
-    const userRecent = userRecentRes.ok ? await userRecentRes.json() : [];
-    if (userRecent.length >= USER_RATE_LIMIT) {
-      return { blocked: true, status: 429, error: "You're sending requests too quickly. Please wait a minute and try again." };
+    // Per-user limit only applies when we have a REAL verified identity —
+    // an unverified caller (guest, or a forged token) has no trusted key
+    // to check this against, so they rely on the per-IP limit below only.
+    if (isVerifiedUser) {
+      const userRecentRes = await supaFetch(
+        `ai_usage_log?user_id=eq.${encodeURIComponent(trustedKey)}&created_at=gte.${since1min}&select=id`
+      );
+      const userRecent = userRecentRes.ok ? await userRecentRes.json() : [];
+      if (userRecent.length >= USER_RATE_LIMIT) {
+        return { blocked: true, status: 429, error: "You're sending requests too quickly. Please wait a minute and try again." };
+      }
+
+      const dailyRes = await supaFetch(
+        `ai_usage_log?user_id=eq.${encodeURIComponent(trustedKey)}&created_at=gte.${since24h}&select=total_tokens`
+      );
+      const daily = dailyRes.ok ? await dailyRes.json() : [];
+      const usedToday = daily.reduce((sum, r) => sum + (r.total_tokens || 0), 0);
+      if (usedToday >= DAILY_TOKEN_CAP) {
+        return { blocked: true, status: 429, error: "You've reached today's AI usage limit. It resets automatically — try again tomorrow, or contact support@noamark.com if you need more." };
+      }
     }
 
     if (ip) {
@@ -72,15 +118,6 @@ async function checkLimits(userId, ip) {
         return { blocked: true, status: 429, error: 'Too many AI requests from this network right now. Please try again shortly.' };
       }
     }
-
-    const dailyRes = await supaFetch(
-      `ai_usage_log?user_id=eq.${encodeURIComponent(userId)}&created_at=gte.${since24h}&select=total_tokens`
-    );
-    const daily = dailyRes.ok ? await dailyRes.json() : [];
-    const usedToday = daily.reduce((sum, r) => sum + (r.total_tokens || 0), 0);
-    if (usedToday >= DAILY_TOKEN_CAP) {
-      return { blocked: true, status: 429, error: "You've reached today's AI usage limit. It resets automatically — try again tomorrow, or contact support@noamark.com if you need more." };
-    }
   } catch (e) {
     // If Supabase is down, fail OPEN on limits (don't take the feature down),
     // but this is exactly the kind of event that should show up in Vercel logs.
@@ -90,12 +127,12 @@ async function checkLimits(userId, ip) {
   return { blocked: false };
 }
 
-async function logUsage({ userId, ip, model, inputTokens, outputTokens, success, error }) {
+async function logUsage({ trustedKey, ip, model, inputTokens, outputTokens, success, error }) {
   try {
     await supaFetch('ai_usage_log', {
       method: 'POST',
       body: JSON.stringify({
-        user_id: userId,
+        user_id: trustedKey,
         ip,
         model,
         input_tokens: inputTokens || 0,
@@ -120,15 +157,25 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API key not configured on server.' });
   }
 
-  const { messages, max_tokens, userId: bodyUserId } = req.body || {};
-  const userId = bodyUserId || 'anon';
+  const { messages, max_tokens } = req.body || {};
   const ip = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim();
+
+  // Verify the caller's actual identity from their session token — never
+  // trust a userId the client claims in the request body. A real
+  // logged-in business/subscriber gets rate-limited against their real
+  // account (claims.id); anyone without a valid token falls back to
+  // IP-only limiting in checkLimits() above.
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  const claims = verifySessionToken(token);
+  const isVerifiedUser = !!(claims && claims.id);
+  const trustedKey = isVerifiedUser ? String(claims.id) : (ip ? `ip:${ip}` : 'anon');
 
   if (!Array.isArray(messages) || !messages.length) {
     return res.status(400).json({ error: 'No message provided.' });
   }
 
-  const limitCheck = await checkLimits(userId, ip);
+  const limitCheck = await checkLimits(trustedKey, isVerifiedUser, ip);
   if (limitCheck.blocked) {
     return res.status(limitCheck.status).json({ error: limitCheck.error });
   }
@@ -155,7 +202,7 @@ export default async function handler(req, res) {
     });
   } catch (e) {
     console.error('Gemini proxy network error:', e);
-    await logUsage({ userId, ip, model: GEMINI_MODEL, success: false, error: 'network_error_calling_gemini' });
+    await logUsage({ trustedKey, ip, model: GEMINI_MODEL, success: false, error: 'network_error_calling_gemini' });
     return res.status(502).json({ error: 'Could not reach the AI service. Please try again shortly.' });
   }
 
@@ -163,7 +210,7 @@ export default async function handler(req, res) {
     let detail = '';
     try { detail = (await geminiRes.json())?.error?.message || ''; } catch (_) { /* ignore */ }
     console.error('Gemini proxy error:', geminiRes.status, detail);
-    await logUsage({ userId, ip, model: GEMINI_MODEL, success: false, error: `gemini_${geminiRes.status}: ${detail}` });
+    await logUsage({ trustedKey, ip, model: GEMINI_MODEL, success: false, error: `gemini_${geminiRes.status}: ${detail}` });
     if (geminiRes.status === 429) {
       return res.status(429).json({ error: 'The AI provider is temporarily rate-limited. Please try again in a moment.' });
     }
@@ -218,7 +265,7 @@ export default async function handler(req, res) {
     res.write('data: [DONE]\n\n');
     res.end();
     await logUsage({
-      userId, ip, model: GEMINI_MODEL,
+      trustedKey, ip, model: GEMINI_MODEL,
       inputTokens, outputTokens,
       success: !streamError,
       error: streamError
