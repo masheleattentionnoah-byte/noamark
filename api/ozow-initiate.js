@@ -150,6 +150,20 @@ export default async function handler(req, res) {
 
   const hashCheck = buildHash(Object.values(fields), privateKey);
 
+  // DIAGNOSTIC LOGGING — added to trace a real failure against Ozow's own
+  // side. Logs everything that was actually sent EXCEPT the private key
+  // itself (never logged) — safe to paste this log entry into a support
+  // ticket. This is what lets Ozow support search their own logs for
+  // exactly what happened to this specific attempt.
+  console.log('[ozow-initiate] Request built:', {
+    transactionReference,
+    siteCode,
+    amount,
+    isTest,
+    cancelUrl, errorUrl, successUrl, notifyUrl,
+    fieldsSentInOrder: Object.keys(fields),
+  });
+
   return res.status(200).json({
     ok: true,
     postUrl: 'https://pay.ozow.com',
