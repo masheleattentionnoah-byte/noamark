@@ -88,7 +88,19 @@ export default async function handler(req, res) {
 
   const amount = PLAN_PRICES[planKey].toFixed(2);
   const siteOrigin = origin || 'https://noamark.com';
-  const transactionReference = 'NM-' + planKey.toUpperCase() + '-' + listingId + '-' + Date.now();
+  // BUG THIS FIXES: TransactionReference is documented by Ozow as
+  // String(50) — max 50 characters. The previous version used the FULL
+  // listing UUID (36 characters), which pushed the total reference to 61
+  // characters for a real attempt (confirmed via browser Network tab:
+  // "NM-STARTER-7c63bc12-f8a6-4bd3-b962-ca8525db2de9-1787350352209").
+  // Ozow silently rejects an oversized field — no record is even created
+  // on their side, which is exactly why their support team couldn't find
+  // the transaction when we gave them this exact reference. Using a
+  // 12-character slice of the UUID (still effectively unique when
+  // combined with a millisecond timestamp) keeps the total safely under
+  // 50 characters for every plan name.
+  const shortListingId = String(listingId).replace(/-/g, '').slice(0, 12);
+  const transactionReference = 'NM-' + planKey.toUpperCase() + '-' + shortListingId + '-' + Date.now();
   const bankReference = 'NoaMark'; // appears on the customer's bank statement
 
   // Custom pass-through data — Ozow echoes these back on return/notify so
@@ -150,13 +162,11 @@ export default async function handler(req, res) {
 
   const hashCheck = buildHash(Object.values(fields), privateKey);
 
-  // DIAGNOSTIC LOGGING — added to trace a real failure against Ozow's own
-  // side. Logs everything that was actually sent EXCEPT the private key
-  // itself (never logged) — safe to paste this log entry into a support
-  // ticket. This is what lets Ozow support search their own logs for
-  // exactly what happened to this specific attempt.
+  // DIAGNOSTIC LOGGING — logs everything actually sent EXCEPT the private
+  // key itself (never logged) — safe to paste into a support ticket.
   console.log('[ozow-initiate] Request built:', {
     transactionReference,
+    transactionReferenceLength: transactionReference.length,
     siteCode,
     amount,
     isTest,
