@@ -5389,9 +5389,19 @@ window.addEventListener('popstate', function(e) {
     const id = e.state.nmPage;
     const view = e.state.nmView || 'main';
 
-    // Skip 'auth' or 'gate' state — it was just a modal, go to underlying page
+    // Skip 'auth' or 'gate' state — it was just a modal, now stale (the
+    // overlay is already closed, but this history entry still remembers it
+    // as one). BUG THIS FIXES: this used to call history.go(-1) here, which
+    // triggers a SECOND popstate event from inside this one already handling
+    // the first — a risky pattern that could silently consume an extra step
+    // in the stack depending on timing. Render Home directly instead — no
+    // cascading, no invisible extra back-step.
     if(id === 'auth' || id === 'gate') {
-      history.go(-1);
+      history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
+      document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
+      const homeFallback = document.getElementById('page-home');
+      if(homeFallback) homeFallback.classList.add('active');
+      if(typeof applyRoleHomePage === 'function') setTimeout(() => applyRoleHomePage(currentUser), 50);
       return;
     }
 
@@ -5489,54 +5499,52 @@ window.addEventListener('popstate', function(e) {
             setTimeout(() => showMktView('admin', false), 100);
             return;
           }
-          // BUG THIS FIXES: this whole branch renders pages by directly
-          // toggling .page elements — it does NOT go through showPage(),
-          // so it never runs showPage's own #page-admin-hiding line. Since
-          // #page-admin isn't part of the normal .page system (it's shown/
-          // hidden with its own inline style — see showPage's comment on
-          // this), an admin landing here via back/forward navigation saw
-          // the home page rendered UNDERNEATH the admin panel's still-
-          // visible fixed bottom nav bar. Same fix as the business case
-          // just above: redirect straight back to the real admin panel.
+          // Same for admin — this popstate path renders pages directly and does
+          // NOT go through showPage(), so it never runs showPage's own #page-admin-hiding line.
           if (_sessionRole === 'admin') {
             history.pushState({ nmPage: 'admin', nmView: 'main' }, '', '#admin');
             showAdminDashboard();
             return;
           }
-          // Re-push home so pressing back again never exits the app.
-          if(window.location.hash === '#home' || window.location.hash === '') {
-            history.replaceState({ nmPage: 'home', nmView: 'main' }, '', '#home');
-          } else {
-            history.pushState({ nmPage: 'home', nmView: 'main' }, '', '#home');
-          }
+          // BUG THIS FIXES: this used to re-push (or replace) another 'home'
+          // entry every single time a regular visitor landed here, on
+          // purpose, so a further back press could never actually leave the
+          // site — it would just show Home again, forever. That directly
+          // contradicted the one thing asked for from the very start of this
+          // back-button work: back should reach Home, and pressing back
+          // AGAIN should actually exit, like any ordinary website. It was
+          // also the real source of "sometimes it exits, sometimes it
+          // doesn't" — whether the re-push won the race against a fast or
+          // repeated back-press varied press to press. Removed entirely: we
+          // just show Home and otherwise leave history alone. The one real
+          // entry from before the site was ever opened is still sitting
+          // right below this in the stack (see the single floor entry set
+          // on first load), so the very next back press reaches it naturally.
           setTimeout(() => { if(typeof applyRoleHomePage === 'function') applyRoleHomePage(currentUser); }, 50);
         }
       }
     }
   } else {
-    // PRIORITY 6: No state — landed on a pre-SPA entry (Instagram/Google/external link).
+    // PRIORITY 6: No state — this is genuinely the bottom of our own history
+    // stack. For a regular visitor this means there's nothing more of ours
+    // left to show — the browser is about to leave the site (back to
+    // Google, or wherever they came from), which is the correct, expected
+    // outcome and no longer something this code fights against (see the
+    // id==='home' branch above for the full reasoning — same fix, same
+    // place in the story: don't trap a regular visitor forever).
+    // Business/admin still get redirected — this isn't about letting them
+    // leave, it's that they should never see the public site at all.
     if (_sessionRole === 'business') {
       history.pushState({ nmPage: 'marketplace', nmView: 'admin' }, '', '#marketplace/portal');
       showPage('marketplace');
       setTimeout(() => showMktView('admin', false), 100);
       return;
     }
-    // Same bug, same fix as the branch above — this path also renders
-    // directly instead of going through showPage(), so #page-admin never
-    // gets hidden without this explicit check.
     if (_sessionRole === 'admin') {
       history.pushState({ nmPage: 'admin', nmView: 'main' }, '', '#admin');
       showAdminDashboard();
       return;
     }
-    // pushState (not replaceState) so home sits ON TOP of the unknown entry.
-    history.pushState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
-    document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
-    const home = document.getElementById('page-home');
-    if(home) home.classList.add('active');
-    if(typeof applyRoleHomePage === 'function') setTimeout(() => applyRoleHomePage(currentUser), 50);
-    window.scrollTo({top: 0, behavior: 'instant'});
-    setTimeout(initReveal, 100);
   }
 });
 
@@ -5566,6 +5574,10 @@ window.addEventListener('popstate', function() {
     if (sessionRole === 'business') {
       showPage('marketplace');
       setTimeout(() => showMktView('admin', false), 100);
+      return;
+    }
+    if (sessionRole === 'admin') {
+      showAdminDashboard();
       return;
     }
     if (state && state.nmPage === 'marketplace') {
@@ -8666,30 +8678,24 @@ document.addEventListener('DOMContentLoaded',()=>{
   const _isFreshEntry = !history.state || !history.state.nmPage;
 
   if (_isFreshEntry) {
-    // Set the history floor — two entries so pressing back can never exit to an external site.
+    // Set the history floor — normalizes the entry the visitor actually
+    // arrived on (Google, a direct link, whatever) into a Home state, so
+    // any deep in-app navigation's first back press reaches Home.
     //
-    // Stack BEFORE this code (user came from Google):
-    //   [Google-search-result, noamark.com]   ← current position
-    //
-    // replaceState turns the current entry into a home state entry:
-    //   [Google-search-result, home(replaced)]
-    //
-    // pushState adds a second home entry on top as a cushion:
-    //   [Google-search-result, home(replaced), home(cushion)]
-    //
-    // Now when the user navigates to marketplace and a profile, the stack is:
-    //   [Google, home(replaced), home(cushion), marketplace/main, marketplace/profile]
-    //
- // Pressing back from profile → marketplace 
- // Pressing back from marketplace → home(cushion) → popstate fires with nmPage:'home' → app stays open 
- // Pressing back from home(cushion) → home(replaced) → popstate fires with nmPage:'home' → app stays open 
- // Pressing back from home(replaced) → Google — but popstate fires (no state) → pushes home → app stays open 
+    // BUG THIS FIXES: this used to ALSO pushState a second "cushion" home
+    // entry on top, specifically to help enforce a "never let the visitor
+    // actually exit the site" trap in the popstate handler. That trap has
+    // been removed (see the id==='home' and no-state branches in the
+    // popstate handler) because it directly contradicted the actual ask —
+    // back should reach Home, and a further back press should be allowed
+    // to really leave, like any ordinary site — and the trap itself was
+    // flaky besides (a fast/repeated back-press could "slip past" it,
+    // which is very likely why exiting felt inconsistent). One entry is
+    // now enough: it gives the "back reaches Home" behavior without
+    // fighting the browser over what happens after that.
     // Use '#home' not bare pathname — bare '/' causes a hard reload when back is pressed
-    // to these entries because the browser sees a URL change. '#home' keeps it SPA.
+    // to this entry because the browser sees a URL change. '#home' keeps it SPA.
     history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
-    // Push a second home entry as a cushion — this is what users land on when pressing back
-    // from any in-app navigation. The replaced entry below it catches any further back presses.
-    history.pushState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
   }
 
   // Hide all pages first
