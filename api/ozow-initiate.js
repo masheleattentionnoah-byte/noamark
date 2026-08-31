@@ -100,7 +100,12 @@ export default async function handler(req, res) {
   // combined with a millisecond timestamp) keeps the total safely under
   // 50 characters for every plan name.
   const shortListingId = String(listingId).replace(/-/g, '').slice(0, 12);
-  const transactionReference = 'NM-' + planKey.toUpperCase() + '-' + shortListingId + '-' + Date.now();
+  // "OZ-" prefix (not "NM-") — Netcash's own reference generation also
+  // starts with "NM-", and moderate.js relies on this exact prefix to
+  // tell the two gateways apart (e.g. deciding whether a real Netcash
+  // subscription needs cancelling). Sharing a prefix meant a payment's
+  // actual gateway couldn't be reliably identified anywhere downstream.
+  const transactionReference = 'OZ-' + planKey.toUpperCase() + '-' + shortListingId + '-' + Date.now();
   const bankReference = 'NoaMark'; // appears on the customer's bank statement
 
   // Custom pass-through data — Ozow echoes these back on return/notify so
