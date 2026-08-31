@@ -13424,18 +13424,39 @@ async function bpSaveAccountDetails() {
 // carried over).
 async function bpConfirmActivePlanChange(planKey, listingId) {
   try {
-    const { data } = await nmSupaQuery(() => _supa.from('listings').select('boost_tier,boost_paid_at').eq('id', listingId).limit(1));
+    const { data } = await nmSupaQuery(() => _supa.from('listings').select('boost_tier,boost_paid_at,boost_started_at').eq('id', listingId).limit(1));
     const current = data && data[0];
     const currentTier = current && current.boost_tier;
     const currentPaid = current && current.boost_paid_at;
-    if (currentTier && currentTier !== 'none' && currentPaid && currentTier !== planKey) {
+    if (currentTier && currentTier !== 'none' && currentPaid) {
       const label = t => t.charAt(0).toUpperCase() + t.slice(1);
-      return confirm(
-        `You're currently on the ${label(currentTier)} plan.\n\n` +
-        `Paying for ${label(planKey)} now will switch you to it immediately and start a fresh 30-day cycle from today. ` +
-        `Any time remaining on your current ${label(currentTier)} plan is not refunded or carried over.\n\n` +
-        `Continue to payment for ${label(planKey)}?`
-      );
+
+      // BUG THIS FIXES: this only ever warned when switching to a
+      // DIFFERENT tier — paying for the SAME plan again (whether by
+      // mistake, or by trying a different payment gateway while already
+      // paid up) got no warning at all. This check is gateway-agnostic on
+      // purpose: it reads the listing's actual current status directly,
+      // not "did Netcash confirm this" or "did Ozow confirm this" — so
+      // it catches the exact case of paying with one gateway, then trying
+      // to pay again with the other.
+      if (currentTier === planKey) {
+        const startedAt = current.boost_started_at ? new Date(current.boost_started_at) : null;
+        const daysLeft = startedAt ? Math.max(0, Math.ceil((startedAt.getTime() + 30*24*60*60*1000 - Date.now()) / (24*60*60*1000))) : null;
+        return confirm(
+          `You're already on the ${label(currentTier)} plan` + (daysLeft !== null ? ` — ${daysLeft} day${daysLeft === 1 ? '' : 's'} still remaining on it.` : '.') + `\n\n` +
+          `Paying again now will start a brand new 30-day cycle from today — any days remaining on your current period are not added on top or refunded.\n\n` +
+          `Continue and pay again anyway?`
+        );
+      }
+
+      if (currentTier !== planKey) {
+        return confirm(
+          `You're currently on the ${label(currentTier)} plan.\n\n` +
+          `Paying for ${label(planKey)} now will switch you to it immediately and start a fresh 30-day cycle from today. ` +
+          `Any time remaining on your current ${label(currentTier)} plan is not refunded or carried over.\n\n` +
+          `Continue to payment for ${label(planKey)}?`
+        );
+      }
     }
   } catch (e) {
     console.warn('Could not check current plan before checkout — proceeding anyway.', e);
@@ -14932,6 +14953,15 @@ async function admLoadApprovals() {
           ? ` <span style="color:#f4c430;font-size:10px;">(~${daysLeft}d left, manual)</span>`
           : ` <span style="color:rgba(255,255,255,.4);font-size:10px;">(expiring, manual)</span>`;
       }
+      // Which gateway a CONFIRMED payment actually came from — the two
+      // gateways' transaction references now start differently on purpose
+      // (OZ- for Ozow, NM- for Netcash) specifically so this can be shown
+      // here without any guesswork.
+      let btGateway = '';
+      if (l.boost_tier && l.boost_tier !== 'none' && l.boost_paid_at && l.boost_payment_ref) {
+        if (l.boost_payment_ref.startsWith('OZ-')) btGateway = ' <span style="color:rgba(255,255,255,.4);font-size:10px;">(Ozow)</span>';
+        else if (l.boost_payment_ref.startsWith('NM-')) btGateway = ' <span style="color:rgba(255,255,255,.4);font-size:10px;">(Netcash)</span>';
+      }
  if(type === 'pending') return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${own}</td><td>${tp}</td><td>${ar}, ${ci}</td><td>${ph}</td><td style="font-size:11px;">${em}</td><td>${bt}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')"> Review</button><br><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)"> Approve</button><button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)"> Reject</button></td></tr>`;
       if(type === 'approved') {
         // Verified is now auto-granted by ozow-notify.js/netcash-notify.js
@@ -14967,7 +14997,7 @@ async function admLoadApprovals() {
               <button class="adm-btn" style="font-size:10px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.15);" onclick="admDismissCancellation('${id}',this)">Dismiss</button>
             </div>`
           : '';
- return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${bt}${btEst}</td><td>${own}</td><td>${vBadge}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')"> View</button><button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">Remove</button><br>${vBtn}<br><div style="margin-top:4px;">${boostSelect}</div>${cancelRow}</td></tr>`;
+ return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${bt}${btEst}${btGateway}</td><td>${own}</td><td>${vBadge}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')"> View</button><button class="adm-btn adm-btn-reject" onclick="admRejectListing('${id}',this)">Remove</button><br>${vBtn}<br><div style="margin-top:4px;">${boostSelect}</div>${cancelRow}</td></tr>`;
       }
       if(type === 'suspended') {
         const graceRow = `<div style="margin-bottom:4px;display:flex;gap:4px;align-items:center;">
