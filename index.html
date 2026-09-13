@@ -5773,6 +5773,15 @@ async function loadListingsFromSupabase(force = false) {
           l.rating = agg ? (agg.sum / agg.count) : 0;
           l.reviewCount = agg ? agg.count : 0;
         });
+        // "Customer Reviews" home stat must only count reviews that belong to
+        // a currently-approved listing (LISTINGS is already filtered to
+        // status='approved') — a suspended/pending business's past reviews
+        // shouldn't inflate a number that's meant to represent the live
+        // marketplace. Reuses the rows just fetched above, no extra query.
+        const approvedReviewCount = LISTINGS.reduce((sum, l) => sum + (l.reviewCount || 0), 0);
+        const statReviewsEl = document.getElementById('stat-reviews');
+        if (statReviewsEl) statReviewsEl.textContent = approvedReviewCount.toLocaleString('en-ZA');
+        nmCacheStat('reviews', approvedReviewCount);
       } catch(e) { console.warn('Review aggregation failed:', e); }
 
       populateMarketplace();
@@ -5780,11 +5789,22 @@ async function loadListingsFromSupabase(force = false) {
       renderHomeBoosted(); // update home page boosted cards now that data is available
       setTimeout(nmObserveLazyImages, 100);
     } else {
- if(latestGridEl) latestGridEl.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--white-dim);grid-column:1/-1;"><div style="font-size:40px;margin-bottom:16px;color:var(--white-dim);"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;flex-shrink:0;"><path d="M3 9l9-6 9 6v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M9 21V12h6v9"/></svg></div><div style="font-size:15px;font-weight:600;">No listings yet</div><div style="font-size:13px;margin-top:8px;">Be the first to add your business!</div></div>';
       // Genuinely zero approved listings (e.g. every business is currently
-      // suspended for non-payment) — reflect that on the home hero stats
-      // instead of leaving whatever number was last cached there.
-      if (Array.isArray(data)) renderHomeBoosted();
+      // suspended for non-payment). Route through the normal render path —
+      // populateMarketplace() is what actually shows the "No Listings Yet"
+      // (#mkt-empty) state and hides the Featured/Latest section wrappers.
+      // Writing "No listings yet" HTML by hand here (as before) left those
+      // wrapper divs stuck on their default display:none, which is why the
+      // page looked frozen/too-short to scroll until picking a category
+      // forced populateMarketplace() to run and fix the layout.
+      if (Array.isArray(data)) {
+        populateMarketplace();
+        renderDashboardStats();
+        renderHomeBoosted();
+        const statReviewsEl = document.getElementById('stat-reviews');
+        if (statReviewsEl) statReviewsEl.textContent = '0';
+        nmCacheStat('reviews', 0);
+      }
     }
   } catch(e){
     console.warn('Could not load listings from Supabase', e);
@@ -9045,20 +9065,15 @@ nmClearStuckLoadingDots('stat-open', 4000);
 nmClearStuckLoadingDots('stat-reviews', 4000);
 nmClearStuckLoadingDots('stat-visitors', 4000);
 
-// ── HOME STATS: reviews + visitors (real counts only, no placeholders) ──
+// ── HOME STATS: visitors (real count, no placeholder) ──
+// "Customer Reviews" is NOT computed here — it's derived inside
+// loadListingsFromSupabase() from only the reviews belonging to currently
+// approved listings, so a suspended business's old reviews don't inflate it.
 async function nmLoadGlobalStats() {
-  const statReviews  = document.getElementById('stat-reviews');
   const statVisitors = document.getElementById('stat-visitors');
-  if (!statReviews && !statVisitors) return;
+  if (!statVisitors) return;
   try {
-    if (statReviews) {
-      const { data } = await nmSupaQuery(() => _supa.from('reviews').select('id'));
-      const n = data ? data.length : 0;
-      statReviews.textContent = n.toLocaleString('en-ZA');
-      nmCacheStat('reviews', n);
-    }
-    if (statVisitors) {
-      const startOfMonth = new Date();
+    const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0,0,0,0);
       const { data, error } = await nmSupaQuery(() =>
@@ -9073,7 +9088,6 @@ async function nmLoadGlobalStats() {
         statVisitors.textContent = n.toLocaleString('en-ZA');
         nmCacheStat('visitors', n);
       }
-    }
   } catch(e) { console.warn('Home stats load failed:', e); }
 }
 
