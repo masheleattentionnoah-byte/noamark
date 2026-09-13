@@ -4670,9 +4670,9 @@
     <p class="gate-sub">To see full business info, prices, contact details, photos and more, you need a NoaMark account.<br><br>It's <strong>free</strong> and takes under a minute.</p>
     <div class="gate-actions">
       <button class="auth-btn auth-btn-primary" style="width:auto;padding:13px 28px;" onclick="closeGate();openAuth('subscriber')">Sign Up Free</button>
-      <button class="auth-btn auth-btn-gold" style="width:auto;padding:13px 28px;" onclick="closeGate();openAuth('guest')">Quick Access</button>
+      <button class="auth-btn auth-btn-gold" style="width:auto;padding:13px 28px;" onclick="closeGate();openAuth('guest',false,'signup')">Quick Access</button>
     </div>
-    <p style="font-size:11px;color:var(--white-dim);margin-top:16px;">Already have an account? <a style="color:var(--green-dark);cursor:pointer;font-weight:600;" onclick="closeGate();openAuth('subscriber')">Sign in here</a></p>
+    <p style="font-size:11px;color:var(--white-dim);margin-top:16px;">Already have an account? <a style="color:var(--green-dark);cursor:pointer;font-weight:600;" onclick="closeGate();openAuth('guest',false,'login')">Sign in here</a></p>
   </div>
 </div>
 
@@ -10582,7 +10582,7 @@ let activeAuthType = 'business';
 // ──────────────────────────────────────────────────
 // OPEN / CLOSE AUTH MODAL
 // ──────────────────────────────────────────────────
-function openAuth(type, required) {
+function openAuth(type, required, mode) {
   authRequired = !!required;
   // BUG FIX: this modal never locked background scroll, unlike every other
   // modal in the app (booking, gate) — on mobile this let the page behind
@@ -10600,6 +10600,19 @@ function openAuth(type, required) {
     const tabMap = {business:0, subscriber:1, guest:2};
     const tabs = document.querySelectorAll('.auth-tab');
     switchAuthType(type, tabs[tabMap[type]||0]);
+    // Optionally force the Sign Up / Log In sub-tab within that portal —
+    // e.g. an "Already have an account? Sign in here" link should land
+    // directly on the login form, not whatever sub-tab was last active.
+    if(mode) {
+      const portalMap = {business:'biz', subscriber:'sub', guest:'guest'};
+      const portal = portalMap[type];
+      if(portal) {
+        const toggle = document.getElementById(portal+'-mode-toggle');
+        const modeBtns = toggle ? toggle.querySelectorAll('.auth-mode-btn') : null;
+        const btnIdx = mode === 'login' ? 1 : 0;
+        switchAuthMode(portal, mode, modeBtns ? modeBtns[btnIdx] : null);
+      }
+    }
   }
   // Remember exactly what was on screen before auth opened, so closeAuth()
   // can restore it precisely instead of leaving a stray history entry
