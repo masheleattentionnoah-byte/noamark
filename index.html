@@ -2232,14 +2232,12 @@
           <h2 style="font-size:20px;font-weight:700;color:#111827;margin-bottom:28px;">Reach Us Directly</h2>
           <div style="display:flex;flex-direction:column;gap:20px;">
             <a href="mailto:support@noamark.com" style="display:flex;align-items:center;gap:16px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;text-decoration:none;transition:all .2s;" onmouseover="this.style.borderColor='#16a34a'" onmouseout="this.style.borderColor='#e2e8f0'">
- <div style="width:48px;height:48px;background:#f0fdf4;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;"></div>
-              <div>
-                <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#6b7280;margin-bottom:4px;">Email</div>
+ <div class="nm-ico" style="width:48px;height:48px;background:#f0fdf4;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;color:#16a34a;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></div>
                 <div style="font-size:14px;font-weight:600;color:#16a34a;">support@noamark.com</div>
               </div>
             </a>
             <a href="https://wa.me/27634189749" target="_blank" style="display:flex;align-items:center;gap:16px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;text-decoration:none;transition:all .2s;" onmouseover="this.style.borderColor='#16a34a'" onmouseout="this.style.borderColor='#e2e8f0'">
- <div style="width:48px;height:48px;background:#f0fdf4;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;"></div>
+ <div class="nm-ico nm-ico-whatsapp" style="width:48px;height:48px;background:#f0fdf4;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.39 1.26 4.81L2 22l5.41-1.42a9.87 9.87 0 0 0 4.63 1.18h.01c5.46 0 9.9-4.45 9.9-9.9C21.95 6.45 17.5 2 12.04 2Zm5.8 14.1c-.24.68-1.4 1.3-1.94 1.38-.5.08-1.12.11-1.8-.11-.42-.13-.96-.31-1.65-.61-2.9-1.25-4.8-4.17-4.94-4.36-.14-.19-1.18-1.57-1.18-3 0-1.42.75-2.12 1.02-2.41.27-.29.58-.36.78-.36.19 0 .39 0 .56.01.18.01.42-.07.65.5.24.58.82 2 .89 2.14.07.14.11.3.02.49-.09.19-.14.3-.27.46-.14.16-.29.36-.41.48-.14.14-.28.29-.12.56.16.28.72 1.19 1.55 1.93 1.06.95 1.96 1.24 2.24 1.38.28.14.44.12.6-.07.16-.19.68-.79.86-1.06.18-.28.36-.23.6-.14.24.09 1.53.72 1.79.85.26.13.44.19.5.3.06.11.06.65-.18 1.33Z"/></svg></div>
               <div>
                 <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#6b7280;margin-bottom:4px;">WhatsApp</div>
                 <div style="font-size:14px;font-weight:600;color:#16a34a;">+27 63 418 9749</div>
@@ -5206,7 +5204,22 @@ function showPage(id, cb){
   // one back press takes you to wherever you were before you started
   // browsing the menu (or out of the site), regardless of how many menu
   // items you clicked through along the way.
-  history.replaceState({ nmPage: id, nmView: 'main' }, '', '#' + id);
+  // Push a new history entry so the back button retraces the pages you
+  // actually visited (Home -> Contact -> back -> Home -> back -> exit),
+  // which is what people expect from normal site navigation.
+  //
+  // PREVIOUSLY this used replaceState instead, on the reasoning that
+  // pushState on every menu click meant back had to unwind through each
+  // one before leaving the site. But replaceState overwrites the entry you
+  // came FROM, so it broke the much more common case: browsing straight
+  // from Home into a footer page like Contact Us left nothing for the back
+  // button to return to, so a single back press exited the site entirely
+  // instead of going back to Home. Guard below still avoids piling up
+  // duplicate entries if showPage() is called again for the page already
+  // showing (e.g. a stray double-click).
+  const _samePage = history.state && history.state.nmPage === id && history.state.nmView === 'main';
+  if (_samePage) history.replaceState({ nmPage: id, nmView: 'main' }, '', '#' + id);
+  else history.pushState({ nmPage: id, nmView: 'main' }, '', '#' + id);
   if(id === 'dashboard') renderDashboardStats();
   if(id === 'videos') {
     nmSupaQuery(() => _supa.from('videos').select('*').order('created_at', {ascending: false}))
