@@ -5148,6 +5148,15 @@ function showPage(id, cb){
     showAdminDashboard();
     return;
   }
+  // Remember where we are on the page we're leaving, so if the person later
+  // presses Back to return to it, we can restore this exact scroll spot
+  // instead of snapping to the top. Home's footer links (About Us, Contact
+  // Us, etc.) sit far down the page — without this, back-navigating from
+  // Contact Us dumped the person at Home's very top, forcing a full
+  // re-scroll down just to reach the same links again.
+  window._nmPageScrollPositions = window._nmPageScrollPositions || {};
+  const _leavingPage = document.querySelector('.page.active');
+  if (_leavingPage) window._nmPageScrollPositions[_leavingPage.id] = window.scrollY;
   document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
   // The line above also clears any leftover inline style.display:none that
   // showAdminDashboard() sets directly on every .page element. Without this,
@@ -5527,7 +5536,17 @@ window.addEventListener('popstate', function(e) {
       const pageEl = document.getElementById('page-' + id);
       if(pageEl) {
         pageEl.classList.add('active');
-        window.scrollTo({top: 0, behavior: 'instant'});
+        // Restore wherever the person was on this page before they navigated
+        // away (see the capture in showPage()), rather than always snapping
+        // to the top — this is what makes Back actually feel like "go back"
+        // instead of "reload from scratch" when the page they're returning
+        // to (e.g. Home) was scrolled down to its footer links.
+        const _savedPageY = window._nmPageScrollPositions && window._nmPageScrollPositions['page-' + id];
+        if (typeof _savedPageY === 'number') {
+          requestAnimationFrame(() => window.scrollTo({top: _savedPageY, behavior: 'instant'}));
+        } else {
+          window.scrollTo({top: 0, behavior: 'instant'});
+        }
         // Same fix as the marketplace branch above — re-trigger scroll-reveal
         // so content isn't stuck invisible if it never got revealed the
         // first time this page was shown.
