@@ -8258,6 +8258,16 @@ async function submitBusiness(){
     website: nmNormalizeWebsiteUrl(website),
     menu: JSON.stringify(menuItems),
     price_hint: priceHint,
+    // Transport/Service sub-type — collected on the form and used for
+    // marketplace sub-category filtering, but previously missing from this
+    // payload entirely, so it was only ever sent in the best-effort admin
+    // notification email below, never actually saved to the listing itself.
+    // That meant every listing's transport_sub/services_sub was blank in
+    // the database regardless of what was selected on the form, which is
+    // why sub-category filters (e.g. Services > Accommodation) never
+    // matched anything.
+    transport_sub: document.getElementById('biz_transport_sub')?.value || '',
+    services_sub: document.getElementById('biz_services_sub')?.value || '',
   };
   // owner_email links the listing to the business portal.
   // Only include it if the column exists — we try it and catch the error if not.
@@ -12470,6 +12480,18 @@ async function bpEditListing() {
     const setVal = (id, val) => { const el = document.getElementById(id); if(el && val) el.value = val; };
     setVal('biz_name',          myListing.name);
     setVal('biz_cat',           myListing.cat);
+    // Show/prefill the Transport or Services sub-type field to match the
+    // listing's saved category — setVal() only sets .value and never fires
+    // the <select>'s onchange handler, so without this the sub-type field
+    // (and whatever value the listing already has) would stay hidden and
+    // blank even for a listing that does have one saved, making it look
+    // impossible to ever set/change from the edit form.
+    const transportSubField = document.getElementById('transport-sub-field');
+    const servicesSubField  = document.getElementById('services-sub-field');
+    if (transportSubField) transportSubField.style.display = myListing.cat === 'transport' ? 'block' : 'none';
+    if (servicesSubField)  servicesSubField.style.display  = myListing.cat === 'services'  ? 'block' : 'none';
+    setVal('biz_transport_sub', myListing.transport_sub);
+    setVal('biz_services_sub',  myListing.services_sub);
     setVal('biz_type',          myListing.type || myListing.cat);
     setVal('biz_desc',          myListing.desc);
     setVal('biz_area',          myListing.area);
