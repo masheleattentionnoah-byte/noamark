@@ -6492,7 +6492,7 @@ function populateMarketplace(){
   // Fix: only reset to page 1 when the actual filters/search/sort changed
   // (a genuinely new result set) — a plain "return to the same view" keeps
   // however many pages were already shown.
-  const _mktFilterSig = JSON.stringify([currentCat, currentTransportSub, currentSearch, currentLocation, currentSort]);
+  const _mktFilterSig = JSON.stringify([currentCat, currentTransportSub, currentServicesSub, currentSearch, currentLocation, currentSort]);
   const _mktFiltersChanged = window._mktLastFilterSig !== _mktFilterSig;
   window._mktLastFilterSig = _mktFilterSig;
   window._mktLatestFull = [];
