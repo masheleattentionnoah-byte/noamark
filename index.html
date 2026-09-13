@@ -4669,10 +4669,10 @@
     <h2 class="gate-heading">Sign In to View Details</h2>
     <p class="gate-sub">To see full business info, prices, contact details, photos and more, you need a NoaMark account.<br><br>It's <strong>free</strong> and takes under a minute.</p>
     <div class="gate-actions">
-      <button class="auth-btn auth-btn-primary" style="width:auto;padding:13px 28px;" onclick="closeGate();openAuth('subscriber')">Sign Up Free</button>
-      <button class="auth-btn auth-btn-gold" style="width:auto;padding:13px 28px;" onclick="closeGate();openAuth('guest',false,'signup')">Quick Access</button>
+      <button class="auth-btn auth-btn-primary" style="width:auto;padding:13px 28px;" onclick="closeGateToAuth('subscriber')">Sign Up Free</button>
+      <button class="auth-btn auth-btn-gold" style="width:auto;padding:13px 28px;" onclick="closeGateToAuth('guest','signup')">Quick Access</button>
     </div>
-    <p style="font-size:11px;color:var(--white-dim);margin-top:16px;">Already have an account? <a style="color:var(--green-dark);cursor:pointer;font-weight:600;" onclick="closeGate();openAuth('guest',false,'login')">Sign in here</a></p>
+    <p style="font-size:11px;color:var(--white-dim);margin-top:16px;">Already have an account? <a style="color:var(--green-dark);cursor:pointer;font-weight:600;" onclick="closeGateToAuth('guest','login')">Sign in here</a></p>
   </div>
 </div>
 
@@ -10582,7 +10582,7 @@ let activeAuthType = 'business';
 // ──────────────────────────────────────────────────
 // OPEN / CLOSE AUTH MODAL
 // ──────────────────────────────────────────────────
-function openAuth(type, required, mode) {
+function openAuth(type, required, mode, opts) {
   authRequired = !!required;
   // BUG FIX: this modal never locked background scroll, unlike every other
   // modal in the app (booking, gate) — on mobile this let the page behind
@@ -10614,12 +10614,52 @@ function openAuth(type, required, mode) {
       }
     }
   }
+  // BUG FIX: buttons on the "Sign In to View Details" gate used to call
+  // closeGate();openAuth(...) back to back. closeGate() REPLACES the gate's
+  // history entry with the real page that was open before the gate — then
+  // openAuth() immediately PUSHED its own new 'auth' entry on top, leaving
+  // that "real page" entry sandwiched in as a dead duplicate. Chain a few
+  // gate → auth → close attempts in one visit (try "Sign in here", close,
+  // try "Quick Access", close, etc.) and each attempt leaves one more of
+  // these behind — so the phone's back button needs one extra press per
+  // attempt before it goes anywhere. Fix: when openAuth() is opened via
+  // opts.collapseFromGate (see closeGateToAuth() below), collapse straight
+  // into a single replaceState of the still-open 'gate' entry instead of
+  // replace-then-push — and restore to the REAL prior page (passed in),
+  // not the gate, when the user eventually closes auth.
+  if (opts && opts.collapseFromGate && history.state && history.state.nmPage === 'gate') {
+    window._authPriorState = opts.priorState || { nmPage: 'home', nmView: 'main' };
+    history.replaceState({ nmPage: 'auth', nmView: 'modal' }, '', window.location.href);
+    return;
+  }
   // Remember exactly what was on screen before auth opened, so closeAuth()
   // can restore it precisely instead of leaving a stray history entry
   // behind (see note in closeAuth below — same bug/fix as openGate/closeGate).
   window._authPriorState = history.state;
   // Push state so phone back button closes auth instead of exiting the site
   history.pushState({ nmPage: 'auth', nmView: 'modal' }, '', window.location.href);
+}
+
+// Moves straight from the "Sign In to View Details" gate into the auth
+// modal without leaving a leftover history entry behind — see the BUG FIX
+// comment inside openAuth() above for the full explanation. Use this
+// instead of closeGate();openAuth(...) from any gate button.
+function closeGateToAuth(type, mode) {
+  const overlay = document.getElementById('gate-overlay');
+  if (overlay) overlay.classList.remove('active');
+  pendingBizId = null;
+  // Same non-history cleanup as closeGate() — we're moving straight into
+  // another modal, not back to the real page underneath, so history itself
+  // is intentionally left untouched until openAuth() collapses it below.
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.width = '';
+  document.body.style.overflow = '';
+  document.body.classList.remove('nm-scroll-locked');
+  window.scrollTo(0, window._gateScrollY || 0);
+  const priorState = window._gatePriorState;
+  window._gatePriorState = null;
+  openAuth(type, false, mode, { collapseFromGate: true, priorState: priorState });
 }
 
 function closeAuth() {
