@@ -37,14 +37,71 @@
 // Field names below (TransactionAccepted, Reference, Extra1/2/3, Amount)
 // are now CONFIRMED against the official docs (Notify/Accept/Decline/
 // Redirect URL pages) — no longer a guess.
+//
+// ── ADDED: Maya AI-agent launch tickets ──
+// This same file now ALSO handles Maya launch-ticket sales from
+// noamark-ai-agent.html, using the SAME Netcash service key and the
+// SAME Notify URL — no new file, no new key, no new Supabase table.
+// A ticket's planKey always starts with 'ai-' (ai-starter/ai-growth/
+// ai-pro), which is how handleInit/handleNotify below tell a ticket
+// apart from a listing boost. A ticket sale:
+//   - takes email/name instead of a listingId (no listing exists yet)
+//   - never reads or writes the `listings` table
+//   - on confirmed payment, emails a redemption code to the buyer AND
+//     to ADMIN_EMAIL, so there's a durable record without a new table
+import crypto from 'crypto';
 
 const PLAN_PRICES = {
   starter: 49.99,
   growth: 219.99,
   pro: 299.99,
+  // Maya AI-agent launch tickets — same prices as the listing boost
+  // tiers, kept under a separate 'ai-' prefix so this ONE file can tell
+  // a ticket sale apart from a listing boost and route it completely
+  // differently below (no listingId, never touches `listings`).
+  'ai-starter': 49.99,
+  'ai-growth': 219.99,
+  'ai-pro': 299.99,
 };
 
 const DEFAULT_VENDOR_KEY = '24ade73c-98cf-47b3-99be-cc7b867b3080';
+
+// ---------------------------------------------------------------------
+// Maya launch-ticket helpers — ONLY used when planKey starts with 'ai-'.
+// A ticket buyer hasn't listed a business yet, so there's no listingId
+// and nothing here ever reads/writes the `listings` table. Instead of a
+// new database table, the redemption code is emailed to the buyer AND
+// to ADMIN_EMAIL below, so there's always a durable record without
+// standing up any new Supabase infrastructure.
+// ---------------------------------------------------------------------
+const ADMIN_EMAIL = 'supportnoamark@gmail.com';
+const MAYA_LAUNCH_DATE_LABEL = '27 March 2027';
+
+function generateTicketCode() {
+  // MAYA-XXXX-XXXX, uppercase, no 0/O/1/I/L so it can't be mistyped.
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const seg = () => {
+    const bytes = crypto.randomBytes(4);
+    let out = '';
+    for (let i = 0; i < 4; i++) out += alphabet[bytes[i] % alphabet.length];
+    return out;
+  };
+  return `MAYA-${seg()}-${seg()}`;
+}
+
+async function sendViaExistingEmailApi(to, subject, message) {
+  try {
+    const r = await fetch('https://noamark.com/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, subject, message }),
+    });
+    return await r.json().catch(() => ({}));
+  } catch (e) {
+    console.error('[netcash-notify][ai-ticket] send-email call failed:', e);
+    return { ok: false, reason: e.message };
+  }
+}
 
 export default async function handler(req, res) {
   const action = req.query && req.query.action;
@@ -96,53 +153,82 @@ async function handleInit(req, res) {
   if (!planKey || !PLAN_PRICES[planKey]) {
     return res.status(400).json({ ok: false, reason: 'Unknown or missing planKey' });
   }
-  if (!listingId) {
+
+  const isTicket = planKey.startsWith('ai-');
+
+  // Listing boosts need a listingId; launch tickets need an email
+  // instead (there's no listing yet to attach a boost to).
+  if (!isTicket && !listingId) {
     return res.status(400).json({ ok: false, reason: 'Missing listingId' });
+  }
+  if (isTicket && !email) {
+    return res.status(400).json({ ok: false, reason: 'Missing email' });
   }
 
   const serviceKey = process.env.NETCASH_SERVICE_KEY;
   if (!serviceKey) {
-    console.warn('NETCASH_SERVICE_KEY not set — boost payment not started.');
+    console.warn('NETCASH_SERVICE_KEY not set — payment not started.');
     return res.status(200).json({ ok: false, reason: 'Payments not configured yet' });
   }
 
   const amount = PLAN_PRICES[planKey];
-  // Same reference style as the Ozow side, for consistency across logs.
-  const reference = 'NM-' + planKey.toUpperCase() + '-' + listingId + '-' + Date.now();
+  const tierLabel = (isTicket ? planKey.slice(3) : planKey);
+  const tierLabelCap = tierLabel.charAt(0).toUpperCase() + tierLabel.slice(1);
 
-  const fields = {
-    m1: serviceKey,
-    m2: DEFAULT_VENDOR_KEY,
-    p2: reference,
-    p3: `NoaMark ${planKey.charAt(0).toUpperCase() + planKey.slice(1)} Boost`,
-    p4: amount.toFixed(2),
-    Budget: 'Y',
-    // m4/m5 are Netcash's "Extra" fields — per the docs, any text sent
-    // here is returned once settlement is done. Same role as Ozow's
-    // Optional1/Optional2: this is how the notify handler below knows
-    // which plan and listing this payment was for.
-    m4: planKey,
-    m5: String(listingId),
-    // Request a reusable card token on this first payment (m14=1). Per
-    // the docs, this only actually returns a token (ccToken/ccHolder/
-    // ccMasked/ccExpiry on the notify callback) when: the payment method
-    // was Credit Card, AND Test Mode is set to false on the NetConnector
-    // profile. In test mode you'll see accepted=true but no token yet —
-    // that's expected, not a bug. This groundwork is for recurring
-    // billing (charging the saved card again next month) — the actual
-    // monthly re-charge still needs Netcash's Subscription Update
-    // Service, which is a separate piece of work.
-    m14: '1',
-  };
-
-  if (email) fields.m9 = email;
-  if (name) fields.m10 = name;
+  let fields;
+  if (isTicket) {
+    const reference = 'AI-' + planKey.toUpperCase() + '-' + Date.now();
+    fields = {
+      m1: serviceKey,
+      m2: DEFAULT_VENDOR_KEY,
+      p2: reference,
+      p3: `NoaMark Maya ${tierLabelCap} Launch Ticket`,
+      p4: amount.toFixed(2),
+      Budget: 'Y',
+      // m4/m5/m6 → Extra1/Extra2/Extra3 on the verified notify response
+      // (confirmed via Netcash docs) — this is how handleNotify below
+      // learns the tier/email/name for a ticket sale, with no listingId
+      // involved anywhere.
+      m4: planKey,
+      m5: email,
+      m6: name || '',
+    };
+  } else {
+    // Same reference style as the Ozow side, for consistency across logs.
+    const reference = 'NM-' + planKey.toUpperCase() + '-' + listingId + '-' + Date.now();
+    fields = {
+      m1: serviceKey,
+      m2: DEFAULT_VENDOR_KEY,
+      p2: reference,
+      p3: `NoaMark ${tierLabelCap} Boost`,
+      p4: amount.toFixed(2),
+      Budget: 'Y',
+      // m4/m5 are Netcash's "Extra" fields — per the docs, any text sent
+      // here is returned once settlement is done. Same role as Ozow's
+      // Optional1/Optional2: this is how the notify handler below knows
+      // which plan and listing this payment was for.
+      m4: planKey,
+      m5: String(listingId),
+      // Request a reusable card token on this first payment (m14=1). Per
+      // the docs, this only actually returns a token (ccToken/ccHolder/
+      // ccMasked/ccExpiry on the notify callback) when: the payment method
+      // was Credit Card, AND Test Mode is set to false on the NetConnector
+      // profile. In test mode you'll see accepted=true but no token yet —
+      // that's expected, not a bug. This groundwork is for recurring
+      // billing (charging the saved card again next month) — the actual
+      // monthly re-charge still needs Netcash's Subscription Update
+      // Service, which is a separate piece of work.
+      m14: '1',
+    };
+    if (email) fields.m9 = email;
+    if (name) fields.m10 = name;
+  }
 
   return res.status(200).json({
     ok: true,
     postUrl: 'https://paynow.netcash.co.za/site/paynow.aspx',
     fields,
-    planName: planKey.charAt(0).toUpperCase() + planKey.slice(1) + ' Plan',
+    planName: isTicket ? (tierLabelCap + ' Launch Ticket') : (tierLabelCap + ' Plan'),
   });
 }
 
@@ -201,19 +287,33 @@ async function handleNotify(req, res, { respondAsBrowser = false } = {}) {
 
   // From here on, trust the VERIFIED response, not the original body —
   // that's the whole point of the check above.
-  const planKey   = verified.Extra1 || body.Extra1;
-  const listingId = verified.Extra2 || body.Extra2;
+  const planKey = verified.Extra1 || body.Extra1;
+  // For a listing boost this is a listingId; for a launch ticket
+  // (planKey starts with 'ai-') this is the buyer's email instead — see
+  // the isTicket branch just below.
+  const secondField = verified.Extra2 || body.Extra2;
+  const thirdField = verified.Extra3 || body.Extra3;
   const amountPaid = parseFloat(verified.Amount || '0');
   const accepted = verified.TransactionAccepted === true || verified.TransactionAccepted === 'true';
   // -----------------------------------------------------------------
 
-  if (!planKey || !listingId) {
-    console.warn('[netcash-notify] Missing plan/listing in payload — cannot process.', body);
+  if (!planKey || !PLAN_PRICES[planKey]) {
+    console.warn('[netcash-notify] Missing/unknown planKey in payload:', planKey);
     return finish(200, 'OK');
   }
 
-  if (!PLAN_PRICES[planKey]) {
-    console.warn('[netcash-notify] Unknown planKey in payload:', planKey);
+  // ── Maya launch ticket — completely separate path, never touches
+  // `listings` ──
+  if (planKey.startsWith('ai-')) {
+    return handleTicketNotify({
+      finish, planKey, email: secondField, name: thirdField, amountPaid, accepted,
+      paymentRef: verified.Reference || body.Reference || requestTrace,
+    });
+  }
+
+  const listingId = secondField;
+  if (!listingId) {
+    console.warn('[netcash-notify] Missing listingId in payload — cannot process.', body);
     return finish(200, 'OK');
   }
 
@@ -296,5 +396,50 @@ async function handleNotify(req, res, { respondAsBrowser = false } = {}) {
     console.error('[netcash-notify] Supabase update threw an error.', e);
   }
 
+  return finish(200, 'OK');
+}
+
+// ---------------------------------------------------------------------
+// Maya launch-ticket confirmation — no listingId, no `listings` write.
+// Issues a redemption code and emails it to the buyer AND to
+// ADMIN_EMAIL, via the existing /api/send-email endpoint. The admin
+// copy IS the durable record — no new Supabase table needed for this.
+// ---------------------------------------------------------------------
+async function handleTicketNotify({ finish, planKey, email, name, amountPaid, accepted, paymentRef }) {
+  const tier = planKey.slice(3); // strip 'ai-'
+  const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
+
+  if (!email) {
+    console.warn('[netcash-notify][ai-ticket] Missing email — cannot issue a code.', { planKey });
+    return finish(200, 'OK');
+  }
+  if (!accepted) {
+    console.log(`[netcash-notify][ai-ticket] Not accepted for ${planKey} — not issuing a code.`);
+    return finish(200, 'OK');
+  }
+  const expectedAmount = PLAN_PRICES[planKey];
+  if (Math.abs(amountPaid - expectedAmount) >= 0.01) {
+    console.warn('[netcash-notify][ai-ticket] Amount mismatch — refusing to issue a code.', { planKey, amountPaid, expectedAmount });
+    return finish(200, 'OK');
+  }
+
+  const code = generateTicketCode();
+  const greeting = name ? `Hi ${name},` : 'Hi,';
+
+  await sendViaExistingEmailApi(
+    email,
+    `Your Maya launch ticket is confirmed — ${tierLabel}`,
+    `${greeting}\n\nYour ${tierLabel} launch ticket for Maya, NoaMark's AI business agent, is confirmed.\n\nYour redemption code:\n${code}\n\nMaya launches on ${MAYA_LAUNCH_DATE_LABEL}. On that day, go to noamark.com, log in, and enter this code to activate Maya at your ${tierLabel} tier — no extra payment needed at that point.\n\nKeep this email — you'll need the code to activate.\n\n— NoaMark`
+  );
+
+  // The durable record: a copy to your own inbox with everything an
+  // admin would need to look this ticket up later, without a database.
+  await sendViaExistingEmailApi(
+    ADMIN_EMAIL,
+    `[Maya ticket] ${tierLabel} — ${email}`,
+    `New Maya launch ticket sold via Netcash.\n\nTier: ${tierLabel}\nEmail: ${email}\nName: ${name || '(not given)'}\nAmount paid: R${amountPaid.toFixed(2)}\nPayment reference: ${paymentRef || '(none)'}\nRedemption code: ${code}\n\nKeep this email — it's the record used to grant access at launch.`
+  );
+
+  console.log(`[netcash-notify][ai-ticket] Ticket ${code} issued to ${email} (${tier}).`);
   return finish(200, 'OK');
 }
