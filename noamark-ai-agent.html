@@ -134,6 +134,7 @@
   .ticket-plan:hover { border-color: rgba(110,231,160,0.4); }
   .ticket-plan.selected { border-color: var(--green-light); background: linear-gradient(135deg, rgba(110,231,160,0.12), rgba(34,197,94,0.05)); }
   .ticket-plan-name { font-weight: 700; font-size: 14.5px; color: var(--white); }
+  .ticket-plan-benefit { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
   .ticket-plan-tag { font-size: 11px; color: var(--green-light); font-weight: 600; margin-top: 2px; }
   .ticket-plan-price { font-weight: 800; font-size: 16px; color: var(--green-bright); white-space: nowrap; }
   .ticket-plan-price span { font-size: 10.5px; color: var(--muted); font-weight: 400; }
@@ -143,9 +144,15 @@
   .ticket-plan-check svg { opacity: 0; transform: scale(0.5); transition: all 0.15s; }
   .ticket-plan.selected .ticket-plan-check svg { opacity: 1; transform: scale(1); }
   .ticket-plan-left { display: flex; align-items: center; }
+  .ticket-plan.sold-out { cursor: not-allowed; opacity: 0.45; }
+  .ticket-plan.sold-out:hover { border-color: rgba(255,255,255,0.12); }
+  .ticket-plan-soldout-tag { position: absolute; top: -9px; right: 14px; background: rgba(255,255,255,0.14); color: #d7e4da; font-size: 9.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 9px; border-radius: 999px; }
 
   .ticket-note { font-size: 12.5px; color: var(--muted); line-height: 1.6; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 14px; margin: 4px 0 24px; }
   .ticket-note b { color: #d7e4da; }
+
+  .scarcity-note { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 700; color: var(--green-bright); margin: 2px 0 18px; }
+  .scarcity-note svg { flex-shrink: 0; }
 
   /* ===== SECTION 2 — EXPLAINER (woman) ===== */
   .explainer {
@@ -329,6 +336,10 @@
   .trust { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 18px; font-size: 12px; color: var(--muted); }
   .trust svg { flex-shrink: 0; }
 
+  #aiResult { margin-top: 16px; padding: 14px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; white-space: pre-wrap; display: none; line-height: 1.55; }
+  #aiResult.ok { background: rgba(34,197,94,0.22); color: #eafff1; border: 1.5px solid rgba(110,231,160,0.55); display: flex; align-items: flex-start; gap: 8px; }
+  #aiResult.fail { background: rgba(220,80,80,0.22); color: #ffe4e4; border: 1.5px solid rgba(248,113,113,0.55); display: block; }
+
   #result { margin-top: 18px; padding: 14px 16px; border-radius: 8px; font-size: 13.5px; white-space: pre-wrap; display: none; line-height: 1.5; }
   #result.ok { background: rgba(34,197,94,0.18); color: #a3e6b8; border: 1px solid rgba(34,197,94,0.35); display: flex; }
   #result.fail { background: rgba(153,27,27,0.2); color: #f5a3a3; border: 1px solid rgba(153,27,27,0.35); display: block; }
@@ -405,12 +416,12 @@
 <div class="ai-pay-section" id="ai-pricing">
   <div class="ai-card">
     <p class="kicker4">MAYA — AI BUSINESS AGENT</p>
-    <h1>Reserve your spot for launch</h1>
-    <p class="sub">Maya isn't live yet — she launches on <b style="color:#d7e4da;">27 March 2027</b>. Book your spot now at the tier below and we'll email you a code to activate Maya the moment she's ready.</p>
+    <h1>Secure your spot before Maya launches</h1>
+    <p class="sub">Maya goes live on <b style="color:#d7e4da;">27 March 2027</b>. Reserve your tier now and we'll email you an activation code the moment she's ready.</p>
 
     <div class="launch-badge">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-      Launching soon
+      Early access open
     </div>
 
     <div class="countdown-box">
@@ -423,16 +434,17 @@
       </div>
     </div>
 
-    <p class="ticket-section-label">Choose your booking tier</p>
+    <p class="ticket-section-label">Choose your early access plan</p>
     <div class="ticket-tiers" id="ticketTiers">
       <div class="ticket-plan selected" data-tier="starter" data-price="49.99" onclick="selectTicketTier('starter', this)">
         <div class="ticket-plan-left">
           <span class="ticket-plan-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#06210f" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
           <div>
             <div class="ticket-plan-name">Starter</div>
+            <div class="ticket-plan-benefit">For 1 business · Core Maya features</div>
           </div>
         </div>
-        <div class="ticket-plan-price">R49.99 <span>ticket</span></div>
+        <div class="ticket-plan-price">R49.99 <span>early access</span></div>
       </div>
       <div class="ticket-plan" data-tier="growth" data-price="219.99" onclick="selectTicketTier('growth', this)">
         <span class="ticket-plan-badge">Popular</span>
@@ -440,23 +452,34 @@
           <span class="ticket-plan-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#06210f" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
           <div>
             <div class="ticket-plan-name">Growth</div>
+            <div class="ticket-plan-benefit">Everything in Starter · Advanced strategies</div>
           </div>
         </div>
-        <div class="ticket-plan-price">R219.99 <span>ticket</span></div>
+        <div class="ticket-plan-price">R219.99 <span>early access</span></div>
       </div>
       <div class="ticket-plan" data-tier="pro" data-price="299.99" onclick="selectTicketTier('pro', this)">
         <div class="ticket-plan-left">
           <span class="ticket-plan-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#06210f" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
           <div>
             <div class="ticket-plan-name">Pro</div>
+            <div class="ticket-plan-benefit">Everything in Growth · Full automation · Priority access</div>
           </div>
         </div>
-        <div class="ticket-plan-price">R299.99 <span>ticket</span></div>
+        <div class="ticket-plan-price">R299.99 <span>early access</span></div>
       </div>
     </div>
 
+    <div class="scarcity-note" id="scarcityStarter">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>
+      Only 21 Starter spots available
+    </div>
+    <div class="scarcity-note" id="scarcityGrowthPro">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>
+      Only 126 combined Growth &amp; Pro spots available
+    </div>
+
     <div class="ticket-note">
-      <b>This is a launch-day booking, not a subscription yet.</b> Your ticket reserves your business a spot at this tier. After payment you'll get an email with a redemption code — use it to log in and activate Maya once she launches. Pricing for the ongoing service will be announced closer to launch.
+      <b>Early access, not a subscription yet.</b> Payment reserves your business's spot at this tier. You'll receive a redemption code by email — use it to activate Maya on launch day. Ongoing pricing will be announced closer to launch.
     </div>
 
     <label for="aiName">Your name</label>
@@ -510,11 +533,71 @@ setInterval(updateCountdown, 1000);
 
 // ===== Ticket tier selection =====
 let selectedTicketTier = 'starter';
+let soldOutTiers = {};
 function selectTicketTier(tier, el) {
+  if (soldOutTiers[tier]) return;
   selectedTicketTier = tier;
   document.querySelectorAll('.ticket-plan').forEach(p => p.classList.remove('selected'));
   el.classList.add('selected');
 }
+
+// ===== Live spot counts =====
+// Starter has its own 21-spot cap. Growth and Pro share one 126-spot pool.
+// Real counts come from /api/ai-ticket-availability, backed by a Supabase
+// table of confirmed AI-ticket sales (see /supabase/ai_ticket_sales.sql
+// and /api/ai-ticket-availability.js). If the endpoint isn't deployed yet,
+// the static copy already in the page (21 / 126) stays as-is.
+async function loadTicketAvailability() {
+  try {
+    const res = await fetch('/api/ai-ticket-availability');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data || !data.ok) return;
+
+    const starterEl = document.getElementById('scarcityStarter');
+    const growthProEl = document.getElementById('scarcityGrowthPro');
+    const starterRemaining = Math.max(0, data.starterRemaining);
+    const growthProRemaining = Math.max(0, data.growthProRemaining);
+
+    starterEl.lastChild.textContent = starterRemaining > 0
+      ? ` Only ${starterRemaining} Starter spot${starterRemaining === 1 ? '' : 's'} available`
+      : ' Starter is sold out';
+    growthProEl.lastChild.textContent = growthProRemaining > 0
+      ? ` Only ${growthProRemaining} combined Growth & Pro spot${growthProRemaining === 1 ? '' : 's'} available`
+      : ' Growth & Pro are sold out';
+
+    markSoldOut('starter', starterRemaining <= 0);
+    markSoldOut('growth', growthProRemaining <= 0);
+    markSoldOut('pro', growthProRemaining <= 0);
+  } catch (e) {
+    // Endpoint not reachable — keep the static counts already in the page.
+  }
+}
+
+function markSoldOut(tier, isSoldOut) {
+  soldOutTiers[tier] = isSoldOut;
+  const el = document.querySelector('.ticket-plan[data-tier="' + tier + '"]');
+  if (!el) return;
+  el.classList.toggle('sold-out', isSoldOut);
+  let tag = el.querySelector('.ticket-plan-soldout-tag');
+  if (isSoldOut) {
+    if (!tag) {
+      tag = document.createElement('span');
+      tag.className = 'ticket-plan-soldout-tag';
+      tag.textContent = 'Sold out';
+      el.appendChild(tag);
+    }
+    if (selectedTicketTier === tier) {
+      el.classList.remove('selected');
+      const fallback = document.querySelector('.ticket-plan:not(.sold-out)');
+      if (fallback) selectTicketTier(fallback.dataset.tier, fallback);
+    }
+  } else if (tag) {
+    tag.remove();
+  }
+}
+
+loadTicketAvailability();
 
 // ===== Maya launch-ticket booking =====
 // Hits the SAME netcash-notify.js / ozow-initiate.js endpoints already
@@ -538,6 +621,13 @@ async function runAIPayment(gateway) {
 
   const name  = document.getElementById('aiName').value.trim();
   const email = document.getElementById('aiEmail').value.trim();
+
+  if (soldOutTiers[selectedTicketTier]) {
+    resultEl.textContent = 'That tier just sold out — please pick another one above.';
+    resultEl.className = 'fail';
+    resultEl.style.display = 'block';
+    return;
+  }
 
   if (!name || !email) {
     resultEl.textContent = 'Please add your name and email so we can send your booking confirmation and redemption code.';
