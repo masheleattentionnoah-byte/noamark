@@ -97,6 +97,49 @@ async function sendViaExistingEmailApi(to, subject, message) {
   }
 }
 
+// ---------------------------------------------------------------------
+// ADDED: records one row in ai_ticket_sales per confirmed ticket, which
+// is what powers the real "X spots left" counter on
+// noamark-ai-agent.html (see /api/ai-ticket-availability.js). Uses the
+// SAME Supabase env vars already set for the listing-boost path below
+// (SUPABASE_URL / SUPABASE_SERVICE_KEY) — no new env vars needed.
+// gateway_reference has a unique index (see the SQL migration), so if
+// Ozow ever retries the same notification, this just no-ops instead of
+// double-counting the sale.
+// ---------------------------------------------------------------------
+async function recordTicketSale({ tier, gateway, name, email, gatewayReference }) {
+  const supaUrl = process.env.SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+  if (!supaUrl || !serviceKey) {
+    console.error('[ai-ticket] SUPABASE_URL / SUPABASE_SERVICE_KEY not set — sale not recorded for the spot counter.', { tier, gateway, gatewayReference });
+    return;
+  }
+  try {
+    const r = await fetch(`${supaUrl}/rest/v1/ai_ticket_sales`, {
+      method: 'POST',
+      headers: {
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=ignore-duplicates',
+      },
+      body: JSON.stringify({
+        tier,
+        gateway,
+        name: name || null,
+        email,
+        gateway_reference: gatewayReference || null,
+        status: 'confirmed',
+      }),
+    });
+    if (!r.ok) {
+      console.error('[ai-ticket] Failed to record sale for spot counter.', { tier, gateway, status: r.status });
+    }
+  } catch (e) {
+    console.error('[ai-ticket] recordTicketSale threw an error.', e);
+  }
+}
+
 async function handleTicketNotify(body) {
   const planKey = body.Optional1;
   const email = body.Optional2;
@@ -119,6 +162,15 @@ async function handleTicketNotify(body) {
     console.warn('[ozow-notify][ai-ticket] Amount mismatch — refusing to issue a code.', { planKey, amountPaid, expectedAmount });
     return;
   }
+
+  // ADDED: this is the real sale record the spot counter reads.
+  await recordTicketSale({
+    tier,
+    gateway: 'ozow',
+    name,
+    email,
+    gatewayReference: body.TransactionId || body.TransactionReference || null,
+  });
 
   const code = generateTicketCode();
   const greeting = name ? `Hi ${name},` : 'Hi,';
