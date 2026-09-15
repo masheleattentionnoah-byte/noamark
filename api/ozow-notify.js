@@ -50,8 +50,93 @@
 // every real Ozow payment was invisible to the Revenue dashboard even
 // though the boost itself activated correctly. Netcash's notify handler
 // (api/netcash-notify.js) already does this; this brings Ozow to parity.
+//
+// ── ADDED: Maya AI-agent launch tickets ──
+// This same file now ALSO receives Ozow's settlement call for Maya
+// launch-ticket sales from noamark-ai-agent.html (via ozow-initiate.js,
+// which sets NotifyUrl to this same file) — same private key, no new
+// file. A ticket's planKey starts with 'ai-'; Optional2/3 then carry
+// email/name instead of a listingId, and this never touches `listings`.
+// Since there's no new Supabase table for tickets, the redemption code
+// is emailed to the buyer AND to ADMIN_EMAIL via the existing
+// /api/send-email endpoint — that admin copy is the durable record.
 
 import crypto from 'crypto';
+
+const PLAN_PRICES = {
+  'ai-starter': 49.99,
+  'ai-growth': 219.99,
+  'ai-pro': 299.99,
+};
+const ADMIN_EMAIL = 'supportnoamark@gmail.com';
+const MAYA_LAUNCH_DATE_LABEL = '27 March 2027';
+
+function generateTicketCode() {
+  // MAYA-XXXX-XXXX, uppercase, no 0/O/1/I/L so it can't be mistyped.
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const seg = () => {
+    const bytes = crypto.randomBytes(4);
+    let out = '';
+    for (let i = 0; i < 4; i++) out += alphabet[bytes[i] % alphabet.length];
+    return out;
+  };
+  return `MAYA-${seg()}-${seg()}`;
+}
+
+async function sendViaExistingEmailApi(to, subject, message) {
+  try {
+    const r = await fetch('https://noamark.com/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, subject, message }),
+    });
+    return await r.json().catch(() => ({}));
+  } catch (e) {
+    console.error('[ozow-notify][ai-ticket] send-email call failed:', e);
+    return { ok: false, reason: e.message };
+  }
+}
+
+async function handleTicketNotify(body) {
+  const planKey = body.Optional1;
+  const email = body.Optional2;
+  const name = body.Optional3;
+  const status = body.Status;
+  const amountPaid = parseFloat(body.Amount || '0');
+  const tier = planKey.slice(3); // strip 'ai-'
+  const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
+
+  if (!email) {
+    console.warn('[ozow-notify][ai-ticket] verified but missing email in Optional2', body);
+    return;
+  }
+  if (status !== 'Complete') {
+    console.log(`[ozow-notify][ai-ticket] ${status} for ${planKey} — not issuing a code.`);
+    return;
+  }
+  const expectedAmount = PLAN_PRICES[planKey];
+  if (Math.abs(amountPaid - expectedAmount) >= 0.01) {
+    console.warn('[ozow-notify][ai-ticket] Amount mismatch — refusing to issue a code.', { planKey, amountPaid, expectedAmount });
+    return;
+  }
+
+  const code = generateTicketCode();
+  const greeting = name ? `Hi ${name},` : 'Hi,';
+
+  await sendViaExistingEmailApi(
+    email,
+    `Your Maya launch ticket is confirmed — ${tierLabel}`,
+    `${greeting}\n\nYour ${tierLabel} launch ticket for Maya, NoaMark's AI business agent, is confirmed.\n\nYour redemption code:\n${code}\n\nMaya launches on ${MAYA_LAUNCH_DATE_LABEL}. On that day, go to noamark.com, log in, and enter this code to activate Maya at your ${tierLabel} tier — no extra payment needed at that point.\n\nKeep this email — you'll need the code to activate.\n\n— NoaMark`
+  );
+
+  await sendViaExistingEmailApi(
+    ADMIN_EMAIL,
+    `[Maya ticket] ${tierLabel} — ${email}`,
+    `New Maya launch ticket sold via Ozow.\n\nTier: ${tierLabel}\nEmail: ${email}\nName: ${name || '(not given)'}\nAmount paid: R${amountPaid.toFixed(2)}\nTransaction: ${body.TransactionId || body.TransactionReference || '(none)'}\nRedemption code: ${code}\n\nKeep this email — it's the record used to grant access at launch.`
+  );
+
+  console.log(`[ozow-notify][ai-ticket] Ticket ${code} issued to ${email} (${tier}) — transaction ${body.TransactionId}`);
+}
 
 function verifyHash(body, privateKey) {
   const raw = [
@@ -97,11 +182,24 @@ export default async function handler(req, res) {
   }
 
   const planKey    = body.Optional1;
+
+  if (!planKey) {
+    console.warn('Ozow notify: verified but missing planKey in Optional1', body);
+    return res.status(200).send('OK');
+  }
+
+  // ── Maya launch ticket — completely separate path, never touches
+  // `listings` ──
+  if (planKey.startsWith('ai-')) {
+    await handleTicketNotify(body);
+    return res.status(200).send('OK');
+  }
+
   const listingId  = body.Optional2;
   const status     = body.Status; // 'Complete' | 'Cancelled' | 'Error' | 'Pending'
 
-  if (!planKey || !listingId) {
-    console.warn('Ozow notify: verified but missing plan/listing in Optional1/2', body);
+  if (!listingId) {
+    console.warn('Ozow notify: verified but missing listingId in Optional2', body);
     return res.status(200).send('OK');
   }
 
