@@ -10306,9 +10306,10 @@ async function nmDeleteOwnAccount(pwId, errId, sucId, btnId, token) {
 
 // ════════════════════════════════════════════════════════════
 // ⑨  PAYMENT GATEWAY — Ozow integration
-//    The private key never touches the browser: /api/ozow-initiate.js
-//    builds and signs the request server-side, this just submits the
-//    hidden form it returns straight to Ozow's hosted payment page.
+//    The private key never touches the browser: /api/ozow-notify.js
+//    (?action=init) builds and signs the request server-side, this
+//    just submits the hidden form it returns straight to Ozow's
+//    hosted payment page.
 // ════════════════════════════════════════════════════════════
 async function nmProcessOzowBoost(planKey, planName, listingId) {
   if (!currentUser || currentUser.type !== 'business') {
@@ -10324,7 +10325,7 @@ async function nmProcessOzowBoost(planKey, planName, listingId) {
 
   let res, data;
   try {
-    res = await fetch('/api/ozow-initiate', {
+    res = await fetch('/api/ozow-notify?action=init', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -10336,7 +10337,7 @@ async function nmProcessOzowBoost(planKey, planName, listingId) {
     });
     data = await res.json();
   } catch (e) {
-    console.error('ozow-initiate request failed:', e);
+    console.error('ozow-notify?action=init request failed:', e);
     bpToast('Could not start payment. Please try again.');
     return;
   }
@@ -15770,7 +15771,7 @@ async function admLoadRevenue() {
     const starter = boosted.filter(l => l.boost_tier === 'starter');
 
     // Monthly prices — must match PLAN_PRICES in api/netcash-notify.js
-    // and PLAN_PRICES in api/ozow-initiate.js.
+    // and PLAN_PRICES in api/ozow-notify.js.
     const monthlyPrice = {pro:299.99, growth:219.99, starter:49.99, dominance:199.99};
 
     // Only count as CONFIRMED revenue if boost_paid_at is set — that
