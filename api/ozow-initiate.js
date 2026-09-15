@@ -26,20 +26,33 @@
 //
 // Until OZOW_SITE_CODE / OZOW_PRIVATE_KEY are set, this returns
 // ok:false with a clear reason instead of crashing.
+//
+// ── ADDED: Maya AI-agent launch tickets ──
+// This same file now ALSO starts Ozow payments for Maya launch tickets
+// from noamark-ai-agent.html — same site code, same private key, no new
+// Ozow site needed. A ticket's planKey starts with 'ai-'; that's the
+// only thing that changes below (a listingId isn't required and Optional2/3
+// carry email/name instead of a listingId).
 
 import crypto from 'crypto';
 
-// Canonical prices — must match the boost tiers in index.html.
-// Server-side so a tampered client request can never buy a plan cheap.
+// Canonical prices — must match the boost tiers in index.html, plus the
+// 'ai-' launch-ticket tiers used by noamark-ai-agent.html (same prices).
 const PLAN_PRICES = {
   starter: 49.99,
   growth: 219.99,
   pro: 299.99,
+  'ai-starter': 49.99,
+  'ai-growth': 219.99,
+  'ai-pro': 299.99,
 };
 const PLAN_NAMES = {
   starter: 'Starter Plan',
   growth: 'Growth Plan',
   pro: 'Pro Plan',
+  'ai-starter': 'Starter Launch Ticket',
+  'ai-growth': 'Growth Launch Ticket',
+  'ai-pro': 'Pro Launch Ticket',
 };
 
 function buildHash(fieldsInOrder, privateKey) {
@@ -73,8 +86,16 @@ export default async function handler(req, res) {
   if (!planKey || !PLAN_PRICES[planKey]) {
     return res.status(400).json({ ok: false, reason: 'Unknown or missing planKey' });
   }
-  if (!listingId) {
+
+  const isTicket = planKey.startsWith('ai-');
+
+  // Listing boosts need a listingId; launch tickets need an email
+  // instead (there's no listing yet to attach a boost to).
+  if (!isTicket && !listingId) {
     return res.status(400).json({ ok: false, reason: 'Missing listingId' });
+  }
+  if (isTicket && !email) {
+    return res.status(400).json({ ok: false, reason: 'Missing email' });
   }
 
   const siteCode = process.env.OZOW_SITE_CODE;
@@ -99,21 +120,38 @@ export default async function handler(req, res) {
   // 12-character slice of the UUID (still effectively unique when
   // combined with a millisecond timestamp) keeps the total safely under
   // 50 characters for every plan name.
-  const shortListingId = String(listingId).replace(/-/g, '').slice(0, 12);
   // "OZ-" prefix (not "NM-") — Netcash's own reference generation also
   // starts with "NM-", and moderate.js relies on this exact prefix to
   // tell the two gateways apart (e.g. deciding whether a real Netcash
   // subscription needs cancelling). Sharing a prefix meant a payment's
   // actual gateway couldn't be reliably identified anywhere downstream.
-  const transactionReference = 'OZ-' + planKey.toUpperCase() + '-' + shortListingId + '-' + Date.now();
+  let transactionReference;
+  if (isTicket) {
+    // No listing UUID involved for a ticket — well under the 50-char cap.
+    transactionReference = 'OZ-' + planKey.toUpperCase() + '-' + Date.now();
+  } else {
+    // BUG THIS FIXES: TransactionReference is documented by Ozow as
+    // String(50) — max 50 characters. The previous version used the FULL
+    // listing UUID (36 characters), which pushed the total reference to 61
+    // characters for a real attempt (confirmed via browser Network tab:
+    // "NM-STARTER-7c63bc12-f8a6-4bd3-b962-ca8525db2de9-1787350352209").
+    // Ozow silently rejects an oversized field — no record is even created
+    // on their side, which is exactly why their support team couldn't find
+    // the transaction when we gave them this exact reference. Using a
+    // 12-character slice of the UUID (still effectively unique when
+    // combined with a millisecond timestamp) keeps the total safely under
+    // 50 characters for every plan name.
+    const shortListingId = String(listingId).replace(/-/g, '').slice(0, 12);
+    transactionReference = 'OZ-' + planKey.toUpperCase() + '-' + shortListingId + '-' + Date.now();
+  }
   const bankReference = 'NoaMark'; // appears on the customer's bank statement
 
-  // Custom pass-through data — Ozow echoes these back on return/notify so
-  // we know which plan and listing this payment was for, same role as
-  // PayFast's custom_str1/2/3.
+  // Custom pass-through data — Ozow echoes these back on return/notify.
+  // For a listing boost: plan + listingId + email, same as always.
+  // For a launch ticket: plan + email + name instead (no listingId).
   const optional1 = planKey;
-  const optional2 = String(listingId);
-  const optional3 = email || '';
+  const optional2 = isTicket ? email : String(listingId);
+  const optional3 = isTicket ? (name || '') : (email || '');
 
   // These must match EXACTLY what's whitelisted on Ozow's side for this
   // site (confirmed via their support email: https://noamark.com/, no
