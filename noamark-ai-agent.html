@@ -543,13 +543,13 @@ function selectTicketTier(tier, el) {
 
 // ===== Live spot counts =====
 // Starter has its own 21-spot cap. Growth and Pro share one 126-spot pool.
-// Real counts come from /api/ai-ticket-availability, backed by a Supabase
-// table of confirmed AI-ticket sales (see /supabase/ai_ticket_sales.sql
-// and /api/ai-ticket-availability.js). If the endpoint isn't deployed yet,
+// Real counts come from /api/netcash-notify?action=availability, backed
+// by a Supabase table of confirmed AI-ticket sales (see
+// /supabase/ai_ticket_sales.sql). If the endpoint isn't deployed yet,
 // the static copy already in the page (21 / 126) stays as-is.
 async function loadTicketAvailability() {
   try {
-    const res = await fetch('/api/ai-ticket-availability');
+    const res = await fetch('/api/netcash-notify?action=availability');
     if (!res.ok) return;
     const data = await res.json();
     if (!data || !data.ok) return;
@@ -600,15 +600,16 @@ function markSoldOut(tier, isSoldOut) {
 loadTicketAvailability();
 
 // ===== Maya launch-ticket booking =====
-// Hits the SAME netcash-notify.js / ozow-initiate.js endpoints already
-// deployed for listing boosts — no new API files, no new payment keys.
+// Hits the SAME netcash-notify.js / ozow-notify.js (?action=init)
+// endpoints already deployed for listing boosts — no new API files, no
+// new payment keys.
 // planKey is sent with an 'ai-' prefix (ai-starter/ai-growth/ai-pro),
 // which is how those files tell a ticket sale apart from a listing
 // boost: no listingId is sent or required, and on confirmed payment the
 // server emails a redemption code instead of touching a listing.
 const AI_GATEWAYS = {
   netcash: { url: '/api/netcash-notify?action=init', btnId: 'netcashAIBtn', label: 'Netcash' },
-  ozow:    { url: '/api/ozow-initiate',              btnId: 'ozowAIBtn',    label: 'Ozow' },
+  ozow:    { url: '/api/ozow-notify?action=init',      btnId: 'ozowAIBtn',    label: 'Ozow' },
 };
 
 async function runAIPayment(gateway) {
