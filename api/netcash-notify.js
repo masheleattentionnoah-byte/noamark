@@ -24,7 +24,7 @@
 //                           key, bypasses RLS — server only, never sent
 //                           to the browser)
 //
-// ✅ SECURITY — CLOSED (confirmed via docs, Aug 2026):
+//  SECURITY — CLOSED (confirmed via docs, Aug 2026):
 // Netcash's Pay Now Notify callback has NO hash/signature field (unlike
 // Ozow). Instead of trusting the incoming POST body, this file calls
 // Netcash's own "Transaction trace" endpoint
@@ -149,6 +149,15 @@ async function recordTicketSale({ tier, gateway, name, email, gatewayReference }
 export default async function handler(req, res) {
   const action = req.query && req.query.action;
 
+  // ADDED: folded in from what used to be a separate /api/ai-ticket-
+  // availability.js file — merged here to stay under Vercel's 12
+  // serverless-function limit on the Hobby plan. Must be checked BEFORE
+  // the blanket "any GET bounces home" rule below, since this one IS a
+  // legitimate GET (called by noamark-ai-agent.html on page load).
+  if (req.method === 'GET' && action === 'availability') {
+    return handleAvailability(req, res);
+  }
+
   // ANY GET request here is the customer's browser — Netcash's real
   // server-to-server Notify call is always POST per the docs, so a GET
   // can only be a browser (or Netcash's results page following up with
@@ -185,6 +194,58 @@ export default async function handler(req, res) {
   // gets the plain "OK" text it expects.
   const looksLikeBrowser = (req.headers['accept'] || '').includes('text/html');
   await handleNotify(req, res, { respondAsBrowser: looksLikeBrowser });
+}
+
+// ---------------------------------------------------------------------
+// ADDED: JOB 3 — real spot counts for the scarcity note on
+// noamark-ai-agent.html. Folded in here (instead of its own
+// /api/ai-ticket-availability.js file) to stay under Vercel's 12-
+// function limit. Reads the SAME ai_ticket_sales table that
+// recordTicketSale() above writes to.
+// ---------------------------------------------------------------------
+const STARTER_CAP = 21;
+const GROWTH_PRO_CAP = 126; // shared pool between Growth and Pro
+
+async function handleAvailability(req, res) {
+  const supaUrl = process.env.SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+
+  if (!supaUrl || !serviceKey) {
+    return res.status(500).json({ ok: false, reason: 'Supabase env vars not configured' });
+  }
+
+  try {
+    const countConfirmed = async (tier) => {
+      const url = `${supaUrl}/rest/v1/ai_ticket_sales?tier=eq.${tier}&status=eq.confirmed&select=id`;
+      const r = await fetch(url, {
+        headers: {
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+          Prefer: 'count=exact',
+        },
+      });
+      if (!r.ok) throw new Error(`Supabase count failed for ${tier}`);
+      const contentRange = r.headers.get('content-range'); // "0-9/23"
+      if (contentRange && contentRange.includes('/')) {
+        return parseInt(contentRange.split('/')[1], 10) || 0;
+      }
+      const rows = await r.json();
+      return Array.isArray(rows) ? rows.length : 0;
+    };
+
+    const [starterCount, growthCount, proCount] = await Promise.all([
+      countConfirmed('starter'),
+      countConfirmed('growth'),
+      countConfirmed('pro'),
+    ]);
+
+    const starterRemaining = Math.max(0, STARTER_CAP - starterCount);
+    const growthProRemaining = Math.max(0, GROWTH_PRO_CAP - (growthCount + proCount));
+
+    return res.status(200).json({ ok: true, starterRemaining, growthProRemaining });
+  } catch (e) {
+    return res.status(500).json({ ok: false, reason: e.message || 'Lookup failed' });
+  }
 }
 
 // ---------------------------------------------------------------------
