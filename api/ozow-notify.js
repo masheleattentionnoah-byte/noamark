@@ -1,5 +1,19 @@
 // /api/ozow-notify.js
 //
+// MERGED (Sep 2026): this file now does BOTH of Ozow's two jobs —
+// starting a payment (?action=init, called by the browser) AND
+// receiving Ozow's server-to-server settlement callback (no action,
+// called by Ozow itself) — the same one-file-two-jobs pattern already
+// used in /api/netcash-notify.js. This replaces the separate
+// /api/ozow-initiate.js file, which no longer exists, to stay under
+// Vercel's 12-serverless-function limit on the Hobby plan.
+//
+// IMPORTANT: Ozow's own dashboard has this exact URL saved as the
+// NotifyUrl for your site, so this file's PATH can never change —
+// only its content. The frontend call that used to hit
+// /api/ozow-initiate now hits /api/ozow-notify?action=init instead
+// (already updated in index.html and noamark-ai-agent.html).
+//
 // Ozow calls this directly, server-to-server, once a payment finishes —
 // this is NOT triggered by the customer's browser, which is exactly why
 // it's the only place that should be trusted to actually unlock a boost.
@@ -10,7 +24,13 @@
 // source of truth.
 //
 // SETUP NEEDED IN VERCEL (Project Settings → Environment Variables):
-//   OZOW_PRIVATE_KEY       — same one used in /api/ozow-initiate.js
+//   OZOW_SITE_CODE         — from Ozow merchant admin → Sites (used by
+//                            the ?action=init side)
+//   OZOW_PRIVATE_KEY       — from Ozow merchant admin → Sites (keep
+//                            secret; used by BOTH sides — signing on
+//                            init, verifying on notify)
+//   OZOW_TEST_MODE         — "true" while testing, "false" to actually
+//                            charge real money (used by ?action=init)
 //   SUPABASE_URL           — already set in this project (reused as-is)
 //   SUPABASE_SERVICE_KEY   — already set in this project. This is
 //                            Supabase's "Secret key" (what used to be
@@ -20,53 +40,45 @@
 //                            exactly why it must only ever live here on
 //                            the server, never in the browser.
 //
-// UPDATED (Aug 2026): verifyHash now covers the FULL 13-field notification
-// hash, confirmed directly against Ozow's own published docs
-// (ozow.com/integrations, Step 2 "Notification Response Post variables"):
-// SiteCode, TransactionId, TransactionReference, Amount, Status, Optional1,
+// verifyHash covers the FULL 13-field notification hash, confirmed
+// directly against Ozow's own published docs (ozow.com/integrations,
+// Step 2 "Notification Response Post variables"): SiteCode,
+// TransactionId, TransactionReference, Amount, Status, Optional1,
 // Optional2, Optional3, Optional4, Optional5, CurrencyCode, IsTest,
-// StatusMessage + private key, lowercased, SHA512.
+// StatusMessage + private key, lowercased, SHA512. Still written to
+// FAIL CLOSED on a bad hash — reject/ignore rather than trust anything
+// that doesn't verify — so a stale field order blocks legitimate
+// payments from activating rather than letting fake ones through.
 //
-// Previously this only hashed the first 5 fields (SiteCode through
-// Status). That was a guess made before Ozow's field order was confirmed,
-// and it meant the hash could basically never match a real Ozow
-// notification — so every genuine payment confirmation would have been
-// silently ignored by the fail-closed check below (logged as a mismatch,
-// acked with 200, boost never activated). This is very likely the actual
-// reason nothing has activated end-to-end yet — fixing this matters at
-// least as much as anything on the initiate side.
-//
-// Still written to FAIL CLOSED on a bad hash — reject/ignore rather than
-// trust anything that doesn't verify — so a stale field order blocks
-// legitimate payments from activating rather than letting fake ones
-// through. If this ever needs re-checking, compare again against
-// ozow.com/integrations Step 2.
-//
-// UPDATED (Aug 2026): now also sets boost_paid_at and boost_payment_ref
-// on activation. These two columns are what the admin Revenue dashboard
-// (index.html, admLoadRevenue) actually checks to count a boost as
-// CONFIRMED revenue vs. one an admin set manually via admSetBoost — this
-// file previously only set boost_tier/boost_started_at, which meant
-// every real Ozow payment was invisible to the Revenue dashboard even
-// though the boost itself activated correctly. Netcash's notify handler
-// (api/netcash-notify.js) already does this; this brings Ozow to parity.
-//
-// ── ADDED: Maya AI-agent launch tickets ──
-// This same file now ALSO receives Ozow's settlement call for Maya
-// launch-ticket sales from noamark-ai-agent.html (via ozow-initiate.js,
-// which sets NotifyUrl to this same file) — same private key, no new
-// file. A ticket's planKey starts with 'ai-'; Optional2/3 then carry
-// email/name instead of a listingId, and this never touches `listings`.
-// Since there's no new Supabase table for tickets, the redemption code
-// is emailed to the buyer AND to ADMIN_EMAIL via the existing
-// /api/send-email endpoint — that admin copy is the durable record.
+// ── Maya AI-agent launch tickets ──
+// This file ALSO receives Ozow's settlement call for Maya launch-ticket
+// sales from noamark-ai-agent.html, and ALSO starts those same ticket
+// payments via ?action=init — same site code, same private key. A
+// ticket's planKey starts with 'ai-'; Optional2/3 then carry email/name
+// instead of a listingId, and none of this ever touches `listings`.
+// On confirmed payment, a redemption code is emailed to the buyer AND
+// to ADMIN_EMAIL, AND a row is recorded in ai_ticket_sales (used by the
+// real spot counter — see handleAvailability in /api/netcash-notify.js).
 
 import crypto from 'crypto';
 
+// Canonical prices — must match the boost tiers in index.html, plus the
+// 'ai-' launch-ticket tiers used by noamark-ai-agent.html (same prices).
 const PLAN_PRICES = {
+  starter: 49.99,
+  growth: 219.99,
+  pro: 299.99,
   'ai-starter': 49.99,
   'ai-growth': 219.99,
   'ai-pro': 299.99,
+};
+const PLAN_NAMES = {
+  starter: 'Starter Plan',
+  growth: 'Growth Plan',
+  pro: 'Pro Plan',
+  'ai-starter': 'Starter Launch Ticket',
+  'ai-growth': 'Growth Launch Ticket',
+  'ai-pro': 'Pro Launch Ticket',
 };
 const ADMIN_EMAIL = 'supportnoamark@gmail.com';
 const MAYA_LAUNCH_DATE_LABEL = '27 March 2027';
@@ -97,16 +109,11 @@ async function sendViaExistingEmailApi(to, subject, message) {
   }
 }
 
-// ---------------------------------------------------------------------
-// ADDED: records one row in ai_ticket_sales per confirmed ticket, which
-// is what powers the real "X spots left" counter on
-// noamark-ai-agent.html (see /api/ai-ticket-availability.js). Uses the
-// SAME Supabase env vars already set for the listing-boost path below
-// (SUPABASE_URL / SUPABASE_SERVICE_KEY) — no new env vars needed.
-// gateway_reference has a unique index (see the SQL migration), so if
-// Ozow ever retries the same notification, this just no-ops instead of
-// double-counting the sale.
-// ---------------------------------------------------------------------
+// Records one row in ai_ticket_sales per confirmed ticket — powers the
+// real "X spots left" counter (read by handleAvailability in
+// /api/netcash-notify.js). gateway_reference has a unique index (see
+// the SQL migration), so a retried Ozow notification just no-ops
+// instead of double-counting the sale.
 async function recordTicketSale({ tier, gateway, name, email, gatewayReference }) {
   const supaUrl = process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_KEY;
@@ -163,7 +170,7 @@ async function handleTicketNotify(body) {
     return;
   }
 
-  // ADDED: this is the real sale record the spot counter reads.
+  // This is the real sale record the spot counter reads.
   await recordTicketSale({
     tier,
     gateway: 'ozow',
@@ -210,12 +217,130 @@ function verifyHash(body, privateKey) {
   return expected.toLowerCase() === String(body.Hash || '').toLowerCase();
 }
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).send('Method not allowed');
+function buildHash(fieldsInOrder, privateKey) {
+  const raw = fieldsInOrder.join('') + privateKey;
+  return crypto.createHash('sha512').update(raw.toLowerCase()).digest('hex');
+}
+
+// ---------------------------------------------------------------------
+// JOB 1 (was /api/ozow-initiate.js): build the signed Pay Now request
+// and hand the fields back to the browser to submit to Ozow.
+// ---------------------------------------------------------------------
+async function handleInit(req, res) {
+  const { planKey, listingId, email, name } = req.body || {};
+
+  if (!planKey || !PLAN_PRICES[planKey]) {
+    return res.status(400).json({ ok: false, reason: 'Unknown or missing planKey' });
   }
 
+  const isTicket = planKey.startsWith('ai-');
+
+  // Listing boosts need a listingId; launch tickets need an email
+  // instead (there's no listing yet to attach a boost to).
+  if (!isTicket && !listingId) {
+    return res.status(400).json({ ok: false, reason: 'Missing listingId' });
+  }
+  if (isTicket && !email) {
+    return res.status(400).json({ ok: false, reason: 'Missing email' });
+  }
+
+  const siteCode = process.env.OZOW_SITE_CODE;
+  const privateKey = process.env.OZOW_PRIVATE_KEY;
+  const isTest = (process.env.OZOW_TEST_MODE || 'true').toLowerCase() === 'true';
+
+  if (!siteCode || !privateKey) {
+    console.warn('OZOW_SITE_CODE / OZOW_PRIVATE_KEY not set — boost payment not started.');
+    return res.status(200).json({ ok: false, reason: 'Payments not configured yet' });
+  }
+
+  const origin = req.headers.origin || '';
+  const amount = PLAN_PRICES[planKey].toFixed(2);
+  const siteOrigin = origin || 'https://noamark.com';
+
+  // TransactionReference is documented by Ozow as String(50) — max 50
+  // characters — so listing boosts use a 12-char slice of the listing
+  // UUID (plus a millisecond timestamp) rather than the full 36-char
+  // UUID, to stay safely under that cap. "OZ-" prefix (not "NM-") is
+  // how moderate.js tells a payment's gateway apart downstream.
+  let transactionReference;
+  if (isTicket) {
+    transactionReference = 'OZ-' + planKey.toUpperCase() + '-' + Date.now();
+  } else {
+    const shortListingId = String(listingId).replace(/-/g, '').slice(0, 12);
+    transactionReference = 'OZ-' + planKey.toUpperCase() + '-' + shortListingId + '-' + Date.now();
+  }
+  const bankReference = 'NoaMark'; // appears on the customer's bank statement
+
+  // Custom pass-through data — Ozow echoes these back on return/notify.
+  // For a listing boost: plan + listingId + email, same as always.
+  // For a launch ticket: plan + email + name instead (no listingId).
+  const optional1 = planKey;
+  const optional2 = isTicket ? email : String(listingId);
+  const optional3 = isTicket ? (name || '') : (email || '');
+
+  // These must match EXACTLY what's whitelisted on Ozow's side for this
+  // site (https://noamark.com/, no query string) — Ozow silently
+  // rejects any request where these don't match character-for-character.
+  const cancelUrl  = siteOrigin + '/';
+  const errorUrl   = siteOrigin + '/';
+  const successUrl = siteOrigin + '/';
+  // Still points at THIS SAME FILE — now with no query string, which is
+  // how the routing below tells Ozow's own callback apart from a
+  // browser's ?action=init call.
+  const notifyUrl  = siteOrigin.replace(/\/$/, '') + '/api/ozow-notify';
+
+  // Field order below is confirmed directly against Ozow's own published
+  // "Post variables" table (ozow.com/integrations, Step 1): SiteCode,
+  // CountryCode, CurrencyCode, Amount, TransactionReference, BankReference,
+  // Optional1-5, Customer, CancelUrl, ErrorUrl, SuccessUrl, NotifyUrl,
+  // IsTest — 17 fixed fields in that exact order, always sent (blank or
+  // not) since Ozow's hash covers the full fixed structure.
+  const fields = {
+    SiteCode: siteCode,
+    CountryCode: 'ZA',
+    CurrencyCode: 'ZAR',
+    Amount: amount,
+    TransactionReference: transactionReference,
+    BankReference: bankReference,
+    Optional1: optional1,
+    Optional2: optional2,
+    Optional3: optional3,
+    Optional4: '',
+    Optional5: '',
+    Customer: name || '',
+    CancelUrl: cancelUrl,
+    ErrorUrl: errorUrl,
+    SuccessUrl: successUrl,
+    NotifyUrl: notifyUrl,
+    IsTest: isTest ? 'true' : 'false',
+  };
+
+  const hashCheck = buildHash(Object.values(fields), privateKey);
+
+  // DIAGNOSTIC LOGGING — logs everything actually sent EXCEPT the private
+  // key itself (never logged) — safe to paste into a support ticket.
+  console.log('[ozow-notify][action=init] Request built:', {
+    transactionReference,
+    transactionReferenceLength: transactionReference.length,
+    siteCode,
+    amount,
+    isTest,
+    cancelUrl, errorUrl, successUrl, notifyUrl,
+    fieldsSentInOrder: Object.keys(fields),
+  });
+
+  return res.status(200).json({
+    ok: true,
+    postUrl: 'https://pay.ozow.com',
+    fields: { ...fields, HashCheck: hashCheck },
+    planName: PLAN_NAMES[planKey],
+  });
+}
+
+// ---------------------------------------------------------------------
+// JOB 2: receive Ozow's server-to-server settlement notification
+// ---------------------------------------------------------------------
+async function handleNotify(req, res) {
   const body = req.body || {};
   const privateKey = process.env.OZOW_PRIVATE_KEY;
 
@@ -233,7 +358,7 @@ export default async function handler(req, res) {
     return res.status(200).send('OK');
   }
 
-  const planKey    = body.Optional1;
+  const planKey = body.Optional1;
 
   if (!planKey) {
     console.warn('Ozow notify: verified but missing planKey in Optional1', body);
@@ -247,8 +372,8 @@ export default async function handler(req, res) {
     return res.status(200).send('OK');
   }
 
-  const listingId  = body.Optional2;
-  const status     = body.Status; // 'Complete' | 'Cancelled' | 'Error' | 'Pending'
+  const listingId = body.Optional2;
+  const status    = body.Status; // 'Complete' | 'Cancelled' | 'Error' | 'Pending'
 
   if (!listingId) {
     console.warn('Ozow notify: verified but missing listingId in Optional2', body);
@@ -289,14 +414,8 @@ export default async function handler(req, res) {
         // (status='suspended') by check-trials.js after an unpaid grace
         // period. Harmless no-op for a listing that was already approved.
         status: 'approved',
-        // AUTO-VERIFY (Pro plan only): the pricing page lists "Verified
-        // badge" as a Pro-tier feature, so a confirmed Pro payment should
-        // grant it automatically instead of an admin having to click
-        // "Mark Verified" by hand every time. Deliberately only ever sets
-        // this to true here, never false — Starter/Growth payments just
-        // don't touch the verified column at all, so a listing verified
-        // for some other legitimate reason is never silently un-verified
-        // by this webhook.
+        // AUTO-VERIFY (Pro plan only) — same rule as netcash-notify.js.
+        // Deliberately only ever sets this to true here, never false.
         ...(planKey === 'pro' ? { verified: true } : {}),
       }),
     });
@@ -314,4 +433,38 @@ export default async function handler(req, res) {
 
   // Always 200 once we've verified the hash — Ozow just needs the ack.
   return res.status(200).send('OK');
+}
+
+// ---------------------------------------------------------------------
+// Router — one file, two jobs, split by ?action= (both are POST):
+//   POST /api/ozow-notify?action=init   → browser starting a payment
+//   POST /api/ozow-notify                → Ozow's real settlement call
+// ---------------------------------------------------------------------
+export default async function handler(req, res) {
+  const origin = req.headers.origin || '';
+  const allowedOrigins = [
+    'https://noamark.com',
+    'https://www.noamark.com',
+  ];
+  const isVercelPreview = /\.vercel\.app$/.test(origin.replace(/^https?:\/\//, ''));
+  if (allowedOrigins.includes(origin) || isVercelPreview) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).send('Method not allowed');
+  }
+
+  const action = req.query && req.query.action;
+  if (action === 'init') {
+    return handleInit(req, res);
+  }
+
+  return handleNotify(req, res);
 }
