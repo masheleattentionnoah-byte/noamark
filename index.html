@@ -15780,7 +15780,25 @@ async function admLoadRevenue() {
     // notify handler would need the same fields added to count here
     // too). A boost_tier set manually via admSetBoost below deliberately
     // does NOT set boost_paid_at, so it won't inflate this number.
-    const confirmedPaid = boosted.filter(l => l.boost_paid_at);
+    //
+    // PREVIOUSLY this only checked "has boost_paid_at ever been set",
+    // which meant a listing kept showing as paid/confirmed forever after
+    // a single real payment — including through later grace periods.
+    // admGrantGrace() backdates boost_started_at to open a fresh window
+    // but deliberately never touches boost_paid_at (a grace isn't a real
+    // payment), so boost_paid_at being older than the *current*
+    // boost_started_at is exactly the signal that this period's "paid"
+    // status is actually riding on a stale payment from a prior period,
+    // not a real renewal. Requiring boost_paid_at >= boost_started_at
+    // catches that. Rows with no boost_started_at predate that column —
+    // fall back to the old behavior for those rather than wrongly
+    // demoting them.
+    const isCurrentlyPaid = l => {
+      if (!l.boost_paid_at) return false;
+      if (!l.boost_started_at) return true;
+      return new Date(l.boost_paid_at).getTime() >= new Date(l.boost_started_at).getTime();
+    };
+    const confirmedPaid = boosted.filter(isCurrentlyPaid);
     const estRevenue = confirmedPaid.reduce((sum, l) => sum + (monthlyPrice[l.boost_tier] || 0), 0);
     const unconfirmedCount = boosted.length - confirmedPaid.length;
 
@@ -15808,10 +15826,15 @@ async function admLoadRevenue() {
 
     const tbody = document.getElementById('adm-revenue-tbody');
     if(tbody) {
-      const prices = {pro:'R299.99/30d',dominance:'R199.99/14d (legacy)',growth:'R219.99/14d',starter:'R49.99/3d'};
+      // PREVIOUSLY growth and starter showed stale "/14d" and "/3d" labels
+      // left over from an earlier pricing model — all three active tiers
+      // are monthly (see monthlyPrice above, which this must stay
+      // consistent with). Only the retired "dominance" tier keeps its own
+      // legacy label since it's no longer sold.
+      const prices = {pro:'R299.99/month',dominance:'R199.99/14d (legacy)',growth:'R219.99/month',starter:'R49.99/month'};
       tbody.innerHTML = boosted.length === 0
         ? '<tr><td colspan="5" class="adm-empty">No paid boosts yet.</td></tr>'
-        : boosted.map(l => `<tr><td style="font-weight:600;color:#fff;">${nmSafe(l.name||', ')}</td><td>${nmSafe(l.owner||', ')}</td><td>${nmSafe(l.area||', ')}</td><td>${nmSafe(l.boost_tier||', ')}${l.boost_paid_at ? ' <span style="color:#22C55E;font-size:10px;">✓ paid</span>' : ' <span style="color:rgba(255,255,255,.4);font-size:10px;">manual</span>'}</td><td style="color:#d4af37;font-weight:600;">${prices[l.boost_tier]||', '}</td></tr>`).join('');
+        : boosted.map(l => `<tr><td style="font-weight:600;color:#fff;">${nmSafe(l.name||', ')}</td><td>${nmSafe(l.owner||', ')}</td><td>${nmSafe(l.area||', ')}</td><td>${nmSafe(l.boost_tier||', ')}${isCurrentlyPaid(l) ? ' <span style="color:#22C55E;font-size:10px;">✓ paid</span>' : ' <span style="color:rgba(255,255,255,.4);font-size:10px;">manual</span>'}</td><td style="color:#d4af37;font-weight:600;">${prices[l.boost_tier]||', '}</td></tr>`).join('');
     }
   } catch(e) { console.warn('Revenue load failed', e); }
 }
