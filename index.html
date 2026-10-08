@@ -5241,6 +5241,13 @@ function showPage(id, cb){
 // ── BACK BUTTON HANDLER — handles every case professionally ──
 window.addEventListener('popstate', function(e) {
 
+  // Was the Home page already on screen before this Back press? Used below to
+  // detect a "Home -> Home" step, which changes nothing visible (see PRIORITY 5).
+  const _homeWasShown = (function(){
+    const h = document.getElementById('page-home');
+    return !!h && h.classList.contains('active') && getComputedStyle(h).display !== 'none';
+  })();
+
   // Any modal/overlay currently open must be closed by back button FIRST,
   // regardless of role. This must be checked before the business-owner
   // redirect below.
@@ -5317,6 +5324,16 @@ window.addEventListener('popstate', function(e) {
     const _stl = e.state;
     const _staleIds = ['booking-modal','chat-open','mobile-nav','activate','biz-gate','admin-review'];
     if (_stl && !_overlayOpen && (_staleIds.includes(_stl.nmPage) || _stl.nmView === 'lightbox')) {
+      history.back();
+      return;
+    }
+    // Leftover ADMIN-SESSION entries (the dashboard entry and the "floor" entry made
+    // when the dashboard opened). Once the admin has signed out they are meaningless
+    // to a visitor — landing on them changed nothing on screen, so after signing out
+    // Back had to be pressed several times before the site was finally left. Step
+    // past them in the same press. (While still signed in as admin, the admin
+    // branch further down keeps handling them as before.)
+    if (_stl && !_overlayOpen && _sessionRole !== 'admin' && (_stl.nmAdmFloor || _stl.nmPage === 'admin')) {
       history.back();
       return;
     }
@@ -5474,6 +5491,18 @@ window.addEventListener('popstate', function(e) {
   if(e.state && e.state.nmPage) {
     const id = e.state.nmPage;
     const view = e.state.nmView || 'main';
+
+    // DEAD "HOME -> HOME" STEP.
+    // Signing in from Home and signing out again leaves two Home entries in the
+    // list (the one from before signing in, and the one after signing out). Back
+    // from the second lands on the first: the screen is identical, so it looks
+    // like Back did nothing and has to be pressed again to actually leave. If Home
+    // is already showing and Back only leads to another Home, keep going.
+    if (id === 'home' && view === 'main' && _homeWasShown && !_overlayOpen &&
+        _sessionRole !== 'business' && _sessionRole !== 'admin') {
+      history.back();
+      return;
+    }
 
     // Skip 'auth' or 'gate' state — it was just a modal, now stale (the
     // overlay is already closed, but this history entry still remembers it
@@ -11892,7 +11921,11 @@ function handleLogout() {
   // Clear any admin/portal hash so a reload right after logout doesn't try
   // to restore a tab that no longer has a session behind it.
   if(/^#(admin|marketplace\/portal)/.test(window.location.hash || '')) {
-    history.replaceState(null, '', window.location.pathname + '#home');
+    // Turn the current (admin/portal) entry INTO the Home entry. showPage('home')
+    // below then sees "already on home" and replaces instead of pushing, so logging
+    // out no longer leaves a dead state-less entry plus a second Home on top of it
+    // (two extra Back presses that appeared to do nothing).
+    history.replaceState({ nmPage: 'home', nmView: 'main' }, '', window.location.pathname + '#home');
   }
   applyRoleHomePage(null);
   showPage('home');
