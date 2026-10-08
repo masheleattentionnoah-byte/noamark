@@ -158,6 +158,14 @@ export default async function handler(req, res) {
     return handleAvailability(req, res);
   }
 
+  // ADDED: Maya Fund — live totals of NoaMark's own account, read from
+  // Myfxbook. Merged here (not a new file) to stay under Vercel's
+  // 12-function limit. Also a legitimate GET, so it sits before the
+  // blanket "any GET bounces home" rule below.
+  if (req.method === 'GET' && action === 'fund') {
+    return handleFund(req, res);
+  }
+
   // ANY GET request here is the customer's browser — Netcash's real
   // server-to-server Notify call is always POST per the docs, so a GET
   // can only be a browser (or Netcash's results page following up with
@@ -549,4 +557,141 @@ async function handleTicketNotify({ finish, planKey, email, name, amountPaid, ac
 
   console.log(`[netcash-notify][ai-ticket] Ticket ${code} issued to ${email} (${tier}).`);
   return finish(200, 'OK');
+}
+
+// ---------------------------------------------------------------------
+// ADDED: JOB 4 — Maya Fund (GET /api/netcash-notify?action=fund)
+// Public totals of NoaMark's own MT5 account, read from Myfxbook (free
+// "Auto Update" plan). Totals only: no trades, no symbols. No database,
+// no cron. Env vars: MYFXBOOK_EMAIL, MYFXBOOK_PASSWORD
+//   optional: MYFXBOOK_ACCOUNT_NUMBER (MT5 login, only if tracking several)
+// Myfxbook sessions are bound to the IP that logged in, so we log in on
+// every refresh and log out again. get-history only returns the last 50
+// trades, so we use get-my-accounts + get-data-daily instead.
+// ---------------------------------------------------------------------
+const FUND_DAY = 86400000;
+const FUND_SAST = 2 * 3600000; // South Africa is UTC+2 all year (no DST)
+const FUND_BASE = 'https://www.myfxbook.com/api';
+const FUND_CACHE_MS = 15 * 60000;
+let fundCache = null; // { at, body }
+
+const fundRound = (n) => Math.round(n * 100) / 100;
+
+async function fundMfx(method, params) {
+  const qs = new URLSearchParams(params).toString();
+  const res = await fetch(`${FUND_BASE}/${method}.json?${qs}`, { headers: { Accept: 'application/json' } });
+  if (!res.ok) throw new Error(`Myfxbook ${method} HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.error) throw new Error(`Myfxbook ${method}: ${data.message || 'error'}`);
+  return data;
+}
+
+// "MM/DD/YYYY[ HH:mm]" -> "YYYY-MM-DD"
+const fundISODate = (s) => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(String(s || ''));
+  return m ? `${m[3]}-${m[1]}-${m[2]}` : null;
+};
+const fundAddDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * FUND_DAY).toISOString().slice(0, 10);
+
+function computeFundStats(account, rows, nowMs = Date.now()) {
+  const today = new Date(nowMs + FUND_SAST).toISOString().slice(0, 10);
+  const dow = new Date(today + 'T00:00:00Z').getUTCDay();
+  const week = fundAddDays(today, -((dow + 6) % 7)); // Monday
+  const month = today.slice(0, 8) + '01';
+
+  const days = rows
+    .map((r) => ({ d: fundISODate(r.date), balance: Number(r.balance), profit: Number(r.profit || 0) }))
+    .filter((r) => r.d)
+    .sort((a, b) => (a.d < b.d ? -1 : 1));
+
+  // closing balance on a date = last known balance on or before it (0 before the account existed)
+  const balanceAt = (iso) => {
+    let b = 0;
+    for (const r of days) { if (r.d <= iso) b = r.balance; else break; }
+    return b;
+  };
+
+  // money added/removed each day = balance change that profit does not explain
+  let prev = 0;
+  const flows = days.map((r) => {
+    const f = r.balance - prev - r.profit;
+    prev = r.balance;
+    return { d: r.d, flow: Math.abs(f) >= 0.5 ? f : 0 };
+  });
+
+  const period = (startIso) => {
+    const amount = days.filter((r) => r.d >= startIso).reduce((a, r) => a + r.profit, 0);
+    const startBal = balanceAt(fundAddDays(startIso, -1));
+    const deposits = flows.filter((f) => f.d >= startIso && f.flow > 0).reduce((a, f) => a + f.flow, 0);
+    const basis = startBal > 0 ? startBal : deposits;
+    return { amount: fundRound(amount), pct: basis > 0 ? fundRound((amount / basis) * 100) : null };
+  };
+
+  const profit = Number(account.profit || 0);
+  const deposited = Number(account.deposits || 0);
+  const first = days[0];
+  const firstFlow = first ? first.balance - first.profit : null;
+
+  const series = [];
+  for (let i = 89; i >= 0; i--) {
+    const d = fundAddDays(today, -i);
+    series.push({ d, balance: fundRound(balanceAt(d)) });
+  }
+
+  const balance = Number(account.balance);
+  const updated = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})/.exec(String(account.lastUpdateDate || ''));
+  // Myfxbook shows broker time; treat as UTC+2 (within an hour of JustMarkets' server time)
+  const updatedAt = updated
+    ? new Date(Date.UTC(+updated[3], +updated[1] - 1, +updated[2], +updated[4], +updated[5]) - FUND_SAST).toISOString()
+    : null;
+
+  return {
+    currency: account.currency || 'USD',
+    updatedAt,
+    startedWith: firstFlow != null && firstFlow > 0 ? fundRound(firstFlow) : null,
+    deposited: deposited > 0 ? fundRound(deposited) : null,
+    balance: fundRound(balance),
+    periods: {
+      today: period(today),
+      week: period(week),
+      month: period(month),
+      all: { amount: fundRound(profit), pct: deposited > 0 ? fundRound((profit / deposited) * 100) : null },
+    },
+    series,
+    // true when the daily history ends at the account's current balance
+    reconciled: days.length ? Math.abs(balanceAt(today) - balance) < 0.5 : null,
+  };
+}
+
+async function loadFundStats() {
+  const email = process.env.MYFXBOOK_EMAIL, password = process.env.MYFXBOOK_PASSWORD;
+  if (!email || !password) throw new Error('Myfxbook credentials missing');
+  const { session } = await fundMfx('login', { email, password });
+  try {
+    const { accounts } = await fundMfx('get-my-accounts', { session });
+    const want = process.env.MYFXBOOK_ACCOUNT_NUMBER;
+    const account = (want && accounts.find((a) => String(a.accountId) === String(want))) || accounts[0];
+    if (!account) throw new Error('No Myfxbook account found');
+    const start = fundISODate(account.creationDate) || '2020-01-01';
+    const end = fundAddDays(new Date(Date.now() + FUND_SAST).toISOString().slice(0, 10), 1);
+    const raw = await fundMfx('get-data-daily', { session, id: account.id, start: fundAddDays(start, -1), end });
+    const rows = (raw.dataDaily || []).flat(Infinity);
+    return computeFundStats(account, rows);
+  } finally {
+    fundMfx('logout', { session }).catch(() => {}); // free the session; never block the response
+  }
+}
+
+async function handleFund(req, res) {
+  try {
+    if (!fundCache || Date.now() - fundCache.at > FUND_CACHE_MS) {
+      try { fundCache = { at: Date.now(), body: await loadFundStats() }; }
+      catch (e) { console.error('[maya-fund] refresh failed:', e.message); if (!fundCache) throw e; } // serve last good data
+    }
+    res.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=3600');
+    return res.status(200).json(fundCache.body);
+  } catch (e) {
+    console.error('[maya-fund] failed:', e.message);
+    return res.status(500).json({ error: 'unavailable' });
+  }
 }
