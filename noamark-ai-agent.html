@@ -351,6 +351,28 @@
     .pay-heading { top: 28px; }
     .card { padding: 26px 20px 24px; margin-top: 70px; }
   }
+
+  /* ===== SECTION 1A — MAYA FUND (NoaMark's own account, live totals) ===== */
+  .fund-section { background: var(--bg-dark); padding: 64px 32px 56px; }
+  .fund-inner { max-width: 1000px; margin: 0 auto; }
+  .fund-kicker { color: var(--green-light); font-size: 12px; font-weight: 700; letter-spacing: 0.16em; margin: 0 0 10px; text-align: center; }
+  .fund-section h2 { font-size: 26px; color: var(--white); margin: 0 0 8px; text-align: center; }
+  .fund-section h2 .g { color: var(--green); }
+  .fund-sub { color: var(--muted); font-size: 14px; line-height: 1.6; text-align: center; max-width: 620px; margin: 0 auto 28px; }
+  .fund-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .fund-card { background: var(--panel-dark); border: 1px solid rgba(110,231,160,0.18); border-radius: 14px; padding: 18px; }
+  .fund-label { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+  .fund-amt { font-size: 22px; font-weight: 700; color: var(--green-bright); }
+  .fund-pct { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .fund-card.neg .fund-amt { color: #f5a3a3; }
+  .fund-bal { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin: 14px 0; background: var(--panel-dark); border: 1px solid rgba(110,231,160,0.18); border-radius: 14px; padding: 16px 18px; color: var(--muted); font-size: 14px; }
+  .fund-bal b { color: var(--white); font-size: 18px; }
+  .fund-chart { background: var(--panel-dark); border: 1px solid rgba(110,231,160,0.18); border-radius: 14px; padding: 14px 16px 8px; }
+  .fund-chart svg { width: 100%; height: 120px; display: block; }
+  .fund-note { color: var(--muted); font-size: 12px; line-height: 1.6; text-align: center; margin: 16px auto 0; max-width: 640px; opacity: 0.85; }
+  .fund-unavail { color: var(--muted); text-align: center; font-size: 14px; padding: 18px 0; }
+  @media (max-width: 720px) { .fund-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 480px) { .fund-section { padding: 48px 20px 44px; } }
 </style>
 </head>
 <body>
@@ -409,6 +431,17 @@
         <p>Handle repetitive work so you can focus on what matters most.</p>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ===== SECTION 1A — MAYA FUND (NoaMark's own account) ===== -->
+<div class="fund-section" id="maya-fund">
+  <div class="fund-inner">
+    <p class="fund-kicker">MAYA &bull; RESULTS</p>
+    <h2>NoaMark's own account. <span class="g">Live numbers.</span></h2>
+    <p class="fund-sub">Totals only, straight from our broker account and updated automatically. No individual trades are shown.</p>
+    <div id="fundBody"><div class="fund-unavail">Loading latest numbers&hellip;</div></div>
+    <p class="fund-note">This is NoaMark's own account. It is not an offer, investment advice or a promise of returns. Results can be negative, and past results do not predict future results.</p>
   </div>
 </div>
 
@@ -688,6 +721,73 @@ async function runAIPayment(gateway) {
   document.body.appendChild(form);
   setTimeout(() => form.submit(), 800);
 }
+</script>
+<script>
+// ===== Maya Fund — NoaMark's own account (additive; reads /api/maya-fund) =====
+(function () {
+  var body = document.getElementById('fundBody');
+  if (!body) return;
+  var CUR = { USD: '$', ZAR: 'R', EUR: '\u20AC', GBP: '\u00A3' };
+
+  function money(n, cur) {
+    var sym = CUR[cur] || '';
+    var s = sym + Math.abs(n).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (n < 0 ? '-' : '') + s;
+  }
+  function signed(n, cur) { return (n > 0 ? '+' : '') + money(n, cur); }
+  function pct(p) { return p == null ? '' : (p > 0 ? '+' : '') + p.toFixed(2) + '%'; }
+
+  function card(label, p, cur) {
+    var neg = p.amount < 0;
+    return '<div class="fund-card' + (neg ? ' neg' : '') + '">' +
+      '<div class="fund-label">' + label + '</div>' +
+      '<div class="fund-amt">' + signed(p.amount, cur) + '</div>' +
+      '<div class="fund-pct">' + (pct(p.pct) || '&nbsp;') + (neg ? ' &middot; loss' : '') + '</div></div>';
+  }
+
+  function spark(series) {
+    if (!series || series.length < 2) return '';
+    var vals = series.map(function (x) { return x.balance; });
+    var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+    var span = (max - min) || 1, w = 600, h = 120, pad = 6;
+    var pts = vals.map(function (v, i) {
+      var x = (i / (vals.length - 1)) * w;
+      var y = h - pad - ((v - min) / span) * (h - pad * 2);
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    }).join(' ');
+    return '<div class="fund-chart"><svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none">' +
+      '<polyline fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linejoin="round" points="' + pts + '"/></svg>' +
+      '<div class="fund-pct" style="text-align:center;padding:2px 0 6px;">Account balance, last 90 days</div></div>';
+  }
+
+  async function loadFund() {
+    try {
+      var res = await fetch('/api/maya-fund');
+      if (!res.ok) throw new Error('bad status');
+      var d = await res.json();
+      if (!d || !d.periods) throw new Error('bad data');
+      var c = d.currency;
+      var updated = d.updatedAt ? new Date(d.updatedAt).toLocaleString('en-ZA') : '';
+      body.innerHTML =
+        '<div class="fund-grid">' +
+          card('Today', d.periods.today, c) +
+          card('This week', d.periods.week, c) +
+          card('This month', d.periods.month, c) +
+          card('Since we started', d.periods.all, c) +
+        '</div>' +
+        '<div class="fund-bal"><span>' +
+          (d.deposited != null && d.startedWith != null && Math.abs(d.deposited - d.startedWith) >= 0.5
+            ? 'Total put in <b>' + money(d.deposited, c) + '</b> &rarr; now '
+            : (d.startedWith != null ? 'Started with <b>' + money(d.startedWith, c) + '</b> &rarr; now ' : 'Current balance ')) +
+          '<b>' + money(d.balance, c) + '</b></span>' +
+          (updated ? '<span>Updated ' + updated + '</span>' : '') + '</div>' +
+        spark(d.series);
+    } catch (e) {
+      body.innerHTML = '<div class="fund-unavail">Live numbers are temporarily unavailable. Please check back soon.</div>';
+    }
+  }
+  loadFund();
+})();
 </script>
 </body>
 </html>
