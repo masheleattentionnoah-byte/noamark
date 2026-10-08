@@ -14107,7 +14107,12 @@ bpLoad();
         background:rgba(244,196,48,.06) !important;
       }
       .adm-nav-icon { font-size:18px !important; }
-      .adm-nav-badge { position:absolute; top:6px; right:4px; font-size:8px; }
+      /* Each tab must be the positioning parent of its OWN badge. Without this the
+         absolutely-positioned badge anchored to the scrolling bar instead, so a badge
+         belonging to one tab (e.g. Password Resets) was drawn over a different tab
+         (Enquiries) depending on how far the bar was scrolled. */
+      .adm-nav-item { position:relative !important; }
+      .adm-nav-badge { position:absolute; top:4px; right:6px; font-size:8px; line-height:1.4; min-width:14px; text-align:center; }
 
       /* Main content */
       .adm-main { padding:20px 14px calc(74px + env(safe-area-inset-bottom)); }
