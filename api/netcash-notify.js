@@ -564,7 +564,7 @@ async function handleTicketNotify({ finish, planKey, email, name, amountPaid, ac
 // Public totals of NoaMark's own MT5 account, read from Myfxbook (free
 // "Auto Update" plan). Totals only: no trades, no symbols. No database,
 // no cron. Env vars: MYFXBOOK_EMAIL, MYFXBOOK_PASSWORD
-//   optional: MYFXBOOK_ACCOUNT_NUMBER (MT5 login, only if tracking several)
+//   optional: MYFXBOOK_ACCOUNT_NUMBERS (comma-separated MT5 logins to show publicly; default = first account)
 // Myfxbook sessions are bound to the IP that logged in, so we log in on
 // every refresh and log out again. get-history only returns the last 50
 // trades, so we use get-my-accounts + get-data-daily instead.
@@ -669,14 +669,23 @@ async function loadFundStats() {
   const { session } = await fundMfx('login', { email, password });
   try {
     const { accounts } = await fundMfx('get-my-accounts', { session });
-    const want = process.env.MYFXBOOK_ACCOUNT_NUMBER;
-    const account = (want && accounts.find((a) => String(a.accountId) === String(want))) || accounts[0];
-    if (!account) throw new Error('No Myfxbook account found');
-    const start = fundISODate(account.creationDate) || '2020-01-01';
+    // Only accounts you list are ever shown publicly. MYFXBOOK_ACCOUNT_NUMBERS = comma-separated
+    // MT5 logins (MYFXBOOK_ACCOUNT_NUMBER still works for one). Not set = first account only.
+    const wanted = (process.env.MYFXBOOK_ACCOUNT_NUMBERS || process.env.MYFXBOOK_ACCOUNT_NUMBER || '')
+      .split(',').map((x) => x.trim()).filter(Boolean);
+    const chosen = wanted.length
+      ? wanted.map((w) => accounts.find((a) => String(a.accountId) === w)).filter(Boolean)
+      : accounts.slice(0, 1);
+    if (!chosen.length) throw new Error('No Myfxbook account found');
     const end = fundAddDays(new Date(Date.now() + FUND_SAST).toISOString().slice(0, 10), 1);
-    const raw = await fundMfx('get-data-daily', { session, id: account.id, start: fundAddDays(start, -1), end });
-    const rows = (raw.dataDaily || []).flat(Infinity);
-    return computeFundStats(account, rows);
+    const all = [];
+    for (const account of chosen) {
+      const start = fundISODate(account.creationDate) || '2020-01-01';
+      const raw = await fundMfx('get-data-daily', { session, id: account.id, start: fundAddDays(start, -1), end });
+      const rows = (raw.dataDaily || []).flat(Infinity);
+      all.push({ name: String(account.name || 'NoaMark'), ...computeFundStats(account, rows) });
+    }
+    return { ...all[0], accounts: all }; // top-level = first account (the results section); accounts = the ticker
   } finally {
     fundMfx('logout', { session }).catch(() => {}); // free the session; never block the response
   }
