@@ -368,29 +368,32 @@
   .fund-bal { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin: 14px 0; background: var(--panel-dark); border: 1px solid rgba(110,231,160,0.18); border-radius: 14px; padding: 16px 18px; color: var(--muted); font-size: 14px; }
   .fund-bal b { color: var(--white); font-size: 18px; }
   .fund-chart { background: var(--panel-dark); border: 1px solid rgba(110,231,160,0.18); border-radius: 14px; padding: 14px 16px 8px; }
-  .fund-chart svg { width: 100%; height: 120px; display: block; }
+  .fund-chart svg { width: 100%; height: auto; display: block; }
   .fund-note { color: var(--muted); font-size: 12px; line-height: 1.6; text-align: center; margin: 16px auto 0; max-width: 640px; opacity: 0.85; }
   .fund-unavail { color: var(--muted); text-align: center; font-size: 14px; padding: 18px 0; }
   @media (max-width: 720px) { .fund-grid { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 480px) { .fund-section { padding: 48px 20px 44px; } }
-  /* Maya Fund sliding ticker (fixed bottom strip) */
-  body.mf-has-ticker { padding-bottom: 46px; }
-  .mf-ticker { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; height: 44px; display: flex; align-items: center; background: var(--bg-dark); border-top: 1px solid rgba(110,231,160,0.28); box-shadow: 0 -6px 18px rgba(0,0,0,0.35); overflow: hidden; }
-  .mf-live { flex: none; display: flex; align-items: center; gap: 7px; padding: 0 14px; height: 100%; background: var(--panel-dark); color: var(--green-light); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; white-space: nowrap; }
-  .mf-live i { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: mfDot 1.4s ease-in-out infinite; }
-  .mf-track-wrap { flex: 1; overflow: hidden; height: 100%; display: flex; align-items: center; }
+  /* Maya Fund sliding results strip (sits under the chart) */
+  .mf-ticker { margin-top: 14px; display: flex; align-items: stretch; height: 68px; border-radius: 14px; overflow: hidden; background: linear-gradient(180deg, #0f3320, #0a2316); border: 1px solid rgba(110,231,160,0.55); box-shadow: 0 0 24px rgba(34,197,94,0.22); }
+  .mf-live { flex: none; display: flex; align-items: center; gap: 8px; padding: 0 16px; background: var(--green); color: #04130a; font-size: 12px; font-weight: 800; letter-spacing: 0.1em; white-space: nowrap; }
+  .mf-live i { width: 9px; height: 9px; border-radius: 50%; background: #04130a; animation: mfDot 1.2s ease-in-out infinite; }
+  .mf-track-wrap { flex: 1; overflow: hidden; display: flex; align-items: center; -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent); mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent); }
   .mf-track { display: flex; flex: none; white-space: nowrap; animation: mfSlide var(--mf-dur, 40s) linear infinite; }
   .mf-ticker:hover .mf-track, .mf-ticker:active .mf-track { animation-play-state: paused; }
-  .mf-item { display: inline-flex; align-items: center; gap: 8px; padding: 0 22px; font-size: 13px; color: var(--muted); border-right: 1px solid rgba(255,255,255,0.08); }
-  .mf-item b { color: var(--white); font-weight: 700; }
-  .mf-seg { display: inline-flex; gap: 5px; align-items: baseline; }
-  .mf-up { color: var(--green-bright); animation: mfFlash 1.6s ease-in-out infinite; }
-  .mf-down { color: #f5a3a3; animation: mfFlash 1.6s ease-in-out infinite; }
-  .mf-flat { color: var(--muted); }
-  .mf-close { flex: none; width: 40px; height: 100%; background: transparent; border: 0; border-left: 1px solid rgba(255,255,255,0.08); color: var(--muted); font-size: 18px; cursor: pointer; }
+  .mf-item { display: inline-flex; align-items: center; gap: 22px; padding: 0 30px; font-size: 14px; color: var(--muted); }
+  .mf-item > b { color: var(--white); font-size: 19px; font-weight: 800; }
+  .mf-seg { display: inline-flex; gap: 8px; align-items: baseline; text-transform: uppercase; font-size: 12px; letter-spacing: 0.06em; }
+  .mf-seg b { color: var(--white); font-size: 19px; letter-spacing: 0; }
+  .mf-num { font-size: 20px; font-weight: 800; letter-spacing: 0; text-transform: none; }
+  .mf-up { color: #4ade80; animation: mfGlowUp 1.4s ease-in-out infinite; }
+  .mf-down { color: #ff8a8a; animation: mfGlowDown 1.4s ease-in-out infinite; }
+  .mf-flat { color: var(--white); }
+  .mf-note { font-size: 13px; text-transform: none; letter-spacing: 0; }
   @keyframes mfSlide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-  @keyframes mfFlash { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+  @keyframes mfGlowUp { 0%, 100% { opacity: 1; text-shadow: 0 0 12px rgba(74,222,128,0.9); } 50% { opacity: 0.55; text-shadow: none; } }
+  @keyframes mfGlowDown { 0%, 100% { opacity: 1; text-shadow: 0 0 12px rgba(255,138,138,0.9); } 50% { opacity: 0.55; text-shadow: none; } }
   @keyframes mfDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  @media (max-width: 600px) { .mf-ticker { height: 62px; } .mf-live { padding: 0 11px; font-size: 10px; } .mf-num, .mf-seg b, .mf-item > b { font-size: 17px; } }
   @media (prefers-reduced-motion: reduce) { .mf-track, .mf-up, .mf-down, .mf-live i { animation: none; } .mf-track-wrap { overflow-x: auto; } }
 
 </style>
@@ -459,7 +462,7 @@
   <div class="fund-inner">
     <p class="fund-kicker">MAYA &bull; RESULTS</p>
     <h2>NoaMark's own account. <span class="g">Live numbers.</span></h2>
-    <p class="fund-sub">Totals only, straight from our broker account and updated automatically. No individual trades are shown.</p>
+    <p class="fund-sub">Updated automatically, so you always see where Maya stands today.</p>
     <div id="fundBody"><div class="fund-unavail">Loading latest numbers&hellip;</div></div>
     <p class="fund-note">This is NoaMark's own account. It is not an offer, investment advice or a promise of returns. Results can be negative, and past results do not predict future results.</p>
   </div>
@@ -743,11 +746,13 @@ async function runAIPayment(gateway) {
 }
 </script>
 <script>
-// ===== Maya Fund — NoaMark's own account (additive; reads /api/maya-fund) =====
+// ===== Maya Fund — NoaMark's own account (additive; reads /api/netcash-notify?action=fund) =====
 (function () {
   var body = document.getElementById('fundBody');
   if (!body) return;
   var CUR = { USD: '$', ZAR: 'R', EUR: '\u20AC', GBP: '\u00A3' };
+  var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var DATA = null, resizeT = null;
 
   function money(n, cur) {
     var sym = CUR[cur] || '';
@@ -756,28 +761,91 @@ async function runAIPayment(gateway) {
   }
   function signed(n, cur) { return (n > 0 ? '+' : '') + money(n, cur); }
   function pct(p) { return p == null ? '' : (p > 0 ? '+' : '') + p.toFixed(2) + '%'; }
+  // Plain wording: "Up $2.00 (16.67%)", "Down $11.95 (49.79%)", "No change"
+  function word(p, cur) {
+    if (p.amount > 0) return 'Up ' + money(p.amount, cur) + (p.pct != null ? ' (' + Math.abs(p.pct).toFixed(2) + '%)' : '');
+    if (p.amount < 0) return 'Down ' + money(Math.abs(p.amount), cur) + (p.pct != null ? ' (' + Math.abs(p.pct).toFixed(2) + '%)' : '');
+    return 'No change';
+  }
+  function moveWord(p) {
+    if (p.amount === 0) return 'No change';
+    return (p.amount > 0 ? 'Up' : 'Down') + (p.pct != null ? ' ' + Math.abs(p.pct).toFixed(2) + '%' : '');
+  }
+  function esc(s) { return String(s).replace(/[<>&"]/g, ''); }
+  function fdate(iso) { var p = String(iso).split('-'); return (+p[2]) + ' ' + MON[+p[1] - 1]; }
 
   function card(label, p, cur) {
     var neg = p.amount < 0;
     return '<div class="fund-card' + (neg ? ' neg' : '') + '">' +
       '<div class="fund-label">' + label + '</div>' +
       '<div class="fund-amt">' + signed(p.amount, cur) + '</div>' +
-      '<div class="fund-pct">' + (pct(p.pct) || '&nbsp;') + (neg ? ' &middot; loss' : '') + '</div></div>';
+      '<div class="fund-pct">' + moveWord(p) + '</div></div>';
   }
 
-  function spark(series) {
-    if (!series || series.length < 2) return '';
-    var vals = series.map(function (x) { return x.balance; });
-    var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
-    var span = (max - min) || 1, w = 600, h = 120, pad = 6;
-    var pts = vals.map(function (v, i) {
-      var x = (i / (vals.length - 1)) * w;
-      var y = h - pad - ((v - min) / span) * (h - pad * 2);
-      return x.toFixed(1) + ',' + y.toFixed(1);
-    }).join(' ');
-    return '<div class="fund-chart"><svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none">' +
-      '<polyline fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linejoin="round" points="' + pts + '"/></svg>' +
-      '<div class="fund-pct" style="text-align:center;padding:2px 0 6px;">Account balance, last 90 days</div></div>';
+  // Profit/loss chart: cumulative result since the start (deposits are NOT counted), with real numbers on it.
+  function drawChart(host, d) {
+    var s = d.pnlSeries || [];
+    if (s.length < 2) { host.innerHTML = '<div class="fund-unavail">The chart appears once there is more history.</div>'; return; }
+    var c = d.currency, W = Math.max(280, Math.round(host.clientWidth || 320)), H = 220;
+    var pl = 66, pr = 18, pt = 22, pb = 36;
+    var vals = s.map(function (p) { return p.pnl; });
+    var max = Math.max.apply(null, vals.concat([0])), min = Math.min.apply(null, vals.concat([0]));
+    if (max === min) { max += 1; min -= 1; }
+    var span = max - min;
+    function X(i) { return pl + (i / (s.length - 1)) * (W - pl - pr); }
+    function Y(v) { return pt + ((max - v) / span) * (H - pt - pb); }
+    var last = vals[vals.length - 1];
+    var col = last < 0 ? '#ff8a8a' : (last > 0 ? '#4ade80' : '#9fb3a6');
+    var pts = vals.map(function (v, i) { return X(i).toFixed(1) + ',' + Y(v).toFixed(1); });
+    var zy = Y(0).toFixed(1);
+    var area = pts.join(' ') + ' ' + X(s.length - 1).toFixed(1) + ',' + zy + ' ' + X(0).toFixed(1) + ',' + zy;
+
+    var ticks = [max, 0, min].filter(function (v, i, a) { return a.indexOf(v) === i; });
+    var g = '';
+    ticks.forEach(function (v) {
+      var y = Y(v).toFixed(1);
+      g += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + y + '" y2="' + y + '" stroke="rgba(255,255,255,' + (v === 0 ? '0.35' : '0.1') + ')"' + (v === 0 ? ' stroke-dasharray="4 4"' : '') + '/>' +
+           '<text x="' + (pl - 8) + '" y="' + (+y + 4) + '" text-anchor="end" font-size="11" fill="#9fb3a6">' + (v === 0 ? money(0, c) : signed(v, c)) + '</text>';
+    });
+
+    var lowI = vals.indexOf(Math.min.apply(null, vals));
+    var marks = '';
+    if (vals[lowI] < last - 0.005) {
+      marks += '<circle cx="' + X(lowI).toFixed(1) + '" cy="' + Y(vals[lowI]).toFixed(1) + '" r="3.5" fill="#ff8a8a"/>' +
+        '<text x="' + X(lowI).toFixed(1) + '" y="' + (Y(vals[lowI]) + 16).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#ff8a8a">Lowest: ' + word({ amount: vals[lowI], pct: null }, c).toLowerCase() + '</text>';
+    }
+    var ly = Math.max(14, Y(last) - 12);
+    marks += '<circle cx="' + X(s.length - 1).toFixed(1) + '" cy="' + Y(last).toFixed(1) + '" r="5" fill="' + col + '"/>' +
+      '<text x="' + (X(s.length - 1) - 8).toFixed(1) + '" y="' + ly.toFixed(1) + '" text-anchor="end" font-size="14" font-weight="800" fill="' + col + '">' + word({ amount: last, pct: null }, c) + '</text>';
+
+    host.innerHTML = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Up or down since the start">' +
+      g + '<polygon points="' + area + '" fill="' + col + '" fill-opacity="0.16"/>' +
+      '<polyline fill="none" stroke="' + col + '" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="' + pts.join(' ') + '"/>' +
+      marks +
+      '<text x="' + pl + '" y="' + (H - 10) + '" font-size="11" fill="#9fb3a6">' + fdate(s[0].d) + '</text>' +
+      '<text x="' + (W - pr) + '" y="' + (H - 10) + '" text-anchor="end" font-size="11" fill="#9fb3a6">' + fdate(s[s.length - 1].d) + '</text></svg>';
+  }
+
+  // Sliding results strip under the chart: one item per account; gains glow green, losses glow red.
+  function tickerItem(a) {
+    var c = a.currency;
+    function seg(label, p) {
+      var cls = p.amount > 0 ? 'mf-up' : (p.amount < 0 ? 'mf-down' : 'mf-flat');
+      var arrow = p.amount > 0 ? '\u25B2 ' : (p.amount < 0 ? '\u25BC ' : '');
+      return '<span class="mf-seg">' + label + ' <span class="mf-num ' + cls + '">' + arrow + word(p, c) + '</span></span>';
+    }
+    return '<span class="mf-item"><b>' + esc(a.name) + '</b>' +
+      seg('Today', a.periods.today) + seg('Week', a.periods.week) + seg('Month', a.periods.month) +
+      seg('Total', a.periods.all) + '<span class="mf-seg">Balance <b>' + money(a.balance, c) + '</b></span></span>';
+  }
+  function buildTicker(d, slot) {
+    var list = (d.accounts && d.accounts.length) ? d.accounts : [d];
+    var items = list.map(tickerItem).join('') +
+      '<span class="mf-item"><span class="mf-seg mf-note">NoaMark\u2019s own account &middot; not advice &middot; results can be negative &middot; past results do not predict future results</span></span>';
+    slot.innerHTML = '<div class="mf-ticker" role="region" aria-label="Maya live results"><div class="mf-live"><i></i>MAYA LIVE</div>' +
+      '<div class="mf-track-wrap"><div class="mf-track">' + items + items + '</div></div></div>';
+    var track = slot.querySelector('.mf-track');
+    track.style.setProperty('--mf-dur', Math.max(25, Math.round(track.scrollWidth / 2 / 70)) + 's'); // about 70px per second
   }
 
   async function loadFund() {
@@ -786,6 +854,7 @@ async function runAIPayment(gateway) {
       if (!res.ok) throw new Error('bad status');
       var d = await res.json();
       if (!d || !d.periods) throw new Error('bad data');
+      DATA = d;
       var c = d.currency;
       var updated = d.updatedAt ? new Date(d.updatedAt).toLocaleString('en-ZA') : '';
       body.innerHTML =
@@ -801,42 +870,23 @@ async function runAIPayment(gateway) {
             : (d.startedWith != null ? 'Started with <b>' + money(d.startedWith, c) + '</b> &rarr; now ' : 'Current balance ')) +
           '<b>' + money(d.balance, c) + '</b></span>' +
           (updated ? '<span>Updated ' + updated + '</span>' : '') + '</div>' +
-        spark(d.series);
-      buildTicker(d);
+        '<div class="fund-chart"><div id="mfChart"></div>' +
+          '<div class="fund-pct" style="text-align:center;padding:2px 0 8px;">Up or down since we started (money put in is not counted)</div></div>' +
+        '<div id="mfTickerSlot"></div>';
+      drawChart(document.getElementById('mfChart'), d);
+      buildTicker(d, document.getElementById('mfTickerSlot'));
     } catch (e) {
       body.innerHTML = '<div class="fund-unavail">Live numbers are temporarily unavailable. Please check back soon.</div>';
     }
   }
-  // ----- sliding bottom ticker: one item per account, gains flash green, losses flash red -----
-  function tickerItem(a) {
-    var c = a.currency;
-    function seg(label, p) {
-      var cls = p.amount > 0 ? 'mf-up' : (p.amount < 0 ? 'mf-down' : 'mf-flat');
-      var arrow = p.amount > 0 ? '\u25B2 ' : (p.amount < 0 ? '\u25BC ' : '');
-      return '<span class="mf-seg">' + label + ' <span class="' + cls + '">' + arrow + signed(p.amount, c) +
-        (p.pct != null ? ' (' + pct(p.pct) + ')' : '') + (p.amount < 0 ? ' loss' : '') + '</span></span>';
-    }
-    return '<span class="mf-item"><b>' + String(a.name).replace(/[<>&]/g, '') + '</b>' +
-      seg('Today', a.periods.today) + seg('Week', a.periods.week) + seg('Month', a.periods.month) +
-      seg('Total', a.periods.all) + '<span class="mf-seg">Balance <b>' + money(a.balance, c) + '</b></span></span>';
-  }
-  function buildTicker(d) {
-    var list = (d.accounts && d.accounts.length) ? d.accounts : [d];
-    var items = list.map(tickerItem).join('') +
-      '<span class="mf-item">NoaMark\u2019s own account &middot; not advice &middot; results can be negative &middot; past results do not predict future results</span>';
-    var el = document.createElement('div');
-    el.className = 'mf-ticker';
-    el.setAttribute('role', 'region');
-    el.setAttribute('aria-label', 'Maya live results');
-    el.innerHTML = '<div class="mf-live"><i></i>MAYA LIVE</div>' +
-      '<div class="mf-track-wrap"><div class="mf-track">' + items + items + '</div></div>' +
-      '<button class="mf-close" type="button" aria-label="Hide results bar">&times;</button>';
-    document.body.appendChild(el);
-    document.body.classList.add('mf-has-ticker');
-    var track = el.querySelector('.mf-track');
-    track.style.setProperty('--mf-dur', Math.max(25, Math.round(track.scrollWidth / 2 / 70)) + 's'); // ~70px per second
-    el.querySelector('.mf-close').onclick = function () { el.remove(); document.body.classList.remove('mf-has-ticker'); };
-  }
+
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeT);
+    resizeT = setTimeout(function () {
+      var host = document.getElementById('mfChart');
+      if (DATA && host) drawChart(host, DATA);
+    }, 200);
+  });
 
   loadFund();
 })();
