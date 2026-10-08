@@ -4864,15 +4864,16 @@
 </div>
 <!-- ══ END BOOKING MODAL ══ -->
 
-<div id="admin-review-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px;" onclick="if(event.target===this)this.style.display='none'">
+<div id="admin-review-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px;" onclick="if(event.target===this)admCloseReviewModal()">
   <div class="arm-inner">
     <div class="arm-header" style="background:linear-gradient(135deg,rgba(212,175,55,.08),transparent);padding:24px 28px;border-bottom:1px solid rgba(212,175,55,.2);display:flex;align-items:center;justify-content:space-between;">
       <div>
         <div style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:4px;">Admin Review</div>
         <div id="arm-name" style="font-size:20px;font-weight:700;color:#fff;"></div>
         <div id="arm-owner" style="font-size:12px;color:#9ca3af;margin-top:3px;"></div>
+        <div id="arm-status-badge" style="display:inline-block;margin-top:8px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;border-radius:3px;"></div>
       </div>
-      <button onclick="document.getElementById('admin-review-modal').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:22px;cursor:pointer;"><span class="nm-ico nm-ico-close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      <button onclick="admCloseReviewModal()" style="background:none;border:none;color:#6b7280;font-size:22px;cursor:pointer;"><span class="nm-ico nm-ico-close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
     </div>
     <div class="arm-body" style="padding:28px;">
 
@@ -5432,6 +5433,25 @@ window.addEventListener('popstate', function(e) {
   if(arm && (arm.style.display === 'flex' || arm.style.display === 'block')) {
     arm.style.display = 'none';
     nmConfirmStateOrGuardBusiness({ nmPage: 'home', nmView: 'main' }, window.location.href);
+    return;
+  }
+
+  // PRIORITY 4.5: ADMIN back-button handling.
+  // Admins never leave the dashboard via Back. Before this, an admin press fell
+  // through to the generic branches, which (a) pushState()'d a NEW entry on every
+  // press — so the history stack grew the longer the session ran — and (b) re-ran
+  // showAdminDashboard(), re-fetching every listing and re-rendering all tables
+  // each time. After a long session of reviewing, approving and paying that is
+  // exactly the "back button struggles / stops responding" behaviour.
+  // Now: keep the current tab, overwrite the entry in place (replaceState — the
+  // stack never grows), and only rebuild the dashboard if it isn't on screen.
+  if (_sessionRole === 'admin') {
+    const _admEl = document.getElementById('page-admin');
+    const _admShowing = !!_admEl && getComputedStyle(_admEl).display !== 'none';
+    const _activeTab = document.querySelector('.adm-page.active');
+    const _tab = (e.state && e.state.nmAdmPage) || (_activeTab ? _activeTab.id.replace('adm-page-', '') : 'overview');
+    history.replaceState({ nmPage: 'admin', nmAdmPage: _tab }, '', '#admin/' + _tab);
+    if (!_admShowing) showAdminDashboard();
     return;
   }
 
@@ -8582,10 +8602,29 @@ function adminReviewListing(id) {
   // Approve / Reject buttons
   const approveBtn = document.getElementById('arm-approve-btn');
   const rejectBtn = document.getElementById('arm-reject-btn');
- approveBtn.textContent = ' Approve Listing';
+  const approveLabel = (String(l.status||'').toLowerCase()==='rejected') ? 'Re-approve Listing' : 'Approve Listing';
+ approveBtn.textContent = approveLabel;
   approveBtn.disabled = false;
  rejectBtn.textContent = ' Reject Listing';
   rejectBtn.disabled = false;
+  // ── Status-aware actions: the same modal now opens for pending, approved,
+  // rejected and suspended listings, so only offer the actions that make sense.
+  const st = String(l.status || 'pending').toLowerCase();
+  const badge = document.getElementById('arm-status-badge');
+  const badgeStyles = {
+    pending:   ['rgba(244,196,48,.12)', '#f4c430'],
+    approved:  ['rgba(34,197,94,.12)',  '#22c55e'],
+    rejected:  ['rgba(220,38,38,.15)',  '#f87171'],
+    suspended: ['rgba(156,163,175,.15)', '#9ca3af'],
+  };
+  const bs = badgeStyles[st] || badgeStyles.pending;
+  if (badge) { badge.textContent = st; badge.style.background = bs[0]; badge.style.color = bs[1]; }
+  const actionsEl = document.getElementById('arm-actions');
+  const canApprove = (st === 'pending' || st === 'rejected');
+  const canReject  = (st === 'pending' || st === 'approved');
+  approveBtn.style.display = canApprove ? '' : 'none';
+  rejectBtn.style.display  = canReject  ? '' : 'none';
+  if (actionsEl) actionsEl.style.display = (canApprove || canReject) ? 'flex' : 'none';
   approveBtn.onclick = async () => {
     approveBtn.disabled = true; approveBtn.textContent = '⏳ Approving...';
     const res = await fetch('/api/moderate', {
@@ -8595,13 +8634,13 @@ function adminReviewListing(id) {
     });
     const result = await res.json().catch(() => ({ ok: false }));
     if (result.ok) {
-      modal.style.display = 'none';
+      admCloseReviewModal();
       admLoadApprovals();
       admLoadOverview();
       loadListingsFromSupabase(true);
     } else {
       approveBtn.disabled = false;
- approveBtn.textContent = ' Approve Listing';
+ approveBtn.textContent = approveLabel;
       alert('Error approving: ' + (result.reason || 'please try again.'));
     }
   };
@@ -8614,7 +8653,7 @@ function adminReviewListing(id) {
     });
     const result = await res.json().catch(() => ({ ok: false }));
     if (result.ok) {
-      modal.style.display = 'none';
+      admCloseReviewModal();
       admLoadApprovals();
       admLoadOverview();
     } else {
@@ -8624,7 +8663,22 @@ function adminReviewListing(id) {
     }
   };
 
+  // Give the modal its own history entry (like the booking/auth modals do) so the
+  // browser Back button closes JUST the modal instead of silently popping a real
+  // page entry underneath it and leaving history out of sync with the screen.
+  if (!(history.state && history.state.nmPage === 'admin-review')) {
+    history.pushState({ nmPage: 'admin-review', nmView: 'modal' }, '', window.location.href);
+  }
   modal.style.display = 'flex';
+}
+
+// Closes the admin review modal from any UI control (X, backdrop, approve, reject)
+// and consumes the history entry that was pushed when it opened, so no stray
+// entries pile up over a long admin session.
+function admCloseReviewModal() {
+  const m = document.getElementById('admin-review-modal');
+  if (m) m.style.display = 'none';
+  if (history.state && history.state.nmPage === 'admin-review') history.back();
 }
 
 async function adminAction(btn, action, listingId) {
@@ -15233,9 +15287,9 @@ async function admLoadApprovals() {
           <input id="adm-grace-days-${id}" type="number" min="1" max="30" value="3" style="width:44px;background:#111;color:#fff;border:1px solid rgba(255,255,255,.2);font-size:11px;padding:4px 6px;border-radius:4px;" title="Number of grace days to grant">
           <button class="adm-btn adm-btn-approve" onclick="admGrantGrace('${id}',this)" title="Grants exactly this many days of visibility, per an agreement with the business — not a real payment, so it won't count as confirmed revenue"> Grant Grace</button>
         </div>`;
-        return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${own}</td><td>${graceRow}<button class="adm-btn adm-btn-reject" onclick="admDeleteListing('${id}',this)" style="background:rgba(220,38,38,.2);color:#f87171;border-color:rgba(220,38,38,.4);">Delete Permanently</button></td></tr>`;
+        return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${own}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')">Review</button><br>${graceRow}<button class="adm-btn adm-btn-reject" onclick="admDeleteListing('${id}',this)" style="background:rgba(220,38,38,.2);color:#f87171;border-color:rgba(220,38,38,.4);">Delete Permanently</button></td></tr>`;
       }
-      return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${own}</td><td><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)" style="margin-bottom:4px;">Re-approve</button><br><button class="adm-btn adm-btn-reject" onclick="admDeleteListing('${id}',this)" style="background:rgba(220,38,38,.2);color:#f87171;border-color:rgba(220,38,38,.4);">Delete Permanently</button></td></tr>`;
+      return `<tr id="adm-row-${id}"><td style="font-weight:600;color:#fff;">${nm}</td><td>${tp}</td><td>${ar}</td><td>${own}</td><td><button class="adm-btn" style="background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.3);margin-bottom:4px;" onclick="adminReviewListing('${id}')">Review</button><br><button class="adm-btn adm-btn-approve" onclick="admApproveListing('${id}',this)" style="margin-bottom:4px;">Re-approve</button><br><button class="adm-btn adm-btn-reject" onclick="admDeleteListing('${id}',this)" style="background:rgba(220,38,38,.2);color:#f87171;border-color:rgba(220,38,38,.4);">Delete Permanently</button></td></tr>`;
     };
 
     const tables = {
