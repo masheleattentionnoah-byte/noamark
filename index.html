@@ -14604,6 +14604,8 @@ function admGoPage(page) {
   // pattern as bpGoPage for the business portal — replaceState (not
   // pushState) so switching tabs doesn't add back-button stops.
   history.replaceState({ nmPage: 'admin', nmAdmPage: page }, '', '#admin/' + page);
+  setTimeout(admRefreshBadges, 400);
+  admStartBadgePolling();
 }
 
 // ──────────────────────────────────────────────────
@@ -14688,6 +14690,73 @@ async function handleForgotPassword() {
 // ──────────────────────────────────────────────────
 // ADMIN — Load & manage password reset requests
 // ──────────────────────────────────────────────────
+// ── LIVE ADMIN NOTIFICATION BADGES ──
+// Each badge is computed from its OWN data source, independent of which tab is open:
+//   Password Resets → pending reset requests (clears when marked done/deleted)
+//   Enquiries       → enquiries that arrived since the admin last opened that tab
+//   Businesses      → listings awaiting approval
+// Before, a badge only updated when you opened its own tab, so nothing ever notified
+// you of a NEW request — and the Enquiries badge showed a stale "unreplied" count that
+// was easy to mistake for the password-reset alert.
+async function admRefreshBadges() {
+  try {
+    if (typeof currentUser === 'undefined' || !currentUser || currentUser.type !== 'admin') return;
+    const admEl = document.getElementById('page-admin');
+    if (!admEl || getComputedStyle(admEl).display === 'none') return;
+    const setBadge = (id, n) => {
+      const b = document.getElementById(id);
+      if (!b) return;
+      if (n > 0) { b.textContent = n > 99 ? '99+' : n; b.style.display = 'inline'; }
+      else b.style.display = 'none';
+    };
+
+    // Password resets
+    try {
+      const r = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (nmGetAdminToken() || '') },
+        body: JSON.stringify({ mode: 'admin', action: 'list' }),
+      });
+      const d = await r.json();
+      if (d && d.ok) setBadge('adm-resets-badge', (d.resets || []).filter(x => x.status === 'pending').length);
+    } catch(e) {}
+
+    // Enquiries since last seen
+    try {
+      const res = await nmSupaQuery(() => _supa.from('enquiries').select('created_at').order('created_at', { ascending: false }).limit(200));
+      const rows = (res && res.data) || [];
+      let seen = null;
+      try { seen = localStorage.getItem('nm_adm_enq_seen'); } catch(e) {}
+      if (!seen) {
+        // First run on this device: treat existing enquiries as already seen.
+        seen = (rows[0] && rows[0].created_at) || new Date().toISOString();
+        try { localStorage.setItem('nm_adm_enq_seen', seen); } catch(e) {}
+      }
+      const fresh = window._admEnqPageOpen ? 0 : rows.filter(x => new Date(x.created_at).getTime() > new Date(seen).getTime()).length;
+      setBadge('adm-enq-badge', fresh);
+    } catch(e) {}
+
+    // Pending business listings
+    try {
+      const res = await nmSupaQuery(() => _supa.from('listings').select('id').eq('status', 'pending'));
+      setBadge('adm-pending-badge', ((res && res.data) || []).length);
+    } catch(e) {}
+  } catch(e) { console.warn('Badge refresh failed', e); }
+}
+
+// Poll lightly while the admin dashboard is on screen and the browser tab is visible.
+function admStartBadgePolling() {
+  if (window._admBadgeTimer) return;
+  window._admBadgeTimer = setInterval(() => {
+    const isAdmin = typeof currentUser !== 'undefined' && currentUser && currentUser.type === 'admin';
+    if (!isAdmin) { clearInterval(window._admBadgeTimer); window._admBadgeTimer = null; return; }
+    if (document.visibilityState === 'visible') admRefreshBadges();
+  }, 60000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') admRefreshBadges();
+  });
+}
+
 async function admLoadResets() {
   const listEl = document.getElementById('adm-resets-list');
   const badge  = document.getElementById('adm-resets-badge');
@@ -14709,7 +14778,7 @@ async function admLoadResets() {
 
     // Update badge
     if(badge) {
-      if(pending.length > 0) { badge.textContent = pending.length; badge.style.display = 'flex'; }
+      if(pending.length > 0) { badge.textContent = pending.length; badge.style.display = 'inline'; }
       else { badge.style.display = 'none'; }
     }
 
@@ -15190,6 +15259,18 @@ async function admLoadOverview() {
   }
 }
 
+// Single source of truth for "does this listing's CURRENT period have a real payment behind it?"
+// boost_paid_at is only ever written by a verified payment webhook, but admGrantGrace()
+// backdates boost_started_at WITHOUT clearing it — so an old payment from months ago kept
+// making a graced listing look "paid via Netcash/Ozow". A payment only counts for the
+// current period if it happened at/after the period started. Rows with no boost_started_at
+// predate that column and keep the old behaviour. (Same rule admLoadRevenue uses.)
+function nmIsCurrentlyPaid(l) {
+  if (!l || !l.boost_paid_at) return false;
+  if (!l.boost_started_at) return true;
+  return new Date(l.boost_paid_at).getTime() >= new Date(l.boost_started_at).getTime();
+}
+
 async function admLoadApprovals() {
   try {
     const { data } = await nmSupaQuery(() => _supa.from('listings').select('*').order('created_at',{ascending:false}));
@@ -15228,7 +15309,7 @@ async function admLoadApprovals() {
       // real subscribed plan. Uses the same 30-day window math as
       // nmComputeSubStatus. Confirmed paid tiers just show the plan name.
       let btEst = '';
-      if (l.boost_tier && l.boost_tier !== 'none' && !l.boost_paid_at && l.boost_started_at) {
+      if (l.boost_tier && l.boost_tier !== 'none' && !nmIsCurrentlyPaid(l) && l.boost_started_at) {
         const daysLeft = Math.ceil((new Date(l.boost_started_at).getTime() + 30*24*60*60*1000 - Date.now()) / (24*60*60*1000));
         btEst = daysLeft > 0
           ? ` <span style="color:#f4c430;font-size:10px;">(~${daysLeft}d left, manual)</span>`
@@ -15239,7 +15320,7 @@ async function admLoadApprovals() {
       // (OZ- for Ozow, NM- for Netcash) specifically so this can be shown
       // here without any guesswork.
       let btGateway = '';
-      if (l.boost_tier && l.boost_tier !== 'none' && l.boost_paid_at && l.boost_payment_ref) {
+      if (l.boost_tier && l.boost_tier !== 'none' && nmIsCurrentlyPaid(l) && l.boost_payment_ref) {
         if (l.boost_payment_ref.startsWith('OZ-')) btGateway = ' <span style="color:rgba(255,255,255,.4);font-size:10px;">(Ozow)</span>';
         else if (l.boost_payment_ref.startsWith('NM-')) btGateway = ' <span style="color:rgba(255,255,255,.4);font-size:10px;">(Netcash)</span>';
         // Older Ozow payments were saved with Ozow's own plain transaction ID (a UUID, no prefix).
@@ -15251,7 +15332,7 @@ async function admLoadApprovals() {
         // on a confirmed Pro payment (see boost_paid_at + boost_tier==='pro'
         // below) — label it as "Auto · Pro" so it's clear at a glance this
         // one doesn't need admin attention, versus a manual override.
-        const autoVerified = l.verified && l.boost_tier === 'pro' && !!l.boost_paid_at;
+        const autoVerified = l.verified && l.boost_tier === 'pro' && nmIsCurrentlyPaid(l);
         const vBadge = l.verified
           ? (autoVerified
               ? '<span style="color:#22C55E;font-weight:700;">Verified <span style="color:rgba(255,255,255,.4);font-weight:400;font-size:10px;">(Auto · Pro)</span></span>'
@@ -15849,11 +15930,7 @@ async function admLoadRevenue() {
     // catches that. Rows with no boost_started_at predate that column —
     // fall back to the old behavior for those rather than wrongly
     // demoting them.
-    const isCurrentlyPaid = l => {
-      if (!l.boost_paid_at) return false;
-      if (!l.boost_started_at) return true;
-      return new Date(l.boost_paid_at).getTime() >= new Date(l.boost_started_at).getTime();
-    };
+    const isCurrentlyPaid = nmIsCurrentlyPaid;
     const confirmedPaid = boosted.filter(isCurrentlyPaid);
     const estRevenue = confirmedPaid.reduce((sum, l) => sum + (monthlyPrice[l.boost_tier] || 0), 0);
     const unconfirmedCount = boosted.length - confirmedPaid.length;
@@ -15930,10 +16007,12 @@ async function admLoadEnquiries() {
         .order('created_at', { ascending: false })
     );
     const data = result?.data || [];
-    // Update badge — only show if admin is NOT currently on the enquiries page
-    const unread = data.filter(e => !e.replied).length;
+    // Opening this page = everything up to the newest enquiry has been seen.
+    // (The badge used to count every enquiry the BUSINESS hadn't replied to — which
+    // the admin can't act on, so it sat on "1" forever and looked like a new alert.)
+    try { localStorage.setItem('nm_adm_enq_seen', (data[0] && data[0].created_at) || new Date().toISOString()); } catch(e) {}
     const badge = document.getElementById('adm-enq-badge');
-    if(badge) { badge.textContent = unread; badge.style.display = (unread > 0 && !window._admEnqPageOpen) ? 'inline' : 'none'; }
+    if(badge) badge.style.display = 'none';
     if(!data.length) { el.innerHTML = '<div class="adm-empty">No enquiries yet.</div>'; return; }
     el.innerHTML = data.map(e => {
       const d = new Date(e.created_at);
