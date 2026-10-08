@@ -170,13 +170,31 @@ async function handleChangePassword(body) {
 }
 
 async function handleForgotPassword(body) {
-  const { email, name } = body;
+  const email = String(body.email || '').trim();
+  const name = String(body.name || '').trim();
   if (!email || !name) return { status: 400, json: { ok: false, reason: 'Missing email or name' } };
+
+  // Input hygiene. Rejecting % and * matters: these are wildcards in the
+  // ilike lookup below, so an "email" of just % would match ANY account.
+  if (email.length > 254 || name.length > 120 || !/^[^\s@%*]+@[^\s@%*]+\.[^\s@%*]+$/.test(email)) {
+    return { status: 200, json: { ok: false, reason: 'Please enter a valid email address.' } };
+  }
 
   const lookupRes = await supaFetch(`users?email=ilike.${encodeURIComponent(email)}&select=id,role&limit=1`);
   const rows = await lookupRes.json();
   const row = rows[0];
   if (!row) return { status: 200, json: { ok: false, reason: 'No account found with that email address. Please check the email and try again.' } };
+
+  // Anti-spam: if this email already has a pending request, don't add another.
+  // The person still sees success (their request IS in the admin's list), but
+  // repeated submissions can no longer flood the Password Resets list/badge.
+  const pendingRes = await supaFetch(`password_resets?email=ilike.${encodeURIComponent(email)}&status=eq.pending&select=id&limit=1`);
+  if (pendingRes.ok) {
+    const pending = await pendingRes.json().catch(() => []);
+    if (Array.isArray(pending) && pending.length > 0) {
+      return { status: 200, json: { ok: true } };
+    }
+  }
 
   const insertRes = await supaFetch('password_resets', {
     method: 'POST',
