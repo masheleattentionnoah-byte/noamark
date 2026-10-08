@@ -360,9 +360,9 @@
   .fund-section h2 .g { color: var(--green); }
   .fund-sub { color: var(--muted); font-size: 14px; line-height: 1.6; text-align: center; max-width: 620px; margin: 0 auto 28px; }
   .fund-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-  .fund-card { background: var(--panel-dark); border: 1px solid rgba(110,231,160,0.18); border-radius: 14px; padding: 18px; }
-  .fund-label { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
-  .fund-amt { font-size: 22px; font-weight: 700; color: var(--green-bright); }
+  .fund-card { text-align: center; background: var(--panel-dark); border: 1px solid rgba(110,231,160,0.18); border-radius: 14px; padding: 18px; }
+  .fund-label { color: var(--muted); font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .fund-amt { font-size: 28px; font-weight: 800; color: var(--green-bright); line-height: 1.15; }
   .fund-pct { font-size: 13px; color: var(--muted); margin-top: 2px; }
   .fund-card.neg .fund-amt { color: #f5a3a3; }
   .fund-bal { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin: 14px 0; background: var(--panel-dark); border: 1px solid rgba(110,231,160,0.18); border-radius: 14px; padding: 16px 18px; color: var(--muted); font-size: 14px; }
@@ -395,7 +395,29 @@
   @keyframes mfDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
   @media (max-width: 600px) { .mf-ticker { height: 62px; } .mf-live { padding: 0 11px; font-size: 10px; } .mf-num, .mf-seg b, .mf-item > b { font-size: 17px; } }
   @media (prefers-reduced-motion: reduce) { .mf-track, .mf-up, .mf-down, .mf-live i { animation: none; } .mf-track-wrap { overflow-x: auto; } }
-
+  /* Maya Fund account list: several accounts show as tappable rows (name, up/down, mini graph) */
+  .mf-hint { text-align: center; color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+  .mf-list { display: flex; flex-direction: column; gap: 10px; }
+  .mf-row { background: var(--panel-dark); border: 1px solid rgba(110,231,160,0.2); border-radius: 14px; overflow: hidden; }
+  .mf-rowhead { width: 100%; display: grid; grid-template-columns: 1.2fr 1.25fr 1fr 104px 20px; align-items: center; gap: 14px; padding: 14px 16px; background: transparent; border: 0; color: var(--white); text-align: left; cursor: pointer; font: inherit; }
+  .mf-rowhead:hover { background: rgba(110,231,160,0.05); }
+  .mf-rowhead:focus-visible { outline: 2px solid var(--green-light); outline-offset: -2px; }
+  .mf-rowhead small { display: block; color: var(--muted); font-size: 12px; font-weight: 500; margin-top: 2px; }
+  .mf-rname b { font-size: 16px; }
+  .mf-rmain { font-size: 16px; font-weight: 800; }
+  .mf-rmain.u { color: #4ade80; } .mf-rmain.d { color: #ff8a8a; } .mf-rmain.f { color: var(--white); }
+  .mf-rmonth { font-size: 14px; font-weight: 700; }
+  .mf-rmonth.u { color: #4ade80; } .mf-rmonth.d { color: #ff8a8a; } .mf-rmonth.f { color: var(--white); }
+  .mf-rspark svg { width: 104px; height: 34px; display: block; }
+  .mf-chev { color: var(--muted); font-size: 14px; transition: transform 0.2s; }
+  .mf-rowhead[aria-expanded="true"] .mf-chev { transform: rotate(180deg); }
+  .mf-panel { padding: 0 14px 14px; border-top: 1px solid rgba(255,255,255,0.08); }
+  .mf-panel .fund-grid { margin-top: 14px; }
+  @media (max-width: 600px) {
+    .mf-rowhead { grid-template-columns: 1.1fr 1.1fr 78px 16px; gap: 10px; padding: 12px; }
+    .mf-rmonth { display: none; }
+    .mf-rspark svg { width: 78px; }
+  }
 </style>
 </head>
 <body>
@@ -752,7 +774,7 @@ async function runAIPayment(gateway) {
   if (!body) return;
   var CUR = { USD: '$', ZAR: 'R', EUR: '\u20AC', GBP: '\u00A3' };
   var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var DATA = null, resizeT = null;
+  var resizeT = null;
 
   function money(n, cur) {
     var sym = CUR[cur] || '';
@@ -810,7 +832,7 @@ async function runAIPayment(gateway) {
 
     var lowI = vals.indexOf(Math.min.apply(null, vals));
     var marks = '';
-    if (vals[lowI] < last - 0.005) {
+    if (vals[lowI] < 0 && vals[lowI] < last - 0.005) {
       marks += '<circle cx="' + X(lowI).toFixed(1) + '" cy="' + Y(vals[lowI]).toFixed(1) + '" r="3.5" fill="#ff8a8a"/>' +
         '<text x="' + X(lowI).toFixed(1) + '" y="' + (Y(vals[lowI]) + 16).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#ff8a8a">Lowest: ' + word({ amount: vals[lowI], pct: null }, c).toLowerCase() + '</text>';
     }
@@ -848,32 +870,101 @@ async function runAIPayment(gateway) {
     track.style.setProperty('--mf-dur', Math.max(25, Math.round(track.scrollWidth / 2 / 70)) + 's'); // about 70px per second
   }
 
+  function amountWord(p, cur) {
+    if (p.amount > 0) return 'Up ' + money(p.amount, cur);
+    if (p.amount < 0) return 'Down ' + money(Math.abs(p.amount), cur);
+    return 'No change';
+  }
+  function cls(p) { return p.amount > 0 ? 'u' : (p.amount < 0 ? 'd' : 'f'); }
+  function arrow(p) { return p.amount > 0 ? '\u25B2 ' : (p.amount < 0 ? '\u25BC ' : ''); }
+
+  // Everything for one account: the four cards, the balance line and the full chart
+  function detailHTML(a, i) {
+    var c = a.currency;
+    var updated = a.updatedAt ? new Date(a.updatedAt).toLocaleString('en-ZA') : '';
+    return '<div class="fund-grid">' +
+        card("Today's result", a.periods.today, c) +
+        card("This week's result", a.periods.week, c) +
+        card("This month's result", a.periods.month, c) +
+        card('Result since we started', a.periods.all, c) +
+      '</div>' +
+      '<div class="fund-bal"><span>' +
+        (a.moneyOut
+          ? 'Current balance '
+          : (a.deposited != null && a.startedWith != null && Math.abs(a.deposited - a.startedWith) >= 0.5
+            ? 'Total put in <b>' + money(a.deposited, c) + '</b> &rarr; now '
+            : (a.startedWith != null ? 'Started with <b>' + money(a.startedWith, c) + '</b> &rarr; now ' : 'Current balance '))) +
+        '<b>' + money(a.balance, c) + '</b></span>' +
+        (updated ? '<span>Updated ' + updated + '</span>' : '') + '</div>' +
+      '<div class="fund-chart"><div class="mf-chart-host" data-i="' + i + '"></div>' +
+        '<div class="fund-pct" style="text-align:center;padding:2px 0 8px;">Up or down since we started (money put in is not counted)</div></div>';
+  }
+
+  // Small graph for the collapsed row
+  function miniSpark(a) {
+    var s = a.pnlSeries || [];
+    if (s.length < 2) return '';
+    var vals = s.map(function (p) { return p.pnl; });
+    var max = Math.max.apply(null, vals.concat([0])), min = Math.min.apply(null, vals.concat([0]));
+    if (max === min) { max += 1; min -= 1; }
+    var w = 104, h = 34, last = vals[vals.length - 1];
+    var col = last < 0 ? '#ff8a8a' : (last > 0 ? '#4ade80' : '#9fb3a6');
+    function Y(v) { return 3 + ((max - v) / (max - min)) * (h - 6); }
+    var pts = vals.map(function (v, i) { return (i / (vals.length - 1) * w).toFixed(1) + ',' + Y(v).toFixed(1); });
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true">' +
+      '<line x1="0" x2="' + w + '" y1="' + Y(0).toFixed(1) + '" y2="' + Y(0).toFixed(1) + '" stroke="rgba(255,255,255,0.22)" stroke-dasharray="3 3"/>' +
+      '<polygon points="' + pts.join(' ') + ' ' + w + ',' + Y(0).toFixed(1) + ' 0,' + Y(0).toFixed(1) + '" fill="' + col + '" fill-opacity="0.18"/>' +
+      '<polyline fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="' + pts.join(' ') + '"/></svg>';
+  }
+
+  // Collapsed row: name, up/down overall, this month, mini graph. Tap to open the full details.
+  function rowHTML(a, i) {
+    var all = a.periods.all, mo = a.periods.month, c = a.currency;
+    return '<div class="mf-row"><button type="button" class="mf-rowhead" data-i="' + i + '" aria-expanded="false" aria-controls="mf-panel-' + i + '">' +
+      '<span class="mf-rname"><b>' + esc(a.name) + '</b><small>Balance ' + money(a.balance, c) + '</small></span>' +
+      '<span class="mf-rmain ' + cls(all) + '">' + arrow(all) + moveWord(all) + '<small>' + amountWord(all, c) + ' in total</small></span>' +
+      '<span class="mf-rmonth ' + cls(mo) + '">This month<small>' + arrow(mo) + moveWord(mo) + '</small></span>' +
+      '<span class="mf-rspark">' + miniSpark(a) + '</span><span class="mf-chev">&#9662;</span></button>' +
+      '<div class="mf-panel" id="mf-panel-' + i + '" hidden>' + detailHTML(a, i) + '</div></div>';
+  }
+
+  var ACC = [];
+  function drawAll() {
+    var hosts = document.querySelectorAll('#fundBody .mf-chart-host');
+    for (var k = 0; k < hosts.length; k++) {
+      var hostEl = hosts[k];
+      if (hostEl.closest('[hidden]')) continue; // only draw charts that are showing
+      drawChart(hostEl, ACC[+hostEl.getAttribute('data-i')]);
+    }
+  }
+
+  body.addEventListener('click', function (e) {
+    var btn = e.target.closest ? e.target.closest('.mf-rowhead') : null;
+    if (!btn) return;
+    var panel = document.getElementById('mf-panel-' + btn.getAttribute('data-i'));
+    var open = !panel.hidden;
+    panel.hidden = open;
+    btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+    if (!open) drawAll();
+  });
+
   async function loadFund() {
     try {
       var res = await fetch('/api/netcash-notify?action=fund');
       if (!res.ok) throw new Error('bad status');
       var d = await res.json();
       if (!d || !d.periods) throw new Error('bad data');
-      DATA = d;
-      var c = d.currency;
-      var updated = d.updatedAt ? new Date(d.updatedAt).toLocaleString('en-ZA') : '';
-      body.innerHTML =
-        '<div class="fund-grid">' +
-          card('Today', d.periods.today, c) +
-          card('This week', d.periods.week, c) +
-          card('This month', d.periods.month, c) +
-          card('Since we started', d.periods.all, c) +
-        '</div>' +
-        '<div class="fund-bal"><span>' +
-          (d.deposited != null && d.startedWith != null && Math.abs(d.deposited - d.startedWith) >= 0.5
-            ? 'Total put in <b>' + money(d.deposited, c) + '</b> &rarr; now '
-            : (d.startedWith != null ? 'Started with <b>' + money(d.startedWith, c) + '</b> &rarr; now ' : 'Current balance ')) +
-          '<b>' + money(d.balance, c) + '</b></span>' +
-          (updated ? '<span>Updated ' + updated + '</span>' : '') + '</div>' +
-        '<div class="fund-chart"><div id="mfChart"></div>' +
-          '<div class="fund-pct" style="text-align:center;padding:2px 0 8px;">Up or down since we started (money put in is not counted)</div></div>' +
-        '<div id="mfTickerSlot"></div>';
-      drawChart(document.getElementById('mfChart'), d);
+      var list = (d.accounts && d.accounts.length) ? d.accounts : [d];
+      ACC = list;
+      if (list.length === 1) {
+        // one account: everything open, as before
+        body.innerHTML = detailHTML(list[0], 0) + '<div id="mfTickerSlot"></div>';
+      } else {
+        // several accounts: a tappable list, details stay closed until a visitor taps
+        body.innerHTML = '<p class="mf-hint">Tap an account to see its full details.</p>' +
+          '<div class="mf-list">' + list.map(rowHTML).join('') + '</div><div id="mfTickerSlot"></div>';
+      }
+      drawAll();
       buildTicker(d, document.getElementById('mfTickerSlot'));
     } catch (e) {
       body.innerHTML = '<div class="fund-unavail">Live numbers are temporarily unavailable. Please check back soon.</div>';
@@ -882,10 +973,7 @@ async function runAIPayment(gateway) {
 
   window.addEventListener('resize', function () {
     clearTimeout(resizeT);
-    resizeT = setTimeout(function () {
-      var host = document.getElementById('mfChart');
-      if (DATA && host) drawChart(host, DATA);
-    }, 200);
+    resizeT = setTimeout(drawAll, 200);
   });
 
   loadFund();
