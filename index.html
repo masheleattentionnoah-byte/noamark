@@ -5306,6 +5306,22 @@ window.addEventListener('popstate', function(e) {
     history.replaceState(targetState, '', url || window.location.href);
   }
 
+  // STALE MODAL ENTRY SKIP (all roles).
+  // Opening a popup (booking, chat, mobile menu, activation, business gate, admin
+  // review, photo viewer) pushes a history entry. If the popup was then closed by
+  // its X / backdrop / an action, that entry is left behind. Landing on it later
+  // changed nothing on screen, so Back looked "stuck" — one wasted press per popup
+  // ever opened, which is why it got worse the longer someone used the site.
+  // With no popup open, such an entry is meaningless: step past it immediately.
+  {
+    const _stl = e.state;
+    const _staleIds = ['booking-modal','chat-open','mobile-nav','activate','biz-gate','admin-review'];
+    if (_stl && !_overlayOpen && (_staleIds.includes(_stl.nmPage) || _stl.nmView === 'lightbox')) {
+      history.back();
+      return;
+    }
+  }
+
   if (_sessionRole === 'business' && !_overlayOpen) {
     const state = e.state || {};
     // nmBizPreview: business owner previewing their OWN listing (opened via
@@ -5437,20 +5453,19 @@ window.addEventListener('popstate', function(e) {
   }
 
   // PRIORITY 4.5: ADMIN back-button handling.
-  // Admins never leave the dashboard via Back. Before this, an admin press fell
-  // through to the generic branches, which (a) pushState()'d a NEW entry on every
-  // press — so the history stack grew the longer the session ran — and (b) re-ran
-  // showAdminDashboard(), re-fetching every listing and re-rendering all tables
-  // each time. After a long session of reviewing, approving and paying that is
-  // exactly the "back button struggles / stops responding" behaviour.
-  // Now: keep the current tab, overwrite the entry in place (replaceState — the
-  // stack never grows), and only rebuild the dashboard if it isn't on screen.
+  // Admins stay on the dashboard when pressing Back (they leave via Logout / the
+  // menu). The browser has already stepped one entry down by the time we get here,
+  // so we push the admin entry straight back on top: the history length stays
+  // constant (forward entries are discarded as the new one is added) and Back can
+  // be pressed any number of times without ever walking off the site. We also do
+  // NOT rebuild the dashboard — that re-fetched every listing on each press, which
+  // is what made the page struggle. It is only rebuilt if it is not on screen.
   if (_sessionRole === 'admin') {
     const _admEl = document.getElementById('page-admin');
     const _admShowing = !!_admEl && getComputedStyle(_admEl).display !== 'none';
     const _activeTab = document.querySelector('.adm-page.active');
     const _tab = (e.state && e.state.nmAdmPage) || (_activeTab ? _activeTab.id.replace('adm-page-', '') : 'overview');
-    history.replaceState({ nmPage: 'admin', nmAdmPage: _tab }, '', '#admin/' + _tab);
+    history.pushState({ nmPage: 'admin', nmAdmPage: _tab }, '', '#admin/' + _tab);
     if (!_admShowing) showAdminDashboard();
     return;
   }
@@ -5628,6 +5643,53 @@ window.addEventListener('popstate', function(e) {
     }
   }
 });
+
+// ── STALE POPUP HISTORY ENTRY SWEEPER ──
+// Companion to the "stale modal entry skip" inside the popstate handler above.
+// That one handles stale entries buried deeper in the stack when Back reaches them;
+// this one cleans up the entry the moment a popup is closed by anything OTHER than
+// Back (X button, tapping outside, finishing an action), so they never pile up.
+(function nmStaleModalSweeper(){
+  // Track when the latest entry was pushed so we never pop an entry whose popup is
+  // still in the middle of opening.
+  const _origPush = history.pushState.bind(history);
+  history.pushState = function(){ window._nmLastPushAt = Date.now(); return _origPush.apply(history, arguments); };
+
+  const MODAL_IDS = ['auth','gate','biz-gate','activate','booking-modal','chat-open','mobile-nav','admin-review'];
+  const isModalState = st => !!st && (MODAL_IDS.includes(st.nmPage) || st.nmView === 'lightbox');
+  const byId = id => document.getElementById(id);
+  function anyPopupOpen(){
+    const nav = byId('main-nav'), bk = byId('booking-modal'), au = byId('auth-overlay'),
+          ga = byId('gate-overlay'), ac = byId('activate-overlay'), ar = byId('admin-review-modal'),
+          lb = byId('nm-lightbox');
+    return !!(
+      (nav && nav.classList.contains('nav-mobile-open')) ||
+      (bk && bk.style.display === 'flex') ||
+      (au && au.classList.contains('active')) ||
+      (ga && ga.classList.contains('active')) ||
+      (ac && ac.classList.contains('active')) ||
+      byId('biz-gate-modal') ||
+      (ar && ['flex','block'].includes(ar.style.display)) ||
+      (typeof chatOpen !== 'undefined' && chatOpen) ||
+      (lb && lb.classList.contains('open'))
+    );
+  }
+  let timer = null;
+  function sweepSoon(){
+    clearTimeout(timer);
+    timer = setTimeout(function(){
+      try {
+        if (!isModalState(history.state)) return;
+        if (anyPopupOpen()) return;
+        if (Date.now() - (window._nmLastPushAt || 0) < 700) return; // popup still opening
+        history.back(); // consume the leftover entry
+      } catch(e) {}
+    }, 250);
+  }
+  document.addEventListener('click', sweepSoon, true);
+  document.addEventListener('touchend', sweepSoon, true);
+  document.addEventListener('keyup', function(ev){ if (ev.key === 'Escape') sweepSoon(); }, true);
+})();
 
 // ── BACK BUTTON SAFETY NET ──
 // The handler above has many early `return`s across many priority branches
@@ -9067,8 +9129,9 @@ document.addEventListener('DOMContentLoaded',()=>{
       const tracker = document.getElementById('user-tracker');
       const text = document.getElementById('tracker-text');
       if(tracker && text){
-        const typeLabel = saved.type==='business'?'Business':saved.type==='subscriber'?'Learner':'Explorer';
-        text.textContent = 'Welcome back, '+saved.name.split(' ')[0]+'! ('+typeLabel+')';
+        const typeLabel = saved.type==='admin'?'Admin':saved.type==='business'?'Business':saved.type==='subscriber'?'Learner':'Explorer';
+        // Admin session's display name is "NoaMark Admin" — greet as Admin, not by first name.
+        text.textContent = saved.type==='admin' ? 'Welcome back, Admin!' : 'Welcome back, '+saved.name.split(' ')[0]+'! ('+typeLabel+')';
         tracker.classList.add('visible');
         setTimeout(()=>tracker.classList.remove('visible'), 5000);
       }
@@ -14582,6 +14645,17 @@ function showAdminDashboard() {
   const validAdmPages = ['overview','approvals','revenue','users','analytics','enquiries','resets','videos'];
   const hParts = (window.location.hash || '').replace('#','').split('/');
   const restoredAdmPage = (hParts[0] === 'admin' && validAdmPages.includes(hParts[1])) ? hParts[1] : 'overview';
+  // Make sure there is ALWAYS a history entry beneath the dashboard. If the admin
+  // opened the site straight onto the dashboard (reload, bookmark, restored
+  // session) there was nothing underneath, so one Back press left the site
+  // entirely — the "I hit back and got thrown out" problem. Done once per load.
+  if (!window._nmAdmFloorSet) {
+    window._nmAdmFloorSet = true;
+    try {
+      history.replaceState({ nmPage: 'home', nmAdmFloor: true }, '', window.location.pathname + window.location.search);
+      history.pushState({ nmPage: 'admin', nmAdmPage: restoredAdmPage }, '', '#admin/' + restoredAdmPage);
+    } catch(e) {}
+  }
   // Shortened from 100ms — enough for the display:block above to take
   // effect, but no longer than needed before the real data fetch starts.
   setTimeout(()=>admGoPage(restoredAdmPage), 20);
