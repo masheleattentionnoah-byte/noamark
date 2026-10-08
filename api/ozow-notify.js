@@ -409,7 +409,11 @@ async function handleNotify(req, res) {
         // a payment count as CONFIRMED on the admin Revenue dashboard,
         // as opposed to a tier an admin set manually via admSetBoost.
         boost_paid_at: new Date().toISOString(),
-        boost_payment_ref: body.TransactionId || body.TransactionReference || null,
+        // FIXED: store OUR reference first (it starts with "OZ-", which is what the admin
+        // Businesses table uses to show "(Ozow)"). Ozow's own TransactionId is a plain ID with
+        // no prefix, so storing it first meant Ozow payments never got a gateway label.
+        // The TransactionId is still written to the logs just below for support lookups.
+        boost_payment_ref: body.TransactionReference || body.TransactionId || null,
         // Restores visibility for a listing that was previously unlisted
         // (status='suspended') by check-trials.js after an unpaid grace
         // period. Harmless no-op for a listing that was already approved.
