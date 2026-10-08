@@ -762,7 +762,7 @@ async function runAIPayment(gateway) {
 
   async function loadFund() {
     try {
-      var res = await fetch('/api/maya-fund');
+      var res = await fetch('/api/netcash-notify?action=fund');
       if (!res.ok) throw new Error('bad status');
       var d = await res.json();
       if (!d || !d.periods) throw new Error('bad data');
