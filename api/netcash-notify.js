@@ -629,13 +629,24 @@ function computeFundStats(account, rows, nowMs = Date.now()) {
 
   const profit = Number(account.profit || 0);
   const deposited = Number(account.deposits || 0);
-  const first = days[0];
-  const firstFlow = first ? first.balance - first.profit : null;
+  const firstFlow = (flows.find((f) => f.flow > 0) || {}).flow;
 
   const series = [];
   for (let i = 89; i >= 0; i--) {
     const d = fundAddDays(today, -i);
     series.push({ d, balance: fundRound(balanceAt(d)) });
+  }
+
+  // Cumulative profit/loss per day, deposits NOT counted, from the first active day until today.
+  const pnlSeries = [];
+  const act = days.find((r) => r.balance !== 0 || r.profit !== 0);
+  if (act) {
+    let cum = 0;
+    pnlSeries.push({ d: fundAddDays(act.d, -1), pnl: 0 });
+    for (let d = act.d; d <= today; d = fundAddDays(d, 1)) {
+      cum += days.filter((r) => r.d === d).reduce((a, r) => a + r.profit, 0);
+      pnlSeries.push({ d, pnl: fundRound(cum) });
+    }
   }
 
   const balance = Number(account.balance);
@@ -658,6 +669,7 @@ function computeFundStats(account, rows, nowMs = Date.now()) {
       all: { amount: fundRound(profit), pct: deposited > 0 ? fundRound((profit / deposited) * 100) : null },
     },
     series,
+    pnlSeries: pnlSeries.slice(-180),
     // true when the daily history ends at the account's current balance
     reconciled: days.length ? Math.abs(balanceAt(today) - balance) < 0.5 : null,
   };
@@ -680,8 +692,9 @@ async function loadFundStats() {
     const end = fundAddDays(new Date(Date.now() + FUND_SAST).toISOString().slice(0, 10), 1);
     const all = [];
     for (const account of chosen) {
-      const start = fundISODate(account.creationDate) || '2020-01-01';
-      const raw = await fundMfx('get-data-daily', { session, id: account.id, start: fundAddDays(start, -1), end });
+      // Whole history, NOT creationDate: that is when the account was added to Myfxbook, which can
+      // be after the first trades, and starting there silently dropped the earlier days.
+      const raw = await fundMfx('get-data-daily', { session, id: account.id, start: '2000-01-01', end });
       const rows = (raw.dataDaily || []).flat(Infinity);
       all.push({ name: String(account.name || 'NoaMark'), ...computeFundStats(account, rows) });
     }
