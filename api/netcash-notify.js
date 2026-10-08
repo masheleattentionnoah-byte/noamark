@@ -661,6 +661,8 @@ function computeFundStats(account, rows, nowMs = Date.now()) {
     updatedAt,
     startedWith: firstFlow != null && firstFlow > 0 ? fundRound(firstFlow) : null,
     deposited: deposited > 0 ? fundRound(deposited) : null,
+    // yes/no only: the public page never shows withdrawal amounts or dates
+    moneyOut: Number(account.withdrawals || 0) > 0,
     balance: fundRound(balance),
     periods: {
       today: period(today),
