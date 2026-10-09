@@ -628,19 +628,15 @@ function computeFundStats(account, rows, nowMs = Date.now()) {
     const amount = days.filter((r) => r.d >= startIso).reduce((a, r) => a + r.profit, 0);
     const startBal = balanceAt(fundAddDays(startIso, -1));
     const deposits = flows.filter((f) => f.d >= startIso && f.flow > 0).reduce((a, f) => a + f.flow, 0);
-    const basis = startBal > 0 ? startBal : deposits;
+    // Money that was at work during the period: what was there at the start plus anything added
+    // during it. (Using the start balance alone gave "Down 145%" when money was added mid-week.)
+    const basis = startBal + deposits;
     return { amount: fundRound(amount), pct: basis > 0 ? fundRound((amount / basis) * 100) : null };
   };
 
   const profit = Number(account.profit || 0);
   const deposited = Number(account.deposits || 0);
   const firstFlow = (flows.find((f) => f.flow > 0) || {}).flow;
-
-  const series = [];
-  for (let i = 89; i >= 0; i--) {
-    const d = fundAddDays(today, -i);
-    series.push({ d, balance: fundRound(balanceAt(d)) });
-  }
 
   // Cumulative profit/loss per day, deposits NOT counted, from the first active day until today.
   const pnlSeries = [];
@@ -675,7 +671,6 @@ function computeFundStats(account, rows, nowMs = Date.now()) {
       month: period(month),
       all: { amount: fundRound(profit), pct: deposited > 0 ? fundRound((profit / deposited) * 100) : null },
     },
-    series,
     pnlSeries: pnlSeries.slice(-180),
     // true when the daily history ends at the account's current balance
     reconciled: days.length ? Math.abs(balanceAt(today) - balance) < 0.5 : null,
