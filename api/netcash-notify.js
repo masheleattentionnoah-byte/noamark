@@ -805,7 +805,7 @@ async function handleFundReport(req, res) {
         `Result - today: ${fundMoneyText(s.periods.today.amount, c)}, this week: ${fundMoneyText(s.periods.week.amount, c)}, this month: ${fundMoneyText(s.periods.month.amount, c)}, since the start: ${fundMoneyText(s.periods.all.amount, c)}`,
         `Money put in so far: ${fundMoneyText(Number(account.deposits || 0), c)} | Taken out so far: ${fundMoneyText(Number(account.withdrawals || 0), c)}`,
         `Last 3 days (money in/out is estimated from daily balances):`,
-        ...m.map((x) => `  ${x.d}: money in ${fundMoneyText(x.moneyIn, c)}, money out ${fundMoneyText(x.moneyOut, c)}, result ${fundMoneyText(x.result, c)}`),
+        ...m.map((x) => `- ${x.d}: money in ${fundMoneyText(x.moneyIn, c)}, money out ${fundMoneyText(x.moneyOut, c)}, result ${fundMoneyText(x.result, c)}`),
         touched ? '>> Money moved in or out of this account in the last 3 days.' : 'No money moved in or out in the last 3 days.',
         `Myfxbook last updated: ${account.lastUpdateDate || 'unknown'}`,
         ''
@@ -813,11 +813,15 @@ async function handleFundReport(req, res) {
     }
     lines.push('Private report: none of the money in / money out figures appear on the public Maya page.',
       'The free Myfxbook plan refreshes about once a day, so a deposit or withdrawal can show up a day late.');
-    await sendViaExistingEmailApi(
+    const sent = await sendViaExistingEmailApi(
       process.env.FUND_REPORT_EMAIL || ADMIN_EMAIL,
       moved ? 'NoaMark account report: money moved' : 'NoaMark account report',
       lines.join('\n')
     );
+    if (!sent || sent.ok !== true) {
+      console.error('[maya-fund] report email NOT sent:', (sent && sent.reason) || 'unknown reason');
+      return res.status(502).json({ sent: false, reason: (sent && sent.reason) || 'email not sent' });
+    }
     return res.status(200).json({ sent: true, moved });
   } catch (e) {
     console.error('[maya-fund] report failed:', e.message);
