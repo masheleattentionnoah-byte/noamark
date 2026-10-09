@@ -4,6 +4,7 @@
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/check-trials", "schedule": "0 6 * * *" }
+    { "path": "/api/check-trials", "schedule": "0 6 * * *" },
+    { "path": "/api/netcash-notify?action=fund-report", "schedule": "0 18 * * *" }
   ]
 }
