@@ -166,6 +166,11 @@ export default async function handler(req, res) {
     return handleFund(req, res);
   }
 
+  // ADDED: private daily money-in / money-out email to the admin (cron only, needs CRON_SECRET).
+  if (req.method === 'GET' && action === 'fund-report') {
+    return handleFundReport(req, res);
+  }
+
   // ANY GET request here is the customer's browser — Netcash's real
   // server-to-server Notify call is always POST per the docs, so a GET
   // can only be a browser (or Netcash's results page following up with
@@ -563,7 +568,7 @@ async function handleTicketNotify({ finish, planKey, email, name, amountPaid, ac
 // ADDED: JOB 4 — Maya Fund (GET /api/netcash-notify?action=fund)
 // Public totals of NoaMark's own MT5 account, read from Myfxbook (free
 // "Auto Update" plan). Totals only: no trades, no symbols. No database,
-// no cron. Env vars: MYFXBOOK_EMAIL, MYFXBOOK_PASSWORD
+// Env vars: MYFXBOOK_EMAIL, MYFXBOOK_PASSWORD (+ optional MYFXBOOK_ACCOUNT_OWNERS)
 //   optional: MYFXBOOK_ACCOUNT_NUMBERS (comma-separated MT5 logins to show publicly; default = first account)
 // Myfxbook sessions are bound to the IP that logged in, so we log in on
 // every refresh and log out again. get-history only returns the last 50
@@ -677,7 +682,7 @@ function computeFundStats(account, rows, nowMs = Date.now()) {
   };
 }
 
-async function loadFundStats() {
+async function loadFundRaw() {
   const email = process.env.MYFXBOOK_EMAIL, password = process.env.MYFXBOOK_PASSWORD;
   if (!email || !password) throw new Error('Myfxbook credentials missing');
   const { session } = await fundMfx('login', { email, password });
@@ -692,18 +697,37 @@ async function loadFundStats() {
       : accounts.slice(0, 1);
     if (!chosen.length) throw new Error('No Myfxbook account found');
     const end = fundAddDays(new Date(Date.now() + FUND_SAST).toISOString().slice(0, 10), 1);
-    const all = [];
+    const out = [];
     for (const account of chosen) {
       // Whole history, NOT creationDate: that is when the account was added to Myfxbook, which can
       // be after the first trades, and starting there silently dropped the earlier days.
       const raw = await fundMfx('get-data-daily', { session, id: account.id, start: '2000-01-01', end });
-      const rows = (raw.dataDaily || []).flat(Infinity);
-      all.push({ name: String(account.name || 'NoaMark'), ...computeFundStats(account, rows) });
+      out.push({ account, rows: (raw.dataDaily || []).flat(Infinity) });
     }
-    return { ...all[0], accounts: all }; // top-level = first account (the results section); accounts = the ticker
+    return out;
   } finally {
     fundMfx('logout', { session }).catch(() => {}); // free the session; never block the response
   }
+}
+
+// MYFXBOOK_ACCOUNT_OWNERS = "12345678=Attention Mashele,87654321=NoaMark" (MT5 login = who it belongs to).
+// Shown on the public list so visitors know whose account they are opening. Nothing set = nothing shown.
+function fundOwners() {
+  const map = {};
+  String(process.env.MYFXBOOK_ACCOUNT_OWNERS || '').split(',').forEach((pair) => {
+    const i = pair.indexOf('=');
+    if (i > 0) map[pair.slice(0, i).trim()] = pair.slice(i + 1).replace(/[<>&"]/g, '').trim().slice(0, 60);
+  });
+  return map;
+}
+
+async function loadFundStats() {
+  const owners = fundOwners();
+  const all = (await loadFundRaw()).map(({ account, rows }) => {
+    const owner = owners[String(account.accountId)];
+    return { name: String(account.name || 'NoaMark'), ...(owner ? { owner } : {}), ...computeFundStats(account, rows) };
+  });
+  return { ...all[0], accounts: all }; // top-level = first account (the results section); accounts = list + ticker
 }
 
 async function handleFund(req, res) {
@@ -717,5 +741,86 @@ async function handleFund(req, res) {
   } catch (e) {
     console.error('[maya-fund] failed:', e.message);
     return res.status(500).json({ error: 'unavailable' });
+  }
+}
+
+// ---------------------------------------------------------------------
+// ADDED: private daily report (GET /api/netcash-notify?action=fund-report).
+// Called once a day by a Vercel cron entry. Emails ADMIN_EMAIL (or FUND_REPORT_EMAIL)
+// a plain summary that INCLUDES money put in / taken out. None of this is ever on the
+// public page. Needs the CRON_SECRET env var (Vercel sends it as a Bearer token).
+// Free Myfxbook updates about once a day, so a deposit or withdrawal can show up a day late.
+// Uses the existing /api/send-email, so there is no new file, key or table.
+// ---------------------------------------------------------------------
+function fundMoneyText(n, cur) {
+  const sym = { USD: '$', ZAR: 'R', EUR: '\u20AC', GBP: '\u00A3' }[cur] || '';
+  return (n < 0 ? '-' : '') + sym + Math.abs(n).toFixed(2);
+}
+
+// Money in/out and result for each of the last 3 days. Money in/out is worked out from the
+// daily balances (balance change that profit does not explain), so treat it as an estimate.
+function computeFundMoney(rows, nowMs = Date.now()) {
+  const today = new Date(nowMs + FUND_SAST).toISOString().slice(0, 10);
+  const days = rows
+    .map((r) => ({ d: fundISODate(r.date), balance: Number(r.balance), profit: Number(r.profit || 0) }))
+    .filter((r) => r.d)
+    .sort((a, b) => (a.d < b.d ? -1 : 1));
+  let prev = 0;
+  const flows = days.map((r) => {
+    const f = r.balance - prev - r.profit;
+    prev = r.balance;
+    return { d: r.d, flow: Math.abs(f) >= 0.5 ? f : 0 };
+  });
+  const out = [];
+  for (let i = 2; i >= 0; i--) {
+    const d = fundAddDays(today, -i);
+    out.push({
+      d,
+      moneyIn: fundRound(flows.filter((f) => f.d === d && f.flow > 0).reduce((a, f) => a + f.flow, 0)),
+      moneyOut: fundRound(-flows.filter((f) => f.d === d && f.flow < 0).reduce((a, f) => a + f.flow, 0)),
+      result: fundRound(days.filter((r) => r.d === d).reduce((a, r) => a + r.profit, 0)),
+    });
+  }
+  return out;
+}
+
+async function handleFundReport(req, res) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || req.headers.authorization !== `Bearer ${secret}`) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+  try {
+    const raw = await loadFundRaw();
+    const lines = [];
+    let moved = false;
+    for (const { account, rows } of raw) {
+      const s = computeFundStats(account, rows);
+      const m = computeFundMoney(rows);
+      const c = s.currency;
+      const touched = m.some((x) => x.moneyIn > 0 || x.moneyOut > 0);
+      if (touched) moved = true;
+      lines.push(
+        `${account.name || 'Account'} (login ${account.accountId})`,
+        `Balance now: ${fundMoneyText(s.balance, c)}`,
+        `Result - today: ${fundMoneyText(s.periods.today.amount, c)}, this week: ${fundMoneyText(s.periods.week.amount, c)}, this month: ${fundMoneyText(s.periods.month.amount, c)}, since the start: ${fundMoneyText(s.periods.all.amount, c)}`,
+        `Money put in so far: ${fundMoneyText(Number(account.deposits || 0), c)} | Taken out so far: ${fundMoneyText(Number(account.withdrawals || 0), c)}`,
+        `Last 3 days (money in/out is estimated from daily balances):`,
+        ...m.map((x) => `  ${x.d}: money in ${fundMoneyText(x.moneyIn, c)}, money out ${fundMoneyText(x.moneyOut, c)}, result ${fundMoneyText(x.result, c)}`),
+        touched ? '>> Money moved in or out of this account in the last 3 days.' : 'No money moved in or out in the last 3 days.',
+        `Myfxbook last updated: ${account.lastUpdateDate || 'unknown'}`,
+        ''
+      );
+    }
+    lines.push('Private report: none of the money in / money out figures appear on the public Maya page.',
+      'The free Myfxbook plan refreshes about once a day, so a deposit or withdrawal can show up a day late.');
+    await sendViaExistingEmailApi(
+      process.env.FUND_REPORT_EMAIL || ADMIN_EMAIL,
+      moved ? 'NoaMark account report: money moved' : 'NoaMark account report',
+      lines.join('\n')
+    );
+    return res.status(200).json({ sent: true, moved });
+  } catch (e) {
+    console.error('[maya-fund] report failed:', e.message);
+    return res.status(500).json({ error: 'report failed' });
   }
 }
