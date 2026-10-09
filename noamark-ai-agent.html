@@ -882,7 +882,8 @@ async function runAIPayment(gateway) {
   function detailHTML(a, i) {
     var c = a.currency;
     var updated = a.updatedAt ? new Date(a.updatedAt).toLocaleString('en-ZA') : '';
-    return '<div class="fund-grid">' +
+    return (a.owner ? '<p class="fund-pct" style="margin:14px 0 0;">Account owner: <b style="color:var(--white)">' + esc(a.owner) + '</b></p>' : '') +
+      '<div class="fund-grid">' +
         card("Today's result", a.periods.today, c) +
         card("This week's result", a.periods.week, c) +
         card("This month's result", a.periods.month, c) +
@@ -921,7 +922,7 @@ async function runAIPayment(gateway) {
   function rowHTML(a, i) {
     var all = a.periods.all, mo = a.periods.month, c = a.currency;
     return '<div class="mf-row"><button type="button" class="mf-rowhead" data-i="' + i + '" aria-expanded="false" aria-controls="mf-panel-' + i + '">' +
-      '<span class="mf-rname"><b>' + esc(a.name) + '</b><small>Balance ' + money(a.balance, c) + '</small></span>' +
+      '<span class="mf-rname"><b>' + esc(a.name) + '</b>' + (a.owner ? '<small>Belongs to ' + esc(a.owner) + '</small>' : '') + '<small>Balance ' + money(a.balance, c) + '</small></span>' +
       '<span class="mf-rmain ' + cls(all) + '">' + arrow(all) + moveWord(all) + '<small>' + amountWord(all, c) + ' in total</small></span>' +
       '<span class="mf-rmonth ' + cls(mo) + '">This month<small>' + arrow(mo) + moveWord(mo) + '</small></span>' +
       '<span class="mf-rspark">' + miniSpark(a) + '</span><span class="mf-chev">&#9662;</span></button>' +
