@@ -720,7 +720,12 @@ async function loadFundStats() {
   const owners = fundOwners();
   const all = (await loadFundRaw()).map(({ account, rows }) => {
     const owner = owners[String(account.accountId)];
-    return { name: String(account.name || 'NoaMark'), ...(owner ? { owner } : {}), ...computeFundStats(account, rows) };
+    const st = computeFundStats(account, rows);
+    // PRIVACY: balance = money put in + results - money taken out, so showing the money put in (or a
+    // since-the-start percentage, which gives it away) next to the balance and result would let anyone
+    // work out how much was taken out. When money has been taken out, those two are withheld.
+    if (st.moneyOut) { st.deposited = null; st.startedWith = null; st.periods.all.pct = null; }
+    return { name: String(account.name || 'NoaMark'), ...(owner ? { owner } : {}), ...st };
   });
   return { ...all[0], accounts: all }; // top-level = first account (the results section); accounts = list + ticker
 }
