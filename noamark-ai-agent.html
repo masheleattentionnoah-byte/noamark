@@ -421,6 +421,42 @@
     .mf-rmonth { display: none; }
     .mf-rspark svg { width: 78px; }
   }
+
+  /* Maya Fund: flat look, no boxes: thin lines between rows, like a news list */
+  .fund-grid { gap: 0; }
+  .fund-card, .fund-card.neg { background: none; border: 0; border-top: 1px solid rgba(255,255,255,0.12); border-radius: 0; padding: 16px 6px; }
+  .fund-chart { background: none; border: 0; border-radius: 0; padding: 14px 0 0; }
+  .mf-list { gap: 0; }
+  .mf-row { background: none; border: 0; border-bottom: 1px solid rgba(255,255,255,0.12); border-radius: 0; }
+  .mf-row:first-child { border-top: 1px solid rgba(255,255,255,0.12); }
+  .mf-rowhead { display: grid; grid-template-columns: 46px minmax(0, 1.2fr) auto auto 104px 20px; grid-template-areas: "av name main month spark chev" "av upd main month spark chev"; column-gap: 14px; row-gap: 0; align-items: center; padding: 14px 2px; }
+  .mf-rowhead:hover { background: none; }
+  .mf-av { grid-area: av; }
+  .mf-rname { grid-area: name; align-self: end; min-width: 0; }
+  .mf-rname b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mf-rupd { grid-area: upd; align-self: start; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .mf-rmain { grid-area: main; text-align: right; }
+  .mf-rmain small { display: block; white-space: nowrap; }
+  .mf-m { display: none; }
+  .mf-rmonth { grid-area: month; text-align: right; }
+  .mf-rspark { grid-area: spark; }
+  .mf-chev { grid-area: chev; }
+  .mf-panel { border-top: 0; padding: 0 2px 16px; }
+  .mf-ticker { background: none; border: 0; border-top: 1px solid rgba(255,255,255,0.12); border-bottom: 1px solid rgba(255,255,255,0.12); border-radius: 0; box-shadow: none; height: 56px; margin-top: 18px; }
+  .mf-live { background: none; color: var(--green-light); padding: 0 12px 0 2px; }
+  .mf-live i { background: var(--green); }
+  @media (max-width: 600px) {
+    .mf-rowhead { grid-template-columns: 40px minmax(0, 1fr) 60px 14px; grid-template-areas: "av name spark chev" "av main spark chev" "av upd spark chev"; column-gap: 8px; padding: 12px 0; }
+    .mf-rmonth { display: none; }
+    .mf-rmain { text-align: left; font-size: 14px; margin: 1px 0; white-space: nowrap; }
+    .mf-rmain .mf-amt { display: none; }
+    .mf-m { display: inline; }
+    .mf-rname { align-self: end; }
+    .mf-rspark svg { width: 60px; }
+  }
+  .mf-rmonth, .mf-rmonth.u, .mf-rmonth.d, .mf-rmonth.f { color: var(--muted); }
+  .mf-rmonth small { font-weight: 700; }
+  .mf-rmonth.u small { color: #4ade80; } .mf-rmonth.d small { color: #ff8a8a; } .mf-rmonth.f small { color: var(--white); }
 </style>
 </head>
 <body>
@@ -838,7 +874,7 @@ async function runAIPayment(gateway) {
       marks += '<circle cx="' + X(lowI).toFixed(1) + '" cy="' + Y(vals[lowI]).toFixed(1) + '" r="3.5" fill="#ff8a8a"/>' +
         '<text x="' + X(lowI).toFixed(1) + '" y="' + (Y(vals[lowI]) + 16).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#ff8a8a">Lowest: ' + word({ amount: vals[lowI], pct: null }, c).toLowerCase() + '</text>';
     }
-    var ly = Math.max(14, Y(last) - 12);
+    var ly = last < 0 ? Math.max(14, Y(0) - 8) : Y(0) + 18;
     marks += '<circle cx="' + X(s.length - 1).toFixed(1) + '" cy="' + Y(last).toFixed(1) + '" r="5" fill="' + col + '"/>' +
       '<text x="' + (X(s.length - 1) - 8).toFixed(1) + '" y="' + ly.toFixed(1) + '" text-anchor="end" font-size="14" font-weight="800" fill="' + col + '">' + word({ amount: last, pct: null }, c) + '</text>';
 
@@ -873,6 +909,15 @@ async function runAIPayment(gateway) {
   }
 
   function dname(a) { return a.owner || a.name; }
+  // "Updated today 09:52" / "Updated 9 Oct, 09:52" (the visitor's own time zone)
+  function upd(a) {
+    if (!a.updatedAt) return '';
+    var t = new Date(a.updatedAt);
+    if (isNaN(t.getTime())) return '';
+    var hm = t.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    var same = t.toDateString() === new Date().toDateString();
+    return 'Updated ' + (same ? 'today ' : t.getDate() + ' ' + MON[t.getMonth()] + ', ') + hm;
+  }
   function initials(n) {
     var w = String(n).split(/[^A-Za-z0-9]+/).filter(Boolean);
     return ((w[0] || '?').charAt(0) + (w[1] ? w[1].charAt(0) : '')).toUpperCase();
@@ -899,7 +944,7 @@ async function runAIPayment(gateway) {
         card("This month's result", a.periods.month, c) +
         card('Result since we started', a.periods.all, c) +
       '</div>' +
-      (updated ? '<p class="fund-pct" style="text-align:center;margin:12px 0;">Updated ' + updated + '</p>' : '') +
+      (upd(a) ? '<p class="fund-pct" style="text-align:center;margin:12px 0;">' + upd(a) + '</p>' : '') +
       '<div class="fund-chart"><div class="mf-chart-host" data-i="' + i + '"></div>' +
         '<div class="fund-pct" style="text-align:center;padding:2px 0 8px;">Up or down since we started</div></div>';
   }
@@ -926,7 +971,10 @@ async function runAIPayment(gateway) {
     var all = a.periods.all, mo = a.periods.month, c = a.currency;
     return '<div class="mf-row"><button type="button" class="mf-rowhead" data-i="' + i + '" aria-expanded="false" aria-controls="mf-panel-' + i + '">' +
       avatar(a) + '<span class="mf-rname"><b>' + esc(dname(a)) + '</b></span>' +
-      '<span class="mf-rmain ' + cls(all) + '">' + arrow(all) + moveWord(all) + '<small>' + amountWord(all, c) + ' in total</small></span>' +
+      '<span class="mf-rupd">' + upd(a) + '</span>' +
+      '<span class="mf-rmain ' + cls(all) + '">' + arrow(all) + moveWord(all) +
+        '<small class="mf-amt">' + amountWord(all, c) + ' in total</small>' +
+        (all.amount !== 0 ? '<span class="mf-m"> &middot; ' + money(Math.abs(all.amount), c) + '</span>' : '') + '</span>' +
       '<span class="mf-rmonth ' + cls(mo) + '">This month<small>' + arrow(mo) + moveWord(mo) + '</small></span>' +
       '<span class="mf-rspark">' + miniSpark(a) + '</span><span class="mf-chev">&#9662;</span></button>' +
       '<div class="mf-panel" id="mf-panel-' + i + '" hidden>' + detailHTML(a, i) + '</div></div>';
