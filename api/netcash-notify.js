@@ -716,16 +716,29 @@ function fundOwners() {
   return map;
 }
 
+// MYFXBOOK_ACCOUNT_PHOTOS = "12345678=/maya-photos/noamark.jpg,87654321=https://..." (optional small round picture per account)
+function fundPhotos() {
+  const map = {};
+  String(process.env.MYFXBOOK_ACCOUNT_PHOTOS || '').split(',').forEach((pair) => {
+    const i = pair.indexOf('=');
+    if (i <= 0) return;
+    const url = pair.slice(i + 1).trim();
+    if ((url.startsWith('/') || url.startsWith('https://')) && !/[\s"'<>]/.test(url) && url.length < 300) map[pair.slice(0, i).trim()] = url;
+  });
+  return map;
+}
+
 async function loadFundStats() {
   const owners = fundOwners();
+  const photos = fundPhotos();
   const all = (await loadFundRaw()).map(({ account, rows }) => {
     const owner = owners[String(account.accountId)];
     const st = computeFundStats(account, rows);
-    // PRIVACY: balance = money put in + results - money taken out, so showing the money put in (or a
-    // since-the-start percentage, which gives it away) next to the balance and result would let anyone
-    // work out how much was taken out. When money has been taken out, those two are withheld.
-    if (st.moneyOut) { st.deposited = null; st.startedWith = null; st.periods.all.pct = null; }
-    return { name: String(account.name || 'NoaMark'), ...(owner ? { owner } : {}), ...st };
+    // PRIVACY: the public page shows up / down only. The balance, the money put in and the starting
+    // amount are NOT sent to the browser at all, so nobody can work out deposits or withdrawals.
+    delete st.balance; delete st.deposited; delete st.startedWith; delete st.moneyOut;
+    const photo = photos[String(account.accountId)];
+    return { name: String(account.name || 'NoaMark'), ...(owner ? { owner } : {}), ...(photo ? { photo } : {}), ...st };
   });
   return { ...all[0], accounts: all }; // top-level = first account (the results section); accounts = list + ticker
 }
