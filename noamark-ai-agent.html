@@ -399,7 +399,7 @@
   .mf-hint { text-align: center; color: var(--muted); font-size: 13px; margin: 0 0 12px; }
   .mf-list { display: flex; flex-direction: column; gap: 10px; }
   .mf-row { background: var(--panel-dark); border: 1px solid rgba(110,231,160,0.2); border-radius: 14px; overflow: hidden; }
-  .mf-rowhead { width: 100%; display: grid; grid-template-columns: 1.2fr 1.25fr 1fr 104px 20px; align-items: center; gap: 14px; padding: 14px 16px; background: transparent; border: 0; color: var(--white); text-align: left; cursor: pointer; font: inherit; }
+  .mf-rowhead { width: 100%; display: grid; grid-template-columns: 46px 1.1fr 1.25fr 1fr 104px 20px; align-items: center; gap: 14px; padding: 14px 16px; background: transparent; border: 0; color: var(--white); text-align: left; cursor: pointer; font: inherit; }
   .mf-rowhead:hover { background: rgba(110,231,160,0.05); }
   .mf-rowhead:focus-visible { outline: 2px solid var(--green-light); outline-offset: -2px; }
   .mf-rowhead small { display: block; color: var(--muted); font-size: 12px; font-weight: 500; margin-top: 2px; }
@@ -409,12 +409,15 @@
   .mf-rmonth { font-size: 14px; font-weight: 700; }
   .mf-rmonth.u { color: #4ade80; } .mf-rmonth.d { color: #ff8a8a; } .mf-rmonth.f { color: var(--white); }
   .mf-rspark svg { width: 104px; height: 34px; display: block; }
+  .mf-av { position: relative; width: 44px; height: 44px; border-radius: 50%; overflow: hidden; background: linear-gradient(135deg, #1f6b3f, #0d2818); border: 1px solid rgba(110,231,160,0.45); display: flex; align-items: center; justify-content: center; color: var(--green-bright); font-weight: 800; font-size: 15px; }
+  .mf-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  @media (max-width: 600px) { .mf-av { width: 38px; height: 38px; font-size: 13px; } }
   .mf-chev { color: var(--muted); font-size: 14px; transition: transform 0.2s; }
   .mf-rowhead[aria-expanded="true"] .mf-chev { transform: rotate(180deg); }
   .mf-panel { padding: 0 14px 14px; border-top: 1px solid rgba(255,255,255,0.08); }
   .mf-panel .fund-grid { margin-top: 14px; }
   @media (max-width: 600px) {
-    .mf-rowhead { grid-template-columns: 1.1fr 1.1fr 78px 16px; gap: 10px; padding: 12px; }
+    .mf-rowhead { grid-template-columns: 40px 1fr 1.1fr 78px 16px; gap: 10px; padding: 12px; }
     .mf-rmonth { display: none; }
     .mf-rspark svg { width: 78px; }
   }
@@ -483,10 +486,9 @@
 <div class="fund-section" id="maya-fund">
   <div class="fund-inner">
     <p class="fund-kicker">MAYA &bull; RESULTS</p>
-    <h2>NoaMark's own account. <span class="g">Live numbers.</span></h2>
-    <p class="fund-sub">Updated automatically, so you always see where Maya stands today.</p>
+    <h2 style="margin-bottom:26px;">Maya's results. <span class="g">Live numbers.</span></h2>
     <div id="fundBody"><div class="fund-unavail">Loading latest numbers&hellip;</div></div>
-    <p class="fund-note">This is NoaMark's own account. It is not an offer, investment advice or a promise of returns. Results can be negative, and past results do not predict future results.</p>
+    <p class="fund-note">These are the accounts of the names shown. Nothing here is an offer, investment advice or a promise of returns. Results can be negative, and past results do not predict future results.</p>
   </div>
 </div>
 
@@ -856,20 +858,29 @@ async function runAIPayment(gateway) {
       var arrow = p.amount > 0 ? '\u25B2 ' : (p.amount < 0 ? '\u25BC ' : '');
       return '<span class="mf-seg">' + label + ' <span class="mf-num ' + cls + '">' + arrow + word(p, c) + '</span></span>';
     }
-    return '<span class="mf-item"><b>' + esc(a.name) + '</b>' +
+    return '<span class="mf-item"><b>' + esc(dname(a)) + '</b>' +
       seg('Today', a.periods.today) + seg('Week', a.periods.week) + seg('Month', a.periods.month) +
-      seg('Total', a.periods.all) + '<span class="mf-seg">Balance <b>' + money(a.balance, c) + '</b></span></span>';
+      seg('Total', a.periods.all) + '</span>';
   }
   function buildTicker(d, slot) {
     var list = (d.accounts && d.accounts.length) ? d.accounts : [d];
     var items = list.map(tickerItem).join('') +
-      '<span class="mf-item"><span class="mf-seg mf-note">NoaMark\u2019s own account &middot; not advice &middot; results can be negative &middot; past results do not predict future results</span></span>';
+      '<span class="mf-item"><span class="mf-seg mf-note">Accounts of the names shown &middot; not advice &middot; results can be negative &middot; past results do not predict future results</span></span>';
     slot.innerHTML = '<div class="mf-ticker" role="region" aria-label="Maya live results"><div class="mf-live"><i></i>MAYA LIVE</div>' +
       '<div class="mf-track-wrap"><div class="mf-track">' + items + items + '</div></div></div>';
     var track = slot.querySelector('.mf-track');
     track.style.setProperty('--mf-dur', Math.max(25, Math.round(track.scrollWidth / 2 / 70)) + 's'); // about 70px per second
   }
 
+  function dname(a) { return a.owner || a.name; }
+  function initials(n) {
+    var w = String(n).split(/[^A-Za-z0-9]+/).filter(Boolean);
+    return ((w[0] || '?').charAt(0) + (w[1] ? w[1].charAt(0) : '')).toUpperCase();
+  }
+  function avatar(a) {
+    return '<span class="mf-av"><span>' + esc(initials(dname(a))) + '</span>' +
+      (a.photo ? '<img src="' + esc(a.photo) + '" alt="" onerror="this.remove()">' : '') + '</span>';
+  }
   function amountWord(p, cur) {
     if (p.amount > 0) return 'Up ' + money(p.amount, cur);
     if (p.amount < 0) return 'Down ' + money(Math.abs(p.amount), cur);
@@ -878,27 +889,19 @@ async function runAIPayment(gateway) {
   function cls(p) { return p.amount > 0 ? 'u' : (p.amount < 0 ? 'd' : 'f'); }
   function arrow(p) { return p.amount > 0 ? '\u25B2 ' : (p.amount < 0 ? '\u25BC ' : ''); }
 
-  // Everything for one account: the four cards, the balance line and the full chart
+  // Everything for one account: the four cards, the update time and the full chart
   function detailHTML(a, i) {
     var c = a.currency;
     var updated = a.updatedAt ? new Date(a.updatedAt).toLocaleString('en-ZA') : '';
-    return (a.owner ? '<p class="fund-pct" style="margin:14px 0 0;">Account owner: <b style="color:var(--white)">' + esc(a.owner) + '</b></p>' : '') +
-      '<div class="fund-grid">' +
+    return '<div class="fund-grid">' +
         card("Today's result", a.periods.today, c) +
         card("This week's result", a.periods.week, c) +
         card("This month's result", a.periods.month, c) +
         card('Result since we started', a.periods.all, c) +
       '</div>' +
-      '<div class="fund-bal"><span>' +
-        (a.moneyOut
-          ? 'Current balance '
-          : (a.deposited != null && a.startedWith != null && Math.abs(a.deposited - a.startedWith) >= 0.5
-            ? 'Total put in <b>' + money(a.deposited, c) + '</b> &rarr; now '
-            : (a.startedWith != null ? 'Started with <b>' + money(a.startedWith, c) + '</b> &rarr; now ' : 'Current balance '))) +
-        '<b>' + money(a.balance, c) + '</b></span>' +
-        (updated ? '<span>Updated ' + updated + '</span>' : '') + '</div>' +
+      (updated ? '<p class="fund-pct" style="text-align:center;margin:12px 0;">Updated ' + updated + '</p>' : '') +
       '<div class="fund-chart"><div class="mf-chart-host" data-i="' + i + '"></div>' +
-        '<div class="fund-pct" style="text-align:center;padding:2px 0 8px;">Up or down since we started (money put in is not counted)</div></div>';
+        '<div class="fund-pct" style="text-align:center;padding:2px 0 8px;">Up or down since we started</div></div>';
   }
 
   // Small graph for the collapsed row
@@ -922,7 +925,7 @@ async function runAIPayment(gateway) {
   function rowHTML(a, i) {
     var all = a.periods.all, mo = a.periods.month, c = a.currency;
     return '<div class="mf-row"><button type="button" class="mf-rowhead" data-i="' + i + '" aria-expanded="false" aria-controls="mf-panel-' + i + '">' +
-      '<span class="mf-rname"><b>' + esc(a.name) + '</b>' + (a.owner ? '<small>Belongs to ' + esc(a.owner) + '</small>' : '') + '<small>Balance ' + money(a.balance, c) + '</small></span>' +
+      avatar(a) + '<span class="mf-rname"><b>' + esc(dname(a)) + '</b></span>' +
       '<span class="mf-rmain ' + cls(all) + '">' + arrow(all) + moveWord(all) + '<small>' + amountWord(all, c) + ' in total</small></span>' +
       '<span class="mf-rmonth ' + cls(mo) + '">This month<small>' + arrow(mo) + moveWord(mo) + '</small></span>' +
       '<span class="mf-rspark">' + miniSpark(a) + '</span><span class="mf-chev">&#9662;</span></button>' +
