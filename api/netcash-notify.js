@@ -634,6 +634,29 @@ function computeFundStats(account, rows, nowMs = Date.now()) {
     return { amount: fundRound(amount), pct: basis > 0 ? fundRound((amount / basis) * 100) : null };
   };
 
+  // Money added / removed, as a PERCENT of the capital at the start of each period (never an amount).
+  // The daily-balance figures are only an estimate, so they are published only when they add up to
+  // Myfxbook's own deposit and withdrawal totals; otherwise nothing is announced (never guess in public).
+  // Set FUND_HIDE_MONEY_NEWS=1 in Vercel to switch this off completely.
+  const depTotal = Number(account.deposits || 0), wdTotal = Number(account.withdrawals || 0);
+  const sumIn = flows.filter((f) => f.flow > 0).reduce((a, f) => a + f.flow, 0);
+  const sumOut = -flows.filter((f) => f.flow < 0).reduce((a, f) => a + f.flow, 0);
+  const flowsOk = Math.abs(sumIn - depTotal) <= Math.max(1, 0.02 * depTotal) && Math.abs(sumOut - wdTotal) <= Math.max(1, 0.02 * wdTotal);
+  const moneyNews = [];
+  if (flowsOk && !process.env.FUND_HIDE_MONEY_NEWS) {
+    for (const [pName, startIso] of [['today', today], ['week', week], ['month', month]]) {
+      const inn = flows.filter((f) => f.d >= startIso && f.flow > 0).reduce((a, f) => a + f.flow, 0);
+      const out = -flows.filter((f) => f.d >= startIso && f.flow < 0).reduce((a, f) => a + f.flow, 0);
+      if (inn <= 0 && out <= 0) continue;
+      const base = balanceAt(fundAddDays(startIso, -1));
+      moneyNews.push({
+        p: pName,
+        added: inn > 0, addedPct: inn > 0 && base > 0 ? fundRound((inn / base) * 100) : null,
+        removed: out > 0, removedPct: out > 0 && base > 0 ? fundRound((out / base) * 100) : null,
+      });
+    }
+  }
+
   const profit = Number(account.profit || 0);
   const deposited = Number(account.deposits || 0);
   const firstFlow = (flows.find((f) => f.flow > 0) || {}).flow;
@@ -671,6 +694,7 @@ function computeFundStats(account, rows, nowMs = Date.now()) {
       month: period(month),
       all: { amount: fundRound(profit), pct: deposited > 0 ? fundRound((profit / deposited) * 100) : null },
     },
+    moneyNews,
     pnlSeries: pnlSeries.slice(-180),
     // true when the daily history ends at the account's current balance
     reconciled: days.length ? Math.abs(balanceAt(today) - balance) < 0.5 : null,
