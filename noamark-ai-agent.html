@@ -457,6 +457,21 @@
   .mf-rmonth, .mf-rmonth.u, .mf-rmonth.d, .mf-rmonth.f { color: var(--muted); }
   .mf-rmonth small { font-weight: 700; }
   .mf-rmonth.u small { color: #4ade80; } .mf-rmonth.d small { color: #ff8a8a; } .mf-rmonth.f small { color: var(--white); }
+
+  /* Maya Fund: signed numbers + news list */
+  .sg-u { color: #4ade80; } .sg-d { color: #ff8a8a; } .sg-f { color: var(--white); } .sg-o { color: #f4c430; }
+  .fund-pct.sg-u { color: #4ade80; } .fund-pct.sg-d { color: #ff8a8a; } .fund-pct.sg-f { color: var(--white); }
+  .fund-card.flat .fund-amt { color: var(--white); }
+  .mf-newsline { text-transform: none; letter-spacing: 0; font-size: 15px; color: var(--white); }
+  .mf-newsline b { color: var(--green-light); font-size: 12px; letter-spacing: 0.1em; margin-right: 4px; }
+  .mf-news { margin-top: 22px; }
+  .mf-news-h { color: var(--white); font-size: 20px; font-weight: 800; margin: 0 0 6px; }
+  .mf-ni { display: flex; gap: 14px; align-items: flex-start; padding: 16px 0; border-top: 1px solid rgba(255,255,255,0.12); }
+  .mf-ni:last-child { border-bottom: 1px solid rgba(255,255,255,0.12); }
+  .mf-nb { min-width: 0; flex: 1; }
+  .mf-tags { font-size: 10.5px; font-weight: 700; color: var(--muted); }
+  .mf-hl { color: var(--white); font-size: 17px; font-weight: 700; line-height: 1.3; margin: 3px 0; }
+  .mf-by { color: var(--muted); font-size: 13px; }
 </style>
 </head>
 <body>
@@ -821,25 +836,24 @@ async function runAIPayment(gateway) {
   }
   function signed(n, cur) { return (n > 0 ? '+' : '') + money(n, cur); }
   function pct(p) { return p == null ? '' : (p > 0 ? '+' : '') + p.toFixed(2) + '%'; }
-  // Plain wording: "Up $2.00 (16.67%)", "Down $11.95 (49.79%)", "No change"
-  function word(p, cur) {
-    if (p.amount > 0) return 'Up ' + money(p.amount, cur) + (p.pct != null ? ' (' + Math.abs(p.pct).toFixed(2) + '%)' : '');
-    if (p.amount < 0) return 'Down ' + money(Math.abs(p.amount), cur) + (p.pct != null ? ' (' + Math.abs(p.pct).toFixed(2) + '%)' : '');
-    return 'No change';
+  // Signed numbers: up = "+" and green, down = "-" and red (zero stays plain)
+  function sp(p) {
+    if (p == null) return '';
+    var n = Math.round(p * 100) / 100;
+    return (n > 0 ? '+' : (n < 0 ? '-' : '')) + Math.abs(n).toFixed(2) + '%';
   }
-  function moveWord(p) {
-    if (p.amount === 0) return 'No change';
-    return (p.amount > 0 ? 'Up' : 'Down') + (p.pct != null ? ' ' + Math.abs(p.pct).toFixed(2) + '%' : '');
-  }
+  function sg(n) { return n > 0 ? 'sg-u' : (n < 0 ? 'sg-d' : 'sg-f'); }
+  function word(p, cur) { return signed(p.amount, cur) + (p.pct != null ? ' (' + sp(p.pct) + ')' : ''); }
+  function moveWord(p) { return p.pct != null ? sp(p.pct) : ''; }
   function esc(s) { return String(s).replace(/[<>&"]/g, ''); }
   function fdate(iso) { var p = String(iso).split('-'); return (+p[2]) + ' ' + MON[+p[1] - 1]; }
 
   function card(label, p, cur) {
-    var neg = p.amount < 0;
-    return '<div class="fund-card' + (neg ? ' neg' : '') + '">' +
+    var cl = p.amount < 0 ? ' neg' : (p.amount === 0 ? ' flat' : '');
+    return '<div class="fund-card' + cl + '">' +
       '<div class="fund-label">' + label + '</div>' +
       '<div class="fund-amt">' + signed(p.amount, cur) + '</div>' +
-      '<div class="fund-pct">' + moveWord(p) + '</div></div>';
+      '<div class="fund-pct ' + sg(p.amount) + '">' + (moveWord(p) || '&nbsp;') + '</div></div>';
   }
 
   // Profit/loss chart: cumulative result since the start (deposits are NOT counted), with real numbers on it.
@@ -891,8 +905,7 @@ async function runAIPayment(gateway) {
     var c = a.currency;
     function seg(label, p) {
       var cls = p.amount > 0 ? 'mf-up' : (p.amount < 0 ? 'mf-down' : 'mf-flat');
-      var arrow = p.amount > 0 ? '\u25B2 ' : (p.amount < 0 ? '\u25BC ' : '');
-      return '<span class="mf-seg">' + label + ' <span class="mf-num ' + cls + '">' + arrow + word(p, c) + '</span></span>';
+      return '<span class="mf-seg">' + label + ' <span class="mf-num ' + cls + '">' + word(p, c) + '</span></span>';
     }
     return '<span class="mf-item"><b>' + esc(dname(a)) + '</b>' +
       seg('Today', a.periods.today) + seg('Week', a.periods.week) + seg('Month', a.periods.month) +
@@ -900,7 +913,9 @@ async function runAIPayment(gateway) {
   }
   function buildTicker(d, slot) {
     var list = (d.accounts && d.accounts.length) ? d.accounts : [d];
-    var items = list.map(tickerItem).join('') +
+    var news = '';
+    list.forEach(function (a) { moneyHeadlines(a).forEach(function (h) { news += '<span class="mf-item"><span class="mf-seg mf-newsline"><b>NEWS</b> ' + h + '</span></span>'; }); });
+    var items = list.map(tickerItem).join('') + news +
       '<span class="mf-item"><span class="mf-seg mf-note">Accounts of the names shown &middot; not advice &middot; results can be negative &middot; past results do not predict future results</span></span>';
     slot.innerHTML = '<div class="mf-ticker" role="region" aria-label="Maya live results"><div class="mf-live"><i></i>MAYA LIVE</div>' +
       '<div class="mf-track-wrap"><div class="mf-track">' + items + items + '</div></div></div>';
@@ -926,13 +941,58 @@ async function runAIPayment(gateway) {
     return '<span class="mf-av"><span>' + esc(initials(dname(a))) + '</span>' +
       (a.photo ? '<img src="' + esc(a.photo) + '" alt="" onerror="this.remove()">' : '') + '</span>';
   }
-  function amountWord(p, cur) {
-    if (p.amount > 0) return 'Up ' + money(p.amount, cur);
-    if (p.amount < 0) return 'Down ' + money(Math.abs(p.amount), cur);
-    return 'No change';
+  function amountWord(p, cur) { return signed(p.amount, cur); }
+  var WHEN = { today: 'today', week: 'this week', month: 'this month' };
+  // "NoaMark added 100.00% to its capital this week" (percent only, never an amount)
+  function moneyHeadlines(a) {
+    var out = [], prev = null, nm = esc(dname(a));
+    (a.moneyNews || []).forEach(function (n) {
+      var inn = n.added && n.addedPct != null ? '<span class="sg-u">' + n.addedPct.toFixed(2) + '%</span>' : '';
+      var outv = n.removed && n.removedPct != null ? '<span class="sg-o">' + n.removedPct.toFixed(2) + '%</span>' : '';
+      if (!inn && !outv) return; // only announce when there is a real percentage to show
+      var key = inn + '|' + outv;
+      if (key === prev) return; // same as the shorter period, do not repeat it
+      prev = key;
+      if (inn && outv) out.push(nm + ' added ' + inn + ' to its capital and removed ' + outv + ' ' + WHEN[n.p]);
+      else if (inn) out.push(nm + ' added ' + inn + ' to its capital ' + WHEN[n.p]);
+      else out.push(nm + ' removed ' + outv + ' of its capital ' + WHEN[n.p]);
+    });
+    return out;
+  }
+  function perfPhrase(a, p, when) {
+    var word = p.amount > 0 ? 'up' : 'down', val = p.pct != null ? Math.abs(p.pct).toFixed(2) + '%' : money(Math.abs(p.amount), a.currency);
+    return esc(dname(a)) + ' is <span class="' + sg(p.amount) + '">' + word + ' ' + val + '</span> ' + when;
+  }
+  function perfHeadlines(a) {
+    var P = a.periods, out = [], pick = null, when = '';
+    [['today', 'today'], ['week', 'this week'], ['month', 'this month']].forEach(function (x) {
+      if (!pick && P[x[0]].amount !== 0) { pick = P[x[0]]; when = x[1]; }
+    });
+    if (pick) out.push(perfPhrase(a, pick, when));
+    if (P.all.amount !== 0 && !(pick && pick.amount === P.all.amount && pick.pct === P.all.pct)) out.push(perfPhrase(a, P.all, 'since it started'));
+    return out;
+  }
+  function tagsHTML(a) {
+    function t(label, p) { return label + ' <span class="' + sg(p.amount) + '">' + (moveWord(p) || signed(p.amount, a.currency)) + '</span>'; }
+    return t('TODAY', a.periods.today) + ' &nbsp;' + t('WEEK', a.periods.week) + ' &nbsp;' + t('MONTH', a.periods.month);
+  }
+  // Static, fully visible news list (like a news feed): tags, headline, who and when
+  function newsHTML(list) {
+    var items = [];
+    list.forEach(function (a) {
+      moneyHeadlines(a).forEach(function (h) { items.push({ a: a, html: h }); });
+      perfHeadlines(a).forEach(function (h) { items.push({ a: a, html: h }); });
+    });
+    items = items.slice(0, 8);
+    if (!items.length) return '';
+    return '<div class="mf-news"><div class="mf-news-h">Maya news</div>' + items.map(function (it) {
+      return '<div class="mf-ni">' + avatar(it.a) + '<div class="mf-nb"><div class="mf-tags">' + tagsHTML(it.a) + '</div>' +
+        '<div class="mf-hl">' + it.html + '</div>' +
+        '<div class="mf-by">' + esc(dname(it.a)) + (upd(it.a) ? ' &middot; ' + upd(it.a) : '') + '</div></div></div>';
+    }).join('') + '</div>';
   }
   function cls(p) { return p.amount > 0 ? 'u' : (p.amount < 0 ? 'd' : 'f'); }
-  function arrow(p) { return p.amount > 0 ? '\u25B2 ' : (p.amount < 0 ? '\u25BC ' : ''); }
+  function arrow(p) { return ''; }
 
   // Everything for one account: the four cards, the update time and the full chart
   function detailHTML(a, i) {
@@ -972,10 +1032,10 @@ async function runAIPayment(gateway) {
     return '<div class="mf-row"><button type="button" class="mf-rowhead" data-i="' + i + '" aria-expanded="false" aria-controls="mf-panel-' + i + '">' +
       avatar(a) + '<span class="mf-rname"><b>' + esc(dname(a)) + '</b></span>' +
       '<span class="mf-rupd">' + upd(a) + '</span>' +
-      '<span class="mf-rmain ' + cls(all) + '">' + arrow(all) + moveWord(all) +
-        '<small class="mf-amt">' + amountWord(all, c) + ' in total</small>' +
-        (all.amount !== 0 ? '<span class="mf-m"> &middot; ' + money(Math.abs(all.amount), c) + '</span>' : '') + '</span>' +
-      '<span class="mf-rmonth ' + cls(mo) + '">This month<small>' + arrow(mo) + moveWord(mo) + '</small></span>' +
+      '<span class="mf-rmain ' + cls(all) + '">' + (moveWord(all) || signed(all.amount, c)) +
+        '<small class="mf-amt">' + signed(all.amount, c) + ' in total</small>' +
+        (all.amount !== 0 && moveWord(all) ? '<span class="mf-m"> &middot; ' + signed(all.amount, c) + '</span>' : '') + '</span>' +
+      '<span class="mf-rmonth ' + cls(mo) + '">This month<small>' + (moveWord(mo) || signed(mo.amount, c)) + '</small></span>' +
       '<span class="mf-rspark">' + miniSpark(a) + '</span><span class="mf-chev">&#9662;</span></button>' +
       '<div class="mf-panel" id="mf-panel-' + i + '" hidden>' + detailHTML(a, i) + '</div></div>';
   }
@@ -1010,14 +1070,15 @@ async function runAIPayment(gateway) {
       ACC = list;
       if (list.length === 1) {
         // one account: everything open, as before
-        body.innerHTML = detailHTML(list[0], 0) + '<div id="mfTickerSlot"></div>';
+        body.innerHTML = detailHTML(list[0], 0) + '<div id="mfTickerSlot"></div><div id="mfNews"></div>';
       } else {
         // several accounts: a tappable list, details stay closed until a visitor taps
         body.innerHTML = '<p class="mf-hint">Tap an account to see its full details.</p>' +
-          '<div class="mf-list">' + list.map(rowHTML).join('') + '</div><div id="mfTickerSlot"></div>';
+          '<div class="mf-list">' + list.map(rowHTML).join('') + '</div><div id="mfTickerSlot"></div><div id="mfNews"></div>';
       }
       drawAll();
       buildTicker(d, document.getElementById('mfTickerSlot'));
+      document.getElementById('mfNews').innerHTML = newsHTML(list);
     } catch (e) {
       body.innerHTML = '<div class="fund-unavail">Live numbers are temporarily unavailable. Please check back soon.</div>';
     }
