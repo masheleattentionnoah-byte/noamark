@@ -472,6 +472,27 @@
   .mf-tags { font-size: 10.5px; font-weight: 700; color: var(--muted); }
   .mf-hl { color: var(--white); font-size: 17px; font-weight: 700; line-height: 1.3; margin: 3px 0; }
   .mf-by { color: var(--muted); font-size: 13px; }
+
+  /* Maya Fund: percentage pills with an arrow */
+  .pill { display: inline-block; padding: 1px 9px; border-radius: 7px; font-weight: 800; line-height: 1.5; }
+  .pill-u { background: rgba(34,197,94,0.18); color: #4ade80; }
+  .pill-d { background: rgba(255,138,138,0.17); color: #ff8a8a; }
+  .pill-f { background: rgba(255,255,255,0.1); color: var(--white); }
+  .fund-card .pill { font-size: 14px; }
+
+  /* Maya Fund: market-strip look (name, arrow and percent on top, amount underneath, dotted dividers) */
+  .ar { width: 11px; height: 11px; vertical-align: -1px; margin-right: 3px; }
+  .mf-ticker { height: 64px; }
+  .mf-stat { display: inline-flex; flex-direction: column; justify-content: center; gap: 3px; padding: 0 22px; border-left: 1px dotted rgba(255,255,255,0.3); white-space: nowrap; }
+  .mf-r1 { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+  .mf-r1 b { color: var(--white); font-weight: 800; letter-spacing: 0.01em; }
+  .mf-pc { font-weight: 800; font-size: 15px; }
+  .mf-r2 { font-size: 14px; font-weight: 700; }
+  .mf-r2 i { font-style: normal; font-weight: 500; color: var(--muted); font-size: 12px; margin-left: 4px; }
+  .mf-flash { animation: mfGlowUp 1.6s ease-in-out infinite; }
+  .mf-pc.sg-d.mf-flash { animation-name: mfGlowDown; }
+  .mf-item { border-left: 1px dotted rgba(255,255,255,0.3); }
+  @media (prefers-reduced-motion: reduce) { .mf-flash { animation: none; } }
 </style>
 </head>
 <body>
@@ -837,14 +858,27 @@ async function runAIPayment(gateway) {
   function signed(n, cur) { return (n > 0 ? '+' : '') + money(n, cur); }
   function pct(p) { return p == null ? '' : (p > 0 ? '+' : '') + p.toFixed(2) + '%'; }
   // Signed numbers: up = "+" and green, down = "-" and red (zero stays plain)
+  // small diagonal arrow icon (up-right = up, down-right = down), coloured by the text colour
+  function arr(n) {
+    return '<svg class="ar" viewBox="0 0 12 12" aria-hidden="true"><path d="' + (n > 0 ? 'M2 10L10 2M4 2H10V8' : 'M2 2L10 10M10 4V10H4') +
+      '" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
   function sp(p) {
     if (p == null) return '';
     var n = Math.round(p * 100) / 100;
-    return (n > 0 ? '+' : (n < 0 ? '-' : '')) + Math.abs(n).toFixed(2) + '%';
+    if (n > 0) return arr(1) + '+' + n.toFixed(2) + '%';
+    if (n < 0) return arr(-1) + '-' + Math.abs(n).toFixed(2) + '%';
+    return '0.00%';
   }
   function sg(n) { return n > 0 ? 'sg-u' : (n < 0 ? 'sg-d' : 'sg-f'); }
   function word(p, cur) { return signed(p.amount, cur) + (p.pct != null ? ' (' + sp(p.pct) + ')' : ''); }
   function moveWord(p) { return p.pct != null ? sp(p.pct) : ''; }
+  // small tinted pill, like "\u2191 1197.1%" on a profile card
+  function pill(p) {
+    var t = moveWord(p);
+    if (!t) return '';
+    return '<span class="pill pill-' + (p.pct > 0 ? 'u' : (p.pct < 0 ? 'd' : 'f')) + '">' + t + '</span>';
+  }
   function esc(s) { return String(s).replace(/[<>&"]/g, ''); }
   function fdate(iso) { var p = String(iso).split('-'); return (+p[2]) + ' ' + MON[+p[1] - 1]; }
 
@@ -853,7 +887,7 @@ async function runAIPayment(gateway) {
     return '<div class="fund-card' + cl + '">' +
       '<div class="fund-label">' + label + '</div>' +
       '<div class="fund-amt">' + signed(p.amount, cur) + '</div>' +
-      '<div class="fund-pct ' + sg(p.amount) + '">' + (moveWord(p) || '&nbsp;') + '</div></div>';
+      '<div class="fund-pct">' + (pill(p) || '&nbsp;') + '</div></div>';
   }
 
   // Profit/loss chart: cumulative result since the start (deposits are NOT counted), with real numbers on it.
@@ -902,14 +936,13 @@ async function runAIPayment(gateway) {
 
   // Sliding results strip under the chart: one item per account; gains glow green, losses glow red.
   function tickerItem(a) {
-    var c = a.currency;
-    function seg(label, p) {
-      var cls = p.amount > 0 ? 'mf-up' : (p.amount < 0 ? 'mf-down' : 'mf-flat');
-      return '<span class="mf-seg">' + label + ' <span class="mf-num ' + cls + '">' + word(p, c) + '</span></span>';
+    var c = a.currency, nm = esc(dname(a));
+    function stat(label, p) {
+      var k = sg(p.amount), f = p.amount === 0 ? '' : ' mf-flash';
+      return '<span class="mf-stat"><span class="mf-r1"><b>' + nm + '</b><span class="mf-pc ' + k + f + '">' + (p.pct != null ? sp(p.pct) : '') + '</span></span>' +
+        '<span class="mf-r2"><span class="' + k + '">' + signed(p.amount, c) + '</span> <i>' + label + '</i></span></span>';
     }
-    return '<span class="mf-item"><b>' + esc(dname(a)) + '</b>' +
-      seg('Today', a.periods.today) + seg('Week', a.periods.week) + seg('Month', a.periods.month) +
-      seg('Total', a.periods.all) + '</span>';
+    return stat('today', a.periods.today) + stat('this week', a.periods.week) + stat('this month', a.periods.month) + stat('since the start', a.periods.all);
   }
   function buildTicker(d, slot) {
     var list = (d.accounts && d.accounts.length) ? d.accounts : [d];
@@ -1032,7 +1065,7 @@ async function runAIPayment(gateway) {
     return '<div class="mf-row"><button type="button" class="mf-rowhead" data-i="' + i + '" aria-expanded="false" aria-controls="mf-panel-' + i + '">' +
       avatar(a) + '<span class="mf-rname"><b>' + esc(dname(a)) + '</b></span>' +
       '<span class="mf-rupd">' + upd(a) + '</span>' +
-      '<span class="mf-rmain ' + cls(all) + '">' + (moveWord(all) || signed(all.amount, c)) +
+      '<span class="mf-rmain ' + cls(all) + '">' + (pill(all) || signed(all.amount, c)) +
         '<small class="mf-amt">' + signed(all.amount, c) + ' in total</small>' +
         (all.amount !== 0 && moveWord(all) ? '<span class="mf-m"> &middot; ' + signed(all.amount, c) + '</span>' : '') + '</span>' +
       '<span class="mf-rmonth ' + cls(mo) + '">This month<small>' + (moveWord(mo) || signed(mo.amount, c)) + '</small></span>' +
