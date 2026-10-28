@@ -782,43 +782,17 @@ async function handleFund(req, res) {
 }
 
 // ---------------------------------------------------------------------
-// ADDED: private daily report (GET /api/netcash-notify?action=fund-report).
-// Called once a day by a Vercel cron entry. Emails ADMIN_EMAIL (or FUND_REPORT_EMAIL)
-// a plain summary that INCLUDES money put in / taken out. None of this is ever on the
-// public page. Needs the CRON_SECRET env var (Vercel sends it as a Bearer token).
-// Free Myfxbook updates about once a day, so a deposit or withdrawal can show up a day late.
-// Uses the existing /api/send-email, so there is no new file, key or table.
+// ADDED: private money-in / money-out email (GET /api/netcash-notify?action=fund-report).
+// Called once a day by a Vercel cron entry, but it only EMAILS when Myfxbook's own deposit or
+// withdrawal totals have changed since the last run (money in or out), with the exact amounts.
+// It remembers the last totals in a tiny Supabase table, fund_report_state (SQL in the setup notes).
+// Emails ADMIN_EMAIL (or FUND_REPORT_EMAIL) through the existing /api/send-email. None of this is on
+// the public page. Needs the CRON_SECRET env var (Vercel sends it as a Bearer token).
+// Free Myfxbook refreshes about once a day, so money in or out can show up a day late.
 // ---------------------------------------------------------------------
 function fundMoneyText(n, cur) {
   const sym = { USD: '$', ZAR: 'R', EUR: '\u20AC', GBP: '\u00A3' }[cur] || '';
   return (n < 0 ? '-' : '') + sym + Math.abs(n).toFixed(2);
-}
-
-// Money in/out and result for each of the last 3 days. Money in/out is worked out from the
-// daily balances (balance change that profit does not explain), so treat it as an estimate.
-function computeFundMoney(rows, nowMs = Date.now()) {
-  const today = new Date(nowMs + FUND_SAST).toISOString().slice(0, 10);
-  const days = rows
-    .map((r) => ({ d: fundISODate(r.date), balance: Number(r.balance), profit: Number(r.profit || 0) }))
-    .filter((r) => r.d)
-    .sort((a, b) => (a.d < b.d ? -1 : 1));
-  let prev = 0;
-  const flows = days.map((r) => {
-    const f = r.balance - prev - r.profit;
-    prev = r.balance;
-    return { d: r.d, flow: Math.abs(f) >= 0.5 ? f : 0 };
-  });
-  const out = [];
-  for (let i = 2; i >= 0; i--) {
-    const d = fundAddDays(today, -i);
-    out.push({
-      d,
-      moneyIn: fundRound(flows.filter((f) => f.d === d && f.flow > 0).reduce((a, f) => a + f.flow, 0)),
-      moneyOut: fundRound(-flows.filter((f) => f.d === d && f.flow < 0).reduce((a, f) => a + f.flow, 0)),
-      result: fundRound(days.filter((r) => r.d === d).reduce((a, r) => a + r.profit, 0)),
-    });
-  }
-  return out;
 }
 
 async function handleFundReport(req, res) {
@@ -826,40 +800,65 @@ async function handleFundReport(req, res) {
   if (!secret || req.headers.authorization !== `Bearer ${secret}`) {
     return res.status(401).json({ error: 'unauthorized' });
   }
+  const supaUrl = process.env.SUPABASE_URL, serviceKey = process.env.SUPABASE_SERVICE_KEY;
+  if (!supaUrl || !serviceKey) {
+    console.error('[maya-fund] report: SUPABASE_URL / SUPABASE_SERVICE_KEY not set');
+    return res.status(500).json({ error: 'storage not configured' });
+  }
+  const sbq = (path, opts = {}) => fetch(`${supaUrl}/rest/v1/${path}`, {
+    ...opts,
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json', ...(opts.headers || {}) },
+  });
   try {
     const raw = await loadFundRaw();
     const lines = [];
+    const newState = [];
     let moved = false;
     for (const { account, rows } of raw) {
+      const id = String(account.accountId);
+      const dep = Number(account.deposits || 0), wd = Number(account.withdrawals || 0);
+      const r = await sbq(`fund_report_state?account=eq.${encodeURIComponent(id)}&select=deposits,withdrawals`);
+      if (!r.ok) throw new Error(`fund_report_state read failed (${r.status}) - has the SQL been run? ${await r.text()}`);
+      const saved = (await r.json())[0];
+      newState.push({ account: id, deposits: dep, withdrawals: wd });
+      if (!saved) continue; // first run for this account: remember the totals, say nothing
+      const dIn = dep - Number(saved.deposits), dOut = wd - Number(saved.withdrawals);
+      if (dIn <= 0.005 && dOut <= 0.005) continue; // nothing moved since last time
+      moved = true;
       const s = computeFundStats(account, rows);
-      const m = computeFundMoney(rows);
       const c = s.currency;
-      const touched = m.some((x) => x.moneyIn > 0 || x.moneyOut > 0);
-      if (touched) moved = true;
       lines.push(
         `${account.name || 'Account'} (login ${account.accountId})`,
+        dIn > 0.005 ? `Money put in: ${fundMoneyText(dIn, c)}` : null,
+        dOut > 0.005 ? `Money taken out: ${fundMoneyText(dOut, c)}` : null,
         `Balance now: ${fundMoneyText(s.balance, c)}`,
         `Result - today: ${fundMoneyText(s.periods.today.amount, c)}, this week: ${fundMoneyText(s.periods.week.amount, c)}, this month: ${fundMoneyText(s.periods.month.amount, c)}, since the start: ${fundMoneyText(s.periods.all.amount, c)}`,
-        `Money put in so far: ${fundMoneyText(Number(account.deposits || 0), c)} | Taken out so far: ${fundMoneyText(Number(account.withdrawals || 0), c)}`,
-        `Last 3 days (money in/out is estimated from daily balances):`,
-        ...m.map((x) => `- ${x.d}: money in ${fundMoneyText(x.moneyIn, c)}, money out ${fundMoneyText(x.moneyOut, c)}, result ${fundMoneyText(x.result, c)}`),
-        touched ? '>> Money moved in or out of this account in the last 3 days.' : 'No money moved in or out in the last 3 days.',
+        `Totals so far - put in: ${fundMoneyText(dep, c)}, taken out: ${fundMoneyText(wd, c)}`,
         `Myfxbook last updated: ${account.lastUpdateDate || 'unknown'}`,
         ''
       );
     }
-    lines.push('Private report: none of the money in / money out figures appear on the public Maya page.',
-      'The free Myfxbook plan refreshes about once a day, so a deposit or withdrawal can show up a day late.');
-    const sent = await sendViaExistingEmailApi(
-      process.env.FUND_REPORT_EMAIL || ADMIN_EMAIL,
-      moved ? 'NoaMark account report: money moved' : 'NoaMark account report',
-      lines.join('\n')
-    );
-    if (!sent || sent.ok !== true) {
-      console.error('[maya-fund] report email NOT sent:', (sent && sent.reason) || 'unknown reason');
-      return res.status(502).json({ sent: false, reason: (sent && sent.reason) || 'email not sent' });
+    if (moved) {
+      lines.push('Private email: money in and out amounts are never shown on the public Maya page (only percentages, if you have money news switched on).',
+        'You get this email only when money moves in or out; the free Myfxbook plan updates about once a day, so it can arrive a day late.');
+      const sent = await sendViaExistingEmailApi(
+        process.env.FUND_REPORT_EMAIL || ADMIN_EMAIL,
+        'NoaMark account report: money moved',
+        lines.filter((x) => x !== null).join('\n')
+      );
+      if (!sent || sent.ok !== true) {
+        // do NOT save the new totals, so the next run tries again
+        console.error('[maya-fund] report email NOT sent:', (sent && sent.reason) || 'unknown reason');
+        return res.status(502).json({ sent: false, reason: (sent && sent.reason) || 'email not sent' });
+      }
     }
-    return res.status(200).json({ sent: true, moved });
+    const w = await sbq('fund_report_state?on_conflict=account', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(newState.map((x) => ({ ...x, updated_at: new Date().toISOString() }))),
+    });
+    if (!w.ok) throw new Error(`fund_report_state save failed (${w.status}) ${await w.text()}`);
+    return res.status(200).json({ sent: moved, moved });
   } catch (e) {
     console.error('[maya-fund] report failed:', e.message);
     return res.status(500).json({ error: 'report failed' });
