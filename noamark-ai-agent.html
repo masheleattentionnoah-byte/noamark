@@ -493,6 +493,18 @@
   .mf-pc.sg-d.mf-flash { animation-name: mfGlowDown; }
   .mf-item { border-left: 1px dotted rgba(255,255,255,0.3); }
   @media (prefers-reduced-motion: reduce) { .mf-flash { animation: none; } }
+
+  /* Maya Fund: chart header + tooltip */
+  .mf-ch { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; margin: 4px 2px 10px; }
+  .mf-ch-t { font-size: 11px; letter-spacing: 0.12em; font-weight: 700; color: var(--muted); }
+  .mf-ch-v { font-size: 24px; font-weight: 800; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+  .mf-ch-v .pill { font-size: 14px; }
+  .mf-svgwrap { position: relative; }
+  .mf-tip { display: none; position: absolute; top: 0; z-index: 3; padding: 4px 9px; border-radius: 8px; background: #0d2818; border: 1px solid rgba(110,231,160,0.45); font-size: 12px; color: var(--white); white-space: nowrap; pointer-events: none; }
+  .mf-tip b { color: var(--muted); font-weight: 600; margin-right: 4px; }
+
+  /* the chart's own svg rule must not blow up the small arrow icons */
+  .fund-chart svg.ar, .mf-ch svg.ar { width: 11px; height: 11px; display: inline-block; vertical-align: -1px; }
 </style>
 </head>
 <body>
@@ -890,48 +902,77 @@ async function runAIPayment(gateway) {
       '<div class="fund-pct">' + (pill(p) || '&nbsp;') + '</div></div>';
   }
 
-  // Profit/loss chart: cumulative result since the start (deposits are NOT counted), with real numbers on it.
+  // Result-over-time chart (money put in is NOT counted): round-number axis (1, 2, 5, 10, 20, 50...),
+  // dates along the bottom, the big number on top, and a tooltip when you hover or touch the line.
+  function niceTicks(min, max) {
+    var span = max - min;
+    if (span <= 0) span = Math.abs(max) || 1;
+    var rough = span / 4, mag = Math.pow(10, Math.floor(Math.log(rough) / Math.LN10)), step = mag;
+    [1, 2, 5, 10].some(function (m) { step = m * mag; return step >= rough; });
+    var lo = Math.floor(min / step + 1e-9), hi = Math.ceil(max / step - 1e-9), out = [];
+    for (var k = lo; k <= hi; k++) out.push(Math.round(k * step * 1e6) / 1e6);
+    return out;
+  }
+  function axisLabel(v, c) {
+    var a = Math.abs(v), t;
+    if (a >= 1000) t = (a / 1000).toFixed(a % 1000 === 0 ? 0 : 1).replace(/\.0$/, '') + 'K';
+    else t = a % 1 === 0 ? String(a) : a.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+    return (v < 0 ? '-' : '') + (CUR[c] || '') + t;
+  }
   function drawChart(host, d) {
     var s = d.pnlSeries || [];
     if (s.length < 2) { host.innerHTML = '<div class="fund-unavail">The chart appears once there is more history.</div>'; return; }
-    var c = d.currency, W = Math.max(280, Math.round(host.clientWidth || 320)), H = 220;
-    var pl = 66, pr = 18, pt = 22, pb = 36;
+    var c = d.currency, W = Math.max(280, Math.round(host.clientWidth || 320)), H = 250;
+    var pl = 56, pr = 14, pt = 16, pb = 30;
     var vals = s.map(function (p) { return p.pnl; });
-    var max = Math.max.apply(null, vals.concat([0])), min = Math.min.apply(null, vals.concat([0]));
-    if (max === min) { max += 1; min -= 1; }
-    var span = max - min;
+    var ticks = niceTicks(Math.min.apply(null, vals.concat([0])), Math.max.apply(null, vals.concat([0])));
+    var yLo = ticks[0], yHi = ticks[ticks.length - 1], span = (yHi - yLo) || 1;
     function X(i) { return pl + (i / (s.length - 1)) * (W - pl - pr); }
-    function Y(v) { return pt + ((max - v) / span) * (H - pt - pb); }
-    var last = vals[vals.length - 1];
+    function Y(v) { return pt + ((yHi - v) / span) * (H - pt - pb); }
+    var last = vals[vals.length - 1], all = d.periods.all;
     var col = last < 0 ? '#ff8a8a' : (last > 0 ? '#4ade80' : '#9fb3a6');
     var pts = vals.map(function (v, i) { return X(i).toFixed(1) + ',' + Y(v).toFixed(1); });
     var zy = Y(0).toFixed(1);
     var area = pts.join(' ') + ' ' + X(s.length - 1).toFixed(1) + ',' + zy + ' ' + X(0).toFixed(1) + ',' + zy;
 
-    var ticks = [max, 0, min].filter(function (v, i, a) { return a.indexOf(v) === i; });
     var g = '';
     ticks.forEach(function (v) {
       var y = Y(v).toFixed(1);
-      g += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + y + '" y2="' + y + '" stroke="rgba(255,255,255,' + (v === 0 ? '0.35' : '0.1') + ')"' + (v === 0 ? ' stroke-dasharray="4 4"' : '') + '/>' +
-           '<text x="' + (pl - 8) + '" y="' + (+y + 4) + '" text-anchor="end" font-size="11" fill="#9fb3a6">' + (v === 0 ? money(0, c) : signed(v, c)) + '</text>';
+      g += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + y + '" y2="' + y + '" stroke="rgba(255,255,255,' + (v === 0 ? '0.4' : '0.1') + ')"' + (v === 0 ? ' stroke-dasharray="4 4"' : '') + '/>' +
+           '<text x="' + (pl - 8) + '" y="' + (+y + 4) + '" text-anchor="end" font-size="11" fill="#9fb3a6">' + axisLabel(v, c) + '</text>';
     });
-
-    var lowI = vals.indexOf(Math.min.apply(null, vals));
-    var marks = '';
-    if (vals[lowI] < 0 && vals[lowI] < last - 0.005) {
-      marks += '<circle cx="' + X(lowI).toFixed(1) + '" cy="' + Y(vals[lowI]).toFixed(1) + '" r="3.5" fill="#ff8a8a"/>' +
-        '<text x="' + X(lowI).toFixed(1) + '" y="' + (Y(vals[lowI]) + 16).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#ff8a8a">Lowest: ' + word({ amount: vals[lowI], pct: null }, c).toLowerCase() + '</text>';
+    var nx = W < 420 ? 3 : 5, xl = '';
+    for (var k = 0; k < nx; k++) {
+      var idx = Math.round(k * (s.length - 1) / (nx - 1));
+      xl += '<text x="' + X(idx).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="' + (k === 0 ? 'start' : (k === nx - 1 ? 'end' : 'middle')) + '" font-size="11" fill="#9fb3a6">' + fdate(s[idx].d) + '</text>';
     }
-    var ly = last < 0 ? Math.max(14, Y(0) - 8) : Y(0) + 18;
-    marks += '<circle cx="' + X(s.length - 1).toFixed(1) + '" cy="' + Y(last).toFixed(1) + '" r="5" fill="' + col + '"/>' +
-      '<text x="' + (X(s.length - 1) - 8).toFixed(1) + '" y="' + ly.toFixed(1) + '" text-anchor="end" font-size="14" font-weight="800" fill="' + col + '">' + word({ amount: last, pct: null }, c) + '</text>';
+    var head = '<div class="mf-ch"><div class="mf-ch-t">RESULT OVER TIME</div>' +
+      '<div class="mf-ch-v"><span class="' + sg(all.amount) + '">' + signed(all.amount, c) + '</span> ' + (pill(all) || '') + '</div></div>';
 
-    host.innerHTML = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Up or down since the start">' +
-      g + '<polygon points="' + area + '" fill="' + col + '" fill-opacity="0.16"/>' +
-      '<polyline fill="none" stroke="' + col + '" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="' + pts.join(' ') + '"/>' +
-      marks +
-      '<text x="' + pl + '" y="' + (H - 10) + '" font-size="11" fill="#9fb3a6">' + fdate(s[0].d) + '</text>' +
-      '<text x="' + (W - pr) + '" y="' + (H - 10) + '" text-anchor="end" font-size="11" fill="#9fb3a6">' + fdate(s[s.length - 1].d) + '</text></svg>';
+    host.innerHTML = head + '<div class="mf-svgwrap"><svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Result over time" style="touch-action:pan-y">' +
+      g + xl + '<polygon points="' + area + '" fill="' + col + '" fill-opacity="0.16"/>' +
+      '<polyline fill="none" stroke="' + col + '" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" style="filter:drop-shadow(0 0 5px ' + col + ')" points="' + pts.join(' ') + '"/>' +
+      '<circle cx="' + X(s.length - 1).toFixed(1) + '" cy="' + Y(last).toFixed(1) + '" r="9" fill="' + col + '" fill-opacity="0.22"/>' +
+      '<circle cx="' + X(s.length - 1).toFixed(1) + '" cy="' + Y(last).toFixed(1) + '" r="4.5" fill="' + col + '"/>' +
+      '<line class="mf-vl" x1="0" x2="0" y1="' + pt + '" y2="' + (H - pb) + '" stroke="rgba(255,255,255,0.45)" style="display:none"/>' +
+      '<circle class="mf-hd" r="5" fill="#fff" stroke="' + col + '" stroke-width="2" style="display:none"/></svg>' +
+      '<div class="mf-tip"></div></div>';
+
+    var svg = host.querySelector('.mf-svgwrap svg'), tip = host.querySelector('.mf-tip'), vl = svg.querySelector('.mf-vl'), hd = svg.querySelector('.mf-hd');
+    function show(ev) {
+      var pt0 = ev.touches ? ev.touches[0] : ev, r = svg.getBoundingClientRect();
+      var x = (pt0.clientX - r.left) * (W / r.width);
+      var i = Math.max(0, Math.min(s.length - 1, Math.round(((x - pl) / (W - pl - pr)) * (s.length - 1))));
+      var px = X(i);
+      vl.setAttribute('x1', px); vl.setAttribute('x2', px); vl.style.display = '';
+      hd.setAttribute('cx', px); hd.setAttribute('cy', Y(vals[i])); hd.style.display = '';
+      tip.innerHTML = '<b>' + fdate(s[i].d) + '</b> <span class="' + sg(vals[i]) + '">' + signed(vals[i], c) + '</span>';
+      tip.style.display = 'block';
+      tip.style.left = Math.max(0, Math.min(W - tip.offsetWidth, px - tip.offsetWidth / 2)) + 'px';
+    }
+    function hide() { vl.style.display = 'none'; hd.style.display = 'none'; tip.style.display = 'none'; }
+    svg.addEventListener('mousemove', show); svg.addEventListener('mouseleave', hide);
+    svg.addEventListener('touchstart', show, { passive: true }); svg.addEventListener('touchmove', show, { passive: true }); svg.addEventListener('touchend', hide);
   }
 
   // Sliding results strip under the chart: one item per account; gains glow green, losses glow red.
@@ -1038,8 +1079,7 @@ async function runAIPayment(gateway) {
         card('Result since we started', a.periods.all, c) +
       '</div>' +
       (upd(a) ? '<p class="fund-pct" style="text-align:center;margin:12px 0;">' + upd(a) + '</p>' : '') +
-      '<div class="fund-chart"><div class="mf-chart-host" data-i="' + i + '"></div>' +
-        '<div class="fund-pct" style="text-align:center;padding:2px 0 8px;">Up or down since we started</div></div>';
+      '<div class="fund-chart"><div class="mf-chart-host" data-i="' + i + '"></div></div>';
   }
 
   // Small graph for the collapsed row
