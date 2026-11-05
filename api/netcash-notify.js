@@ -634,6 +634,23 @@ function computeFundStats(account, rows, nowMs = Date.now()) {
     return { amount: fundRound(amount), pct: basis > 0 ? fundRound((amount / basis) * 100) : null };
   };
 
+  // Money news: only WHETHER money was added or withdrawn today / this week / this month. No amounts and
+  // no percentages are ever published. The daily-balance figures are an estimate, so they are used only
+  // when they add up to Myfxbook's own deposit and withdrawal totals; otherwise nothing is announced.
+  // Vercel switches: FUND_HIDE_MONEY_NEWS=1 hides all money news, FUND_HIDE_WITHDRAWAL_NEWS=1 hides only withdrawals.
+  const depTotal = Number(account.deposits || 0), wdTotal = Number(account.withdrawals || 0);
+  const sumIn = flows.filter((f) => f.flow > 0).reduce((a, f) => a + f.flow, 0);
+  const sumOut = -flows.filter((f) => f.flow < 0).reduce((a, f) => a + f.flow, 0);
+  const flowsOk = Math.abs(sumIn - depTotal) <= Math.max(1, 0.02 * depTotal) && Math.abs(sumOut - wdTotal) <= Math.max(1, 0.02 * wdTotal);
+  const moneyNews = [];
+  if (flowsOk && !process.env.FUND_HIDE_MONEY_NEWS) {
+    for (const [pName, startIso] of [['today', today], ['week', week], ['month', month]]) {
+      const added = flows.some((f) => f.d >= startIso && f.flow > 0);
+      const removed = !process.env.FUND_HIDE_WITHDRAWAL_NEWS && flows.some((f) => f.d >= startIso && f.flow < 0);
+      if (added || removed) moneyNews.push({ p: pName, added, removed });
+    }
+  }
+
   const profit = Number(account.profit || 0);
   const deposited = Number(account.deposits || 0);
   const firstFlow = (flows.find((f) => f.flow > 0) || {}).flow;
@@ -671,6 +688,7 @@ function computeFundStats(account, rows, nowMs = Date.now()) {
       month: period(month),
       all: { amount: fundRound(profit), pct: deposited > 0 ? fundRound((profit / deposited) * 100) : null },
     },
+    moneyNews,
     pnlSeries: pnlSeries.slice(-180),
     // true when the daily history ends at the account's current balance
     reconciled: days.length ? Math.abs(balanceAt(today) - balance) < 0.5 : null,
