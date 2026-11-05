@@ -987,7 +987,9 @@ async function runAIPayment(gateway) {
   }
   function buildTicker(d, slot) {
     var list = (d.accounts && d.accounts.length) ? d.accounts : [d];
-    var items = list.map(tickerItem).join('') +
+    var news = '';
+    list.forEach(function (a) { moneyHeadlines(a).forEach(function (h) { news += '<span class="mf-item"><span class="mf-seg mf-newsline"><b>NEWS</b> ' + h + '</span></span>'; }); });
+    var items = list.map(tickerItem).join('') + news +
       '<span class="mf-item"><span class="mf-seg mf-note">Accounts of the names shown &middot; not advice &middot; results can be negative &middot; past results do not predict future results</span></span>';
     slot.innerHTML = '<div class="mf-ticker" role="region" aria-label="Maya live results"><div class="mf-live"><i></i>MAYA LIVE</div>' +
       '<div class="mf-track-wrap"><div class="mf-track">' + items + items + '</div></div></div>';
@@ -1014,6 +1016,19 @@ async function runAIPayment(gateway) {
       (a.photo ? '<img src="' + esc(a.photo) + '" alt="" onerror="this.remove()">' : '') + '</span>';
   }
   function amountWord(p, cur) { return signed(p.amount, cur); }
+  var WHEN = { today: 'today', week: 'this week', month: 'this month' };
+  function moneyHeadlines(a) {
+    var out = [], prev = null, nm = esc(dname(a));
+    (a.moneyNews || []).forEach(function (n) {
+      var key = (n.added ? 'a' : '') + (n.removed ? 'r' : '');
+      if (!key || key === prev) return; // same as the shorter period, do not repeat it
+      prev = key;
+      var inn = '<span class="sg-u">added</span>', outv = '<span class="sg-o">withdrew</span>';
+      var what = n.added && n.removed ? inn + ' and ' + outv : (n.added ? inn : outv);
+      out.push(nm + ' ' + what + ' funds ' + WHEN[n.p]);
+    });
+    return out;
+  }
   function perfPhrase(a, p, when) {
     var word = p.amount > 0 ? 'up' : 'down', val = p.pct != null ? Math.abs(p.pct).toFixed(2) + '%' : money(Math.abs(p.amount), a.currency);
     return esc(dname(a)) + ' is <span class="' + sg(p.amount) + '">' + word + ' ' + val + '</span> ' + when;
@@ -1035,6 +1050,7 @@ async function runAIPayment(gateway) {
   function newsHTML(list) {
     var items = [];
     list.forEach(function (a) {
+      moneyHeadlines(a).forEach(function (h) { items.push({ a: a, html: h }); });
       perfHeadlines(a).forEach(function (h) { items.push({ a: a, html: h }); });
     });
     items = items.slice(0, 8);
