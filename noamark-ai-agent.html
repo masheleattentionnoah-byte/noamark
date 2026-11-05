@@ -987,9 +987,7 @@ async function runAIPayment(gateway) {
   }
   function buildTicker(d, slot) {
     var list = (d.accounts && d.accounts.length) ? d.accounts : [d];
-    var news = '';
-    list.forEach(function (a) { moneyHeadlines(a).forEach(function (h) { news += '<span class="mf-item"><span class="mf-seg mf-newsline"><b>NEWS</b> ' + h + '</span></span>'; }); });
-    var items = list.map(tickerItem).join('') + news +
+    var items = list.map(tickerItem).join('') +
       '<span class="mf-item"><span class="mf-seg mf-note">Accounts of the names shown &middot; not advice &middot; results can be negative &middot; past results do not predict future results</span></span>';
     slot.innerHTML = '<div class="mf-ticker" role="region" aria-label="Maya live results"><div class="mf-live"><i></i>MAYA LIVE</div>' +
       '<div class="mf-track-wrap"><div class="mf-track">' + items + items + '</div></div></div>';
@@ -1016,23 +1014,6 @@ async function runAIPayment(gateway) {
       (a.photo ? '<img src="' + esc(a.photo) + '" alt="" onerror="this.remove()">' : '') + '</span>';
   }
   function amountWord(p, cur) { return signed(p.amount, cur); }
-  var WHEN = { today: 'today', week: 'this week', month: 'this month' };
-  // "NoaMark added 100.00% to its capital this week" (percent only, never an amount)
-  function moneyHeadlines(a) {
-    var out = [], prev = null, nm = esc(dname(a));
-    (a.moneyNews || []).forEach(function (n) {
-      var inn = n.added && n.addedPct != null ? '<span class="sg-u">' + n.addedPct.toFixed(2) + '%</span>' : '';
-      var outv = n.removed && n.removedPct != null ? '<span class="sg-o">' + n.removedPct.toFixed(2) + '%</span>' : '';
-      if (!inn && !outv) return; // only announce when there is a real percentage to show
-      var key = inn + '|' + outv;
-      if (key === prev) return; // same as the shorter period, do not repeat it
-      prev = key;
-      if (inn && outv) out.push(nm + ' added ' + inn + ' to its capital and removed ' + outv + ' ' + WHEN[n.p]);
-      else if (inn) out.push(nm + ' added ' + inn + ' to its capital ' + WHEN[n.p]);
-      else out.push(nm + ' removed ' + outv + ' of its capital ' + WHEN[n.p]);
-    });
-    return out;
-  }
   function perfPhrase(a, p, when) {
     var word = p.amount > 0 ? 'up' : 'down', val = p.pct != null ? Math.abs(p.pct).toFixed(2) + '%' : money(Math.abs(p.amount), a.currency);
     return esc(dname(a)) + ' is <span class="' + sg(p.amount) + '">' + word + ' ' + val + '</span> ' + when;
@@ -1054,7 +1035,6 @@ async function runAIPayment(gateway) {
   function newsHTML(list) {
     var items = [];
     list.forEach(function (a) {
-      moneyHeadlines(a).forEach(function (h) { items.push({ a: a, html: h }); });
       perfHeadlines(a).forEach(function (h) { items.push({ a: a, html: h }); });
     });
     items = items.slice(0, 8);
@@ -1139,14 +1119,23 @@ async function runAIPayment(gateway) {
       if (!res.ok) throw new Error('bad status');
       var d = await res.json();
       if (!d || !d.periods) throw new Error('bad data');
-      var list = (d.accounts && d.accounts.length) ? d.accounts : [d];
+      var list = (d.accounts && d.accounts.length) ? d.accounts.slice() : [d];
+      // best result first: ranked by the percentage since the start (fair across dollars and rands);
+      // accounts without a percentage go last
+      list.sort(function (x, y) {
+        var px = x.periods.all.pct, py = y.periods.all.pct;
+        if (px == null && py == null) return 0;
+        if (px == null) return 1;
+        if (py == null) return -1;
+        return py - px;
+      });
       ACC = list;
       if (list.length === 1) {
         // one account: everything open, as before
         body.innerHTML = detailHTML(list[0], 0) + '<div id="mfTickerSlot"></div><div id="mfNews"></div>';
       } else {
         // several accounts: a tappable list, details stay closed until a visitor taps
-        body.innerHTML = '<p class="mf-hint">Tap an account to see its full details.</p>' +
+        body.innerHTML = '<p class="mf-hint">Ranked by result since the start. Tap an account to see its full details.</p>' +
           '<div class="mf-list">' + list.map(rowHTML).join('') + '</div><div id="mfTickerSlot"></div><div id="mfNews"></div>';
       }
       drawAll();
