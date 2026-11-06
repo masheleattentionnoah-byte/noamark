@@ -634,9 +634,13 @@ function computeFundStats(account, rows, nowMs = Date.now()) {
     return { amount: fundRound(amount), pct: basis > 0 ? fundRound((amount / basis) * 100) : null };
   };
 
-  // Money news: only WHETHER money was added or withdrawn today / this week / this month. No amounts and
-  // no percentages are ever published. The daily-balance figures are an estimate, so they are used only
-  // when they add up to Myfxbook's own deposit and withdrawal totals; otherwise nothing is announced.
+  // Money news: how much was added / moved out, as a PERCENT (never an amount).
+  //   added  = money added in the period compared with all the money put in before the period
+  //   moved out = each withdrawal compared with the balance just before it
+  // (the old "percent of the starting balance" gave silly numbers like 30000% on a tiny balance;
+  // anything above 1000% is dropped and the headline simply says "funds").
+  // The daily-balance figures are an estimate, so they are used only when they add up to Myfxbook's own
+  // deposit and withdrawal totals; otherwise nothing is announced.
   // Vercel switches: FUND_HIDE_MONEY_NEWS=1 hides all money news, FUND_HIDE_WITHDRAWAL_NEWS=1 hides only withdrawals.
   const depTotal = Number(account.deposits || 0), wdTotal = Number(account.withdrawals || 0);
   const sumIn = flows.filter((f) => f.flow > 0).reduce((a, f) => a + f.flow, 0);
@@ -644,10 +648,23 @@ function computeFundStats(account, rows, nowMs = Date.now()) {
   const flowsOk = Math.abs(sumIn - depTotal) <= Math.max(1, 0.02 * depTotal) && Math.abs(sumOut - wdTotal) <= Math.max(1, 0.02 * wdTotal);
   const moneyNews = [];
   if (flowsOk && !process.env.FUND_HIDE_MONEY_NEWS) {
+    const cap = (v) => (v != null && v > 0 && v <= 1000 ? fundRound(v) : null);
     for (const [pName, startIso] of [['today', today], ['week', week], ['month', month]]) {
-      const added = flows.some((f) => f.d >= startIso && f.flow > 0);
-      const removed = !process.env.FUND_HIDE_WITHDRAWAL_NEWS && flows.some((f) => f.d >= startIso && f.flow < 0);
-      if (added || removed) moneyNews.push({ p: pName, added, removed });
+      const ins = flows.filter((f) => f.d >= startIso && f.flow > 0);
+      const outs = flows.filter((f) => f.d >= startIso && f.flow < 0);
+      const inn = ins.reduce((a, f) => a + f.flow, 0);
+      const putInBefore = flows.filter((f) => f.d < startIso && f.flow > 0).reduce((a, f) => a + f.flow, 0);
+      const removed = !process.env.FUND_HIDE_WITHDRAWAL_NEWS && outs.length > 0;
+      const outPct = removed
+        ? outs.reduce((a, f) => a + (-f.flow / Math.max(balanceAt(fundAddDays(f.d, -1)), -f.flow)) * 100, 0)
+        : null;
+      if (ins.length || removed) {
+        moneyNews.push({
+          p: pName,
+          added: ins.length > 0, addedPct: ins.length > 0 && putInBefore > 0 ? cap((inn / putInBefore) * 100) : null,
+          removed, removedPct: cap(outPct),
+        });
+      }
     }
   }
 
