@@ -1020,12 +1020,13 @@ async function runAIPayment(gateway) {
   function moneyHeadlines(a) {
     var out = [], prev = null, nm = esc(dname(a));
     (a.moneyNews || []).forEach(function (n) {
-      var key = (n.added ? 'a' : '') + (n.removed ? 'r' : '');
-      if (!key || key === prev) return; // same as the shorter period, do not repeat it
+      var key = [n.added, n.addedPct, n.removed, n.removedPct].join('|');
+      if (!n.added && !n.removed) return;
+      if (key === prev) return; // same as the shorter period, do not repeat it
       prev = key;
-      var inn = '<span class="sg-u">added</span>', outv = '<span class="sg-o">withdrew</span>';
-      var what = n.added && n.removed ? inn + ' and ' + outv : (n.added ? inn : outv);
-      out.push(nm + ' ' + what + ' funds ' + WHEN[n.p]);
+      var inn = n.added ? 'added ' + (n.addedPct != null ? '<span class="sg-u">' + n.addedPct.toFixed(2) + '%</span>' : '<span class="sg-u">funds</span>') : '';
+      var outv = n.removed ? 'moved ' + (n.removedPct != null ? '<span class="sg-o">' + n.removedPct.toFixed(2) + '%</span>' : '<span class="sg-o">funds</span>') + ' out' : '';
+      out.push(nm + ' ' + (inn && outv ? inn + ' and ' + outv : (inn || outv)) + ' ' + WHEN[n.p]);
     });
     return out;
   }
