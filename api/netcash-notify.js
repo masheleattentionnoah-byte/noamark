@@ -598,7 +598,57 @@ const fundISODate = (s) => {
 };
 const fundAddDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * FUND_DAY).toISOString().slice(0, 10);
 
-function computeFundStats(account, rows, nowMs = Date.now()) {
+// ---- Exact money in / out from Myfxbook's own history (it only returns the last 50 entries) ----
+// "MM/DD/YYYY HH:mm" (broker time) -> { d: "YYYY-MM-DD", t: sortable number }
+function fundParseDT(v) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})(?: (\d{2}):(\d{2}))?/.exec(String(v || ''));
+  return m ? { d: `${m[3]}-${m[1]}-${m[2]}`, t: Date.UTC(+m[3], +m[1] - 1, +m[2], +(m[4] || 0), +(m[5] || 0)) } : null;
+}
+const fundLoggedHistory = new Set();
+// Rebuilds every deposit, withdrawal and trade from the history and PROVES it: the deposits, the withdrawals and the
+// final balance must all match Myfxbook's own totals to the cent. If anything differs, or the history is not the whole
+// story (50 entries or more), it returns { ok: false } and no exact figure is ever published.
+function fundVerifyHistory(account, history) {
+  const fail = (reason) => {
+    const k = `${account.accountId}:${reason}`;
+    if (history != null && !fundLoggedHistory.has(k)) {
+      fundLoggedHistory.add(k);
+      console.error('[maya-fund] money history not verified for', account.accountId, '-', reason,
+        '| first entry:', JSON.stringify((history || [])[0] || null).slice(0, 400));
+    }
+    return { ok: false, reason };
+  };
+  if (!Array.isArray(history) || !history.length) return fail('no history returned');
+  if (history.length >= 50) return fail('history is limited to 50 entries, so it is not the whole history');
+  const num = (v) => Number(v) || 0;
+  const entries = [];
+  for (const h of history) {
+    const when = fundParseDT(h.closeTime || h.closeDate || h.openTime || h.openDate);
+    if (!when) return fail('an entry has no readable date');
+    const action = String(h.action || '').trim();
+    if (/^(buy|sell)/i.test(action)) {
+      entries.push({ ...when, kind: 'trade', amount: num(h.profit) + num(h.interest) + num(h.commission) });
+    } else {
+      const txt = `${action} ${h.comment || ''}`.toLowerCase();
+      const p = num(h.profit);
+      const amount = /withdraw/.test(txt) ? -Math.abs(p) : (/deposit/.test(txt) ? Math.abs(p) : p);
+      entries.push({ ...when, kind: amount >= 0 ? 'in' : 'out', amount });
+    }
+  }
+  entries.sort((a, b) => a.t - b.t);
+  const sumIn = entries.filter((e) => e.kind === 'in').reduce((a, e) => a + e.amount, 0);
+  const sumOut = -entries.filter((e) => e.kind === 'out').reduce((a, e) => a + e.amount, 0);
+  const final = entries.reduce((a, e) => a + e.amount, 0);
+  const near = (x, y) => Math.abs(x - y) <= 0.015;
+  if (!near(sumIn, Number(account.deposits || 0))) return fail(`deposits ${sumIn.toFixed(2)} do not match Myfxbook's ${Number(account.deposits || 0).toFixed(2)}`);
+  if (!near(sumOut, Number(account.withdrawals || 0))) return fail(`withdrawals ${sumOut.toFixed(2)} do not match Myfxbook's ${Number(account.withdrawals || 0).toFixed(2)}`);
+  if (!near(final, Number(account.balance))) return fail(`rebuilt balance ${final.toFixed(2)} does not match Myfxbook's ${Number(account.balance).toFixed(2)}`);
+  let run = 0;
+  for (const e of entries) { e.before = run; run += e.amount; }
+  return { ok: true, entries };
+}
+
+function computeFundStats(account, rows, nowMs = Date.now(), history = null) {
   const today = new Date(nowMs + FUND_SAST).toISOString().slice(0, 10);
   const dow = new Date(today + 'T00:00:00Z').getUTCDay();
   const week = fundAddDays(today, -((dow + 6) % 7)); // Monday
@@ -635,36 +685,37 @@ function computeFundStats(account, rows, nowMs = Date.now()) {
   };
 
   // Money news: how much was added / moved out, as a PERCENT (never an amount).
-  //   added  = money added in the period compared with all the money put in before the period
-  //   moved out = each withdrawal compared with the balance just before it
-  // (the old "percent of the starting balance" gave silly numbers like 30000% on a tiny balance;
-  // anything above 1000% is dropped and the headline simply says "funds").
-  // The daily-balance figures are an estimate, so they are used only when they add up to Myfxbook's own
-  // deposit and withdrawal totals; otherwise nothing is announced.
+  //   added      = money added in the period compared with all the money put in before the period
+  //   moved out  = each withdrawal compared with the balance just before it
+  // EXACT: the percentages come only from Myfxbook's own history, and only after it has proven itself against
+  // Myfxbook's totals (see fundVerifyHistory). If it cannot be proven, the headline just says "funds": no percentage.
+  // The yes/no flags then fall back to the daily-balance estimate, used only when it adds up to Myfxbook's totals.
   // Vercel switches: FUND_HIDE_MONEY_NEWS=1 hides all money news, FUND_HIDE_WITHDRAWAL_NEWS=1 hides only withdrawals.
-  const depTotal = Number(account.deposits || 0), wdTotal = Number(account.withdrawals || 0);
-  const sumIn = flows.filter((f) => f.flow > 0).reduce((a, f) => a + f.flow, 0);
-  const sumOut = -flows.filter((f) => f.flow < 0).reduce((a, f) => a + f.flow, 0);
-  const flowsOk = Math.abs(sumIn - depTotal) <= Math.max(1, 0.02 * depTotal) && Math.abs(sumOut - wdTotal) <= Math.max(1, 0.02 * wdTotal);
   const moneyNews = [];
-  if (flowsOk && !process.env.FUND_HIDE_MONEY_NEWS) {
+  if (!process.env.FUND_HIDE_MONEY_NEWS) {
+    const exact = fundVerifyHistory(account, history);
+    const depTotal = Number(account.deposits || 0), wdTotal = Number(account.withdrawals || 0);
+    const sumIn = flows.filter((f) => f.flow > 0).reduce((a, f) => a + f.flow, 0);
+    const sumOut = -flows.filter((f) => f.flow < 0).reduce((a, f) => a + f.flow, 0);
+    const flowsOk = Math.abs(sumIn - depTotal) <= Math.max(1, 0.02 * depTotal) && Math.abs(sumOut - wdTotal) <= Math.max(1, 0.02 * wdTotal);
     const cap = (v) => (v != null && v > 0 && v <= 1000 ? fundRound(v) : null);
     for (const [pName, startIso] of [['today', today], ['week', week], ['month', month]]) {
-      const ins = flows.filter((f) => f.d >= startIso && f.flow > 0);
-      const outs = flows.filter((f) => f.d >= startIso && f.flow < 0);
-      const inn = ins.reduce((a, f) => a + f.flow, 0);
-      const putInBefore = flows.filter((f) => f.d < startIso && f.flow > 0).reduce((a, f) => a + f.flow, 0);
-      const removed = !process.env.FUND_HIDE_WITHDRAWAL_NEWS && outs.length > 0;
-      const outPct = removed
-        ? outs.reduce((a, f) => a + (-f.flow / Math.max(balanceAt(fundAddDays(f.d, -1)), -f.flow)) * 100, 0)
-        : null;
-      if (ins.length || removed) {
-        moneyNews.push({
-          p: pName,
-          added: ins.length > 0, addedPct: ins.length > 0 && putInBefore > 0 ? cap((inn / putInBefore) * 100) : null,
-          removed, removedPct: cap(outPct),
-        });
+      let added, removed, addedPct = null, removedPct = null;
+      if (exact.ok) {
+        const ins = exact.entries.filter((e) => e.d >= startIso && e.kind === 'in');
+        const outs = exact.entries.filter((e) => e.d >= startIso && e.kind === 'out');
+        const inn = ins.reduce((a, e) => a + e.amount, 0);
+        const before = depTotal - inn; // all the money put in before the period
+        added = ins.length > 0;
+        removed = outs.length > 0;
+        if (added && before > 0) addedPct = cap((inn / before) * 100);
+        if (removed && outs.every((e) => e.before > 0)) removedPct = cap(outs.reduce((a, e) => a + (-e.amount / e.before) * 100, 0));
+      } else if (flowsOk) {
+        added = flows.some((f) => f.d >= startIso && f.flow > 0);
+        removed = flows.some((f) => f.d >= startIso && f.flow < 0);
       }
+      if (process.env.FUND_HIDE_WITHDRAWAL_NEWS) { removed = false; removedPct = null; }
+      if (added || removed) moneyNews.push({ p: pName, added: !!added, addedPct, removed: !!removed, removedPct });
     }
   }
 
@@ -732,7 +783,10 @@ async function loadFundRaw() {
       // Whole history, NOT creationDate: that is when the account was added to Myfxbook, which can
       // be after the first trades, and starting there silently dropped the earlier days.
       const raw = await fundMfx('get-data-daily', { session, id: account.id, start: '2000-01-01', end });
-      out.push({ account, rows: (raw.dataDaily || []).flat(Infinity) });
+      let history = null;
+      try { history = (await fundMfx('get-history', { session, id: account.id })).history || null; }
+      catch (e) { console.error('[maya-fund] get-history failed:', e.message); }
+      out.push({ account, rows: (raw.dataDaily || []).flat(Infinity), history });
     }
     return out;
   } finally {
@@ -766,9 +820,9 @@ function fundPhotos() {
 async function loadFundStats() {
   const owners = fundOwners();
   const photos = fundPhotos();
-  const all = (await loadFundRaw()).map(({ account, rows }) => {
+  const all = (await loadFundRaw()).map(({ account, rows, history }) => {
     const owner = owners[String(account.accountId)];
-    const st = computeFundStats(account, rows);
+    const st = computeFundStats(account, rows, Date.now(), history);
     // PRIVACY: the public page shows up / down only. The balance, the money put in and the starting
     // amount are NOT sent to the browser at all, so nobody can work out deposits or withdrawals.
     delete st.balance; delete st.deposited; delete st.startedWith; delete st.moneyOut;
