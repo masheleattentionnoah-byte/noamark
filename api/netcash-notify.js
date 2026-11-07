@@ -737,9 +737,10 @@ function computeFundStats(account, rows, nowMs = Date.now(), history = null) {
 
   const balance = Number(account.balance);
   const updated = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})/.exec(String(account.lastUpdateDate || ''));
-  // Myfxbook shows broker time; treat as UTC+2 (within an hour of JustMarkets' server time)
+  // Myfxbook's lastUpdateDate is UTC: the site showed 21:13 (South African time) for an update the API
+  // reported as 19:13, and 13:58 for 11:58, so the earlier "- 2 hours" made every time 2 hours too early.
   const updatedAt = updated
-    ? new Date(Date.UTC(+updated[3], +updated[1] - 1, +updated[2], +updated[4], +updated[5]) - FUND_SAST).toISOString()
+    ? new Date(Date.UTC(+updated[3], +updated[1] - 1, +updated[2], +updated[4], +updated[5])).toISOString()
     : null;
 
   return {
