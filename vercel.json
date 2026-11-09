@@ -1,6 +1,10 @@
 {
+  "redirects": [
+    { "source": "/noamark-ai-agent.html", "destination": "/maya", "permanent": false }
+  ],
   "rewrites": [
     { "source": "/api/claude", "destination": "/api/claude" },
+    { "source": "/maya", "destination": "/noamark-ai-agent.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "crons": [
