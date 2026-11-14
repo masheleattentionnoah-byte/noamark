@@ -878,6 +878,7 @@ async function handleFundReport(req, res) {
   try {
     const raw = await loadFundRaw();
     const lines = [];
+    const startLines = [];
     const newState = [];
     let moved = false;
     for (const { account, rows } of raw) {
@@ -887,7 +888,17 @@ async function handleFundReport(req, res) {
       if (!r.ok) throw new Error(`fund_report_state read failed (${r.status}) - has the SQL been run? ${await r.text()}`);
       const saved = (await r.json())[0];
       newState.push({ account: id, deposits: dep, withdrawals: wd });
-      if (!saved) continue; // first run for this account: remember the totals, say nothing
+      if (!saved) {
+        // first run for this account: remember the totals and send one 'monitoring started' note, so you can see it works
+        const s0 = computeFundStats(account, rows);
+        startLines.push(
+          `${account.name || 'Account'} (login ${account.accountId}) - now being watched`,
+          `Balance now: ${fundMoneyText(s0.balance, s0.currency)}`,
+          `Totals so far - put in: ${fundMoneyText(dep, s0.currency)}, taken out: ${fundMoneyText(wd, s0.currency)}`,
+          ''
+        );
+        continue;
+      }
       const dIn = dep - Number(saved.deposits), dOut = wd - Number(saved.withdrawals);
       if (dIn <= 0.005 && dOut <= 0.005) continue; // nothing moved since last time
       moved = true;
@@ -904,12 +915,13 @@ async function handleFundReport(req, res) {
         ''
       );
     }
-    if (moved) {
-      lines.push('Private email: money in and out amounts are never shown on the public Maya page (only percentages, if you have money news switched on).',
+    if (moved || startLines.length) {
+      if (startLines.length) lines.push(...startLines);
+      if (moved) lines.push('Private email: money in and out amounts are never shown on the public Maya page (only percentages, if you have money news switched on).',
         'You get this email only when money moves in or out; the free Myfxbook plan updates about once a day, so it can arrive a day late.');
       const sent = await sendViaExistingEmailApi(
         process.env.FUND_REPORT_EMAIL || ADMIN_EMAIL,
-        'NoaMark account report: money moved',
+        moved ? 'NoaMark account report: money moved' : 'NoaMark account report: monitoring started',
         lines.filter((x) => x !== null).join('\n')
       );
       if (!sent || sent.ok !== true) {
@@ -924,7 +936,7 @@ async function handleFundReport(req, res) {
       body: JSON.stringify(newState.map((x) => ({ ...x, updated_at: new Date().toISOString() }))),
     });
     if (!w.ok) throw new Error(`fund_report_state save failed (${w.status}) ${await w.text()}`);
-    return res.status(200).json({ sent: moved, moved });
+    return res.status(200).json({ sent: moved || startLines.length > 0, moved });
   } catch (e) {
     console.error('[maya-fund] report failed:', e.message);
     return res.status(500).json({ error: 'report failed' });
