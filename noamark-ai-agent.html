@@ -776,7 +776,21 @@ const AI_GATEWAYS = {
   ozow:    { url: '/api/ozow-notify?action=init',      btnId: 'ozowAIBtn',    label: 'Ozow' },
 };
 
+// NETCASH ON/OFF SWITCH — Netcash is paused (the Netcash account is being put on hold),
+// so only Ozow is offered for launch tickets. To bring Netcash back: set this to true
+// AND set NETCASH_PAYMENTS_ENABLED=true in Vercel (the server refuses Netcash payments
+// without it). Only the "start a payment" button is affected — the spots-left counter and
+// Maya Fund stats below still read from /api/netcash-notify and keep working.
+const AI_NETCASH_ENABLED = false;
+if (!AI_NETCASH_ENABLED) {
+  const ncBtn = document.getElementById('netcashAIBtn');
+  if (ncBtn) ncBtn.style.display = 'none';
+  const trustEl = document.querySelector('.trust');
+  if (trustEl) trustEl.innerHTML = trustEl.innerHTML.replace('Secured by Netcash &amp; Ozow', 'Secured by Ozow');
+}
+
 async function runAIPayment(gateway) {
+  if (gateway === 'netcash' && !AI_NETCASH_ENABLED) gateway = 'ozow'; // belt and braces: never start Netcash while paused
   const { url, btnId, label } = AI_GATEWAYS[gateway];
   const btn = document.getElementById(btnId);
   const otherBtn = document.getElementById(gateway === 'netcash' ? 'ozowAIBtn' : 'netcashAIBtn');
