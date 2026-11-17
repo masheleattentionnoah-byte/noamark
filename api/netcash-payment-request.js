@@ -90,6 +90,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ ok: false, reason: 'Method not allowed' });
   }
 
+  // NETCASH PAUSED — this endpoint creates a Netcash invoice and sends it to the
+  // business by SMS/email, so it is switched off together with the Pay Now start-
+  // payment path. Re-enable by setting NETCASH_PAYMENTS_ENABLED=true in Vercel.
+  if (process.env.NETCASH_PAYMENTS_ENABLED !== 'true') {
+    return res.status(200).json({ ok: false, paused: true, reason: 'Netcash payments are temporarily unavailable. Please pay with Ozow instead.' });
+  }
+
   // ── NEW: require a valid business (or admin) session token ──
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   const claims = verifySessionToken(token);
