@@ -3,6 +3,12 @@
 <head>
 <!-- ANTI-FLASH: hide body immediately so no page flashes before JS shows the correct one -->
 <style id="nm-anti-flash">body{visibility:hidden!important;}</style>
+<style id="nm-payment-mode">
+/* Netcash paused → Ozow-only presentation (see NM_NETCASH_ENABLED) */
+.bp-ozow-note{display:none;}
+.nm-ozow-only .bp-ozow-note{display:block;}
+.nm-ozow-only .bp-ozow-alt,.nm-ozow-only .bp-netcash-note{display:none;}
+</style>
 <!-- Safety net: if JS fails for any reason, reveal body after 5s so site is never blank.
      The 5s gives DOMContentLoaded + Supabase time to finish and remove nm-anti-flash normally. -->
 <script>setTimeout(function(){var s=document.getElementById('nm-anti-flash');if(s)s.remove();},5000);</script>
@@ -4166,7 +4172,7 @@
  <li> Appears in search & category results</li>
                 </ul>
                 <button class="bp-btn" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Starter','R49.99/month')">Select Starter</button>
-                <div style="margin-top:8px;text-align:center;"><a href="javascript:void(0)" onclick="bpSelectBoostOzow('Starter','R49.99/month')" title="Ozow is a one-time bank payment — it won't renew automatically like card payments do" style="font-size:10px;color:var(--white-dim);text-decoration:underline;">Pay with Ozow instead</a><div style="font-size:9px;color:rgba(255,255,255,.35);margin-top:2px;">One-time payment, doesn't auto-renew</div></div>
+                <div class="bp-ozow-alt" style="margin-top:8px;text-align:center;"><a href="javascript:void(0)" onclick="bpSelectBoostOzow('Starter','R49.99/month')" title="Ozow is a one-time bank payment — it won't renew automatically like card payments do" style="font-size:10px;color:var(--white-dim);text-decoration:underline;">Pay with Ozow instead</a><div style="font-size:9px;color:rgba(255,255,255,.35);margin-top:2px;">One-time payment, doesn't auto-renew</div></div><div class="bp-ozow-note" style="margin-top:8px;text-align:center;font-size:10px;color:rgba(255,255,255,.4);">One-time bank payment via Ozow — renew each month</div>
               </div>
               <!-- GROWTH -->
               <div style="background:linear-gradient(160deg,rgba(212,175,55,.06),var(--black-3));border:1px solid rgba(212,175,55,.35);padding:28px;text-align:center;position:relative;">
@@ -4181,7 +4187,7 @@
  <li> Above Starter listings</li>
                 </ul>
                 <button class="bp-btn bp-btn-gold" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Growth','R219.99/month')">Select Growth</button>
-                <div style="margin-top:8px;text-align:center;"><a href="javascript:void(0)" onclick="bpSelectBoostOzow('Growth','R219.99/month')" title="Ozow is a one-time bank payment — it won't renew automatically like card payments do" style="font-size:10px;color:var(--white-dim);text-decoration:underline;">Pay with Ozow instead</a><div style="font-size:9px;color:rgba(255,255,255,.35);margin-top:2px;">One-time payment, doesn't auto-renew</div></div>
+                <div class="bp-ozow-alt" style="margin-top:8px;text-align:center;"><a href="javascript:void(0)" onclick="bpSelectBoostOzow('Growth','R219.99/month')" title="Ozow is a one-time bank payment — it won't renew automatically like card payments do" style="font-size:10px;color:var(--white-dim);text-decoration:underline;">Pay with Ozow instead</a><div style="font-size:9px;color:rgba(255,255,255,.35);margin-top:2px;">One-time payment, doesn't auto-renew</div></div><div class="bp-ozow-note" style="margin-top:8px;text-align:center;font-size:10px;color:rgba(255,255,255,.4);">One-time bank payment via Ozow — renew each month</div>
               </div>
               <!-- PRO (Monthly — best value) -->
               <div style="background:linear-gradient(160deg,rgba(212,175,55,.12),var(--black-2));border:2px solid var(--gold);padding:28px;text-align:center;position:relative;">
@@ -4198,10 +4204,11 @@
  <li> Custom monthly marketing ad, designed for you</li>
                 </ul>
  <button class="bp-btn bp-btn-gold" style="width:100%;justify-content:center;" onclick="bpSelectBoost('Pro','R299.99/month')"> Select Pro</button>
-                <div style="margin-top:8px;text-align:center;"><a href="javascript:void(0)" onclick="bpSelectBoostOzow('Pro','R299.99/month')" title="Ozow is a one-time bank payment — it won't renew automatically like card payments do" style="font-size:10px;color:var(--white-dim);text-decoration:underline;">Pay with Ozow instead</a><div style="font-size:9px;color:rgba(255,255,255,.35);margin-top:2px;">One-time payment, doesn't auto-renew</div></div>
+                <div class="bp-ozow-alt" style="margin-top:8px;text-align:center;"><a href="javascript:void(0)" onclick="bpSelectBoostOzow('Pro','R299.99/month')" title="Ozow is a one-time bank payment — it won't renew automatically like card payments do" style="font-size:10px;color:var(--white-dim);text-decoration:underline;">Pay with Ozow instead</a><div style="font-size:9px;color:rgba(255,255,255,.35);margin-top:2px;">One-time payment, doesn't auto-renew</div></div><div class="bp-ozow-note" style="margin-top:8px;text-align:center;font-size:10px;color:rgba(255,255,255,.4);">One-time bank payment via Ozow — renew each month</div>
               </div>
             </div>
-            <p style="font-size:11px;color:var(--white-dim);margin-top:16px;line-height:1.6;">Plans renew monthly. Payments are processed securely via Netcash — you'll be redirected to complete payment after selecting a plan, and it activates automatically. Prefer Ozow? Use the link under any plan.</p>
+            <p class="bp-netcash-note" style="font-size:11px;color:var(--white-dim);margin-top:16px;line-height:1.6;">Plans renew monthly. Payments are processed securely via Netcash — you'll be redirected to complete payment after selecting a plan, and it activates automatically. Prefer Ozow? Use the link under any plan.</p>
+            <p class="bp-ozow-note" style="font-size:11px;color:var(--white-dim);margin-top:16px;line-height:1.6;">Payments are made by instant bank transfer through Ozow — you'll be redirected to your bank to pay, and your plan activates automatically once the payment is confirmed. Each payment covers one month, so renew before it ends to stay boosted.</p>
           </div>
         </div>
 
@@ -13865,8 +13872,19 @@ async function bpCheckListingPayable(listingId) {
   return true;
 }
 
-// ── BOOST SELECT — Netcash first, Ozow available alongside it ──
+// ── NETCASH ON/OFF SWITCH ──
+// Netcash is PAUSED (the Netcash account is being put on hold). While this is false:
+//   • the main "Select <plan>" buttons start an Ozow payment instead,
+//   • the "Pay with Ozow instead" links and the Netcash wording are hidden,
+//   • no new Netcash payment can be started from this site.
+// To bring Netcash back later: set this to true here AND set NETCASH_PAYMENTS_ENABLED=true
+// in Vercel (the server refuses to start Netcash payments unless that is set too).
+const NM_NETCASH_ENABLED = false;
+document.documentElement.classList.toggle('nm-ozow-only', !NM_NETCASH_ENABLED);
+
+// ── BOOST SELECT — Ozow only while Netcash is paused ──
 async function bpSelectBoost(plan, price) {
+  if (!NM_NETCASH_ENABLED) return bpSelectBoostOzow(plan, price);
   if (!currentUser || currentUser.type !== 'business') {
     bpToast('Please log in as a business owner to purchase a boost.');
     return;
