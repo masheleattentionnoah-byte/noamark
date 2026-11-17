@@ -264,7 +264,21 @@ async function handleAvailability(req, res) {
 // ---------------------------------------------------------------------
 // JOB 1: build the locked Pay Now form fields for the frontend redirect
 // ---------------------------------------------------------------------
+// NETCASH PAUSED — starting NEW Netcash payments is switched off unless the
+// environment variable NETCASH_PAYMENTS_ENABLED is exactly 'true' (set it in
+// Vercel → Settings → Environment Variables, then redeploy, to switch it back on).
+// This only affects handleInit. Everything else in this file is untouched and still
+// works: handleNotify (confirming payments Netcash still sends — e.g. a client who is
+// already on a recurring subscription), the Maya ticket counter (?action=availability),
+// and the Maya Fund stats/report (?action=fund, ?action=fund-report).
 async function handleInit(req, res) {
+  if (process.env.NETCASH_PAYMENTS_ENABLED !== 'true') {
+    return res.status(200).json({
+      ok: false,
+      paused: true,
+      reason: 'Netcash payments are temporarily unavailable. Please pay with Ozow instead.',
+    });
+  }
   const { planKey, listingId, email, name } = req.body || {};
 
   if (!planKey || !PLAN_PRICES[planKey]) {
